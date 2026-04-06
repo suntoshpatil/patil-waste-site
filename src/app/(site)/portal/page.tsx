@@ -125,7 +125,7 @@ export default function Portal() {
       sb(`skip_requests?customer_id=eq.${cust.id}&select=*&order=created_at.desc`).catch(() => []),
       sb(`schedule_notices?select=*&order=notice_date.desc&limit=5`).catch(() => []),
       sb(`services?select=id,name,base_price_monthly&is_active=eq.true&type=in.(recurring,addon)&order=base_price_monthly.asc`).catch(() => []),
-      sb(`bulky_item_catalog?select=*&is_active=eq.true&order=name.asc`).catch(() => []),
+      sb(`bulky_item_catalog?select=*&is_active=eq.true&order=is_fixed_price.desc,name.asc`).catch(() => []),
       sb(`pickup_addons?customer_id=eq.${cust.id}&select=*&order=created_at.desc&limit=20`).catch(() => []),
       sb(`invoices?customer_id=eq.${cust.id}&select=*&order=created_at.desc&limit=12`).catch(() => []),
     ])
@@ -640,45 +640,65 @@ export default function Portal() {
               📦 Add bulky items or extra bags to your next scheduled pickup. Fixed-price items are confirmed automatically — anything else will be quoted by Suntosh before your pickup.
             </div>
 
-            {/* Catalog items */}
-            <div style={card}>
-              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'1rem' }}>Common Items</div>
-              {catalog.length === 0 ? (
-                <p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.3)' }}>No items available yet.</p>
-              ) : (
-                <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
-                  {catalog.map((item: any) => {
-                    const sel = selectedItems.find(s => s.id === item.id)
-                    return (
-                      <div key={item.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background: sel ? 'rgba(46,125,50,0.12)' : 'rgba(255,255,255,0.05)', border:`1px solid ${sel ? 'rgba(46,125,50,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius:'7px', padding:'0.65rem 0.9rem', transition:'all 0.15s' }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
-                          <input type='checkbox' checked={!!sel} onChange={e => {
-                            setSelectedItems(prev => e.target.checked ? [...prev, {id:item.id, qty:1}] : prev.filter(s => s.id !== item.id))
-                          }} style={{ accentColor:'#2e7d32', width:'16px', height:'16px' }} />
-                          <div>
-                            <div style={{ fontSize:'0.88rem', fontWeight:500, color:'#fff' }}>{item.name}</div>
-                            <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.4)', marginTop:'0.1rem' }}>
-                              {item.is_fixed_price
-                                ? <span style={{ color:'#4caf50', fontWeight:600 }}>${item.fixed_price} flat</span>
-                                : <span style={{ color:'rgba(255,255,255,0.65)' }}>Est. ${item.estimate_min}–${item.estimate_max}</span>
-                              }
-                              {!item.is_fixed_price && <span style={{ color:'#f59e0b', marginLeft:'0.4rem' }}>· quote required</span>}
-                            </div>
-                          </div>
+            {/* Extra bags — fixed price, shown first and prominently */}
+            {(() => {
+              const bags = catalog.filter((item: any) => item.is_fixed_price)
+              const bulky = catalog.filter((item: any) => !item.is_fixed_price)
+              const ItemRow = ({ item }: { item: any }) => {
+                const sel = selectedItems.find(s => s.id === item.id)
+                const isBag = item.is_fixed_price
+                return (
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background: sel ? 'rgba(46,125,50,0.12)' : 'rgba(255,255,255,0.05)', border:`1px solid ${sel ? 'rgba(46,125,50,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius:'7px', padding:'0.7rem 0.9rem', transition:'all 0.15s' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+                      <input type='checkbox' checked={!!sel} onChange={e => {
+                        setSelectedItems(prev => e.target.checked ? [...prev, {id:item.id, qty:1}] : prev.filter(s => s.id !== item.id))
+                      }} style={{ accentColor:'#2e7d32', width:'16px', height:'16px', flexShrink:0 }} />
+                      <div>
+                        <div style={{ fontSize:'0.9rem', fontWeight:600, color:'#fff' }}>{item.name}</div>
+                        <div style={{ fontSize:'0.75rem', marginTop:'0.15rem' }}>
+                          {isBag
+                            ? <span style={{ color:'#4caf50', fontWeight:700 }}>${item.fixed_price} each</span>
+                            : <><span style={{ color:'rgba(255,255,255,0.65)' }}>Est. ${item.estimate_min}–${item.estimate_max}</span><span style={{ color:'#f59e0b', marginLeft:'0.4rem' }}>· quote required</span></>
+                          }
                         </div>
-                        {sel && (
-                          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                            <button onClick={() => setSelectedItems(prev => prev.map(s => s.id===item.id ? {...s, qty:Math.max(1,s.qty-1)} : s))} style={{ background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', borderRadius:'4px', width:'26px', height:'26px', cursor:'pointer', fontSize:'1rem', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
-                            <span style={{ fontSize:'0.88rem', minWidth:'20px', textAlign:'center' }}>{sel.qty}</span>
-                            <button onClick={() => setSelectedItems(prev => prev.map(s => s.id===item.id ? {...s, qty:s.qty+1} : s))} style={{ background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', borderRadius:'4px', width:'26px', height:'26px', cursor:'pointer', fontSize:'1rem', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
-                          </div>
-                        )}
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+                    </div>
+                    {/* Quantity controls — always visible for bags, show after check for bulky */}
+                    {(sel || isBag) && sel && (
+                      <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', background:'rgba(0,0,0,0.25)', borderRadius:'6px', padding:'0.2rem 0.4rem' }}>
+                        <button onClick={() => setSelectedItems(prev => prev.map(s => s.id===item.id ? {...s, qty:Math.max(1,s.qty-1)} : s))} style={{ background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', borderRadius:'4px', width:'28px', height:'28px', cursor:'pointer', fontSize:'1.1rem', display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>−</button>
+                        <span style={{ fontSize:'0.95rem', fontWeight:700, minWidth:'24px', textAlign:'center', color:'#fff' }}>{sel.qty}</span>
+                        <button onClick={() => setSelectedItems(prev => prev.map(s => s.id===item.id ? {...s, qty:s.qty+1} : s))} style={{ background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', borderRadius:'4px', width:'28px', height:'28px', cursor:'pointer', fontSize:'1.1rem', display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>+</button>
+                      </div>
+                    )}
+                    {isBag && !sel && (
+                      <button onClick={() => setSelectedItems(prev => [...prev, {id:item.id, qty:1}])} style={{ background:'rgba(46,125,50,0.2)', border:'1px solid rgba(46,125,50,0.4)', color:'#4caf50', borderRadius:'6px', padding:'0.3rem 0.8rem', cursor:'pointer', fontSize:'0.8rem', fontWeight:700, fontFamily:'inherit' }}>+ Add</button>
+                    )}
+                  </div>
+                )
+              }
+              return (
+                <>
+                  {bags.length > 0 && (
+                    <div style={card}>
+                      <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.75rem' }}>Extra Bags</div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
+                        {bags.map((item: any) => <ItemRow key={item.id} item={item} />)}
+                      </div>
+                    </div>
+                  )}
+                  {bulky.length > 0 && (
+                    <div style={card}>
+                      <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.75rem' }}>Bulky Items</div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
+                        {bulky.map((item: any) => <ItemRow key={item.id} item={item} />)}
+                      </div>
+                    </div>
+                  )}
+                  {catalog.length === 0 && <div style={card}><p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.3)' }}>No items available yet.</p></div>}
+                </>
+              )
+            })()}
 
             {/* Custom item */}
             <div style={card}>
