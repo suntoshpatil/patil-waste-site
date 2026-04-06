@@ -145,7 +145,7 @@ export default function Portal() {
     if (!email) { setError('Please enter your email address.'); return }
     setLoading(true); setError('')
     try {
-      const results = await sb(`customers?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&select=*,subscriptions(id,rate,billing_cycle,status,services(name))`)
+      const results = await sb(`customers?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,services(id,name))`)
       if (!results || results.length === 0) { setError('No account found with that email. Make sure you used the same email you signed up with.'); setLoading(false); return }
       const cust = results[0]
       if (!cust.portal_pin) {
@@ -750,43 +750,44 @@ export default function Portal() {
         {/* ── SERVICES TAB ── */}
         {tab === 'services' && (
           <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
-            <div style={card}>
-              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Current Services</div>
+            <div style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:'10px', padding:'1.5rem' }}>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.55)', marginBottom:'1rem' }}>Current Services</div>
               {(() => {
-                const activeSubs = (customer.subscriptions || []).filter(s => s.status === 'active')
-                // Deduplicate by service name
-                const seen = new Set()
-                const unique = activeSubs.filter(s => {
-                  const key = s.services?.name
-                  if (seen.has(key)) return false
+                const activeSubs = (customer.subscriptions || []).filter((s:any) => s.status === 'active')
+                const seen = new Set<string>()
+                const unique = activeSubs.filter((s:any) => {
+                  const key = s.service_id || s.services?.id || s.services?.name
+                  if (!key || seen.has(key)) return false
                   seen.add(key); return true
                 })
-                if (unique.length === 0) return <p style={{ color:'rgba(255,255,255,0.35)', fontSize:'0.88rem' }}>No active services.</p>
-                return unique.map(s => (
-                  <div key={s.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.75rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.88rem' }}>
-                    <span style={{ color:'#fff', fontWeight:500 }}>{s.services?.name}</span>
-                    <span style={{ color:'rgba(255,255,255,0.6)' }}>${s.rate}/mo · {s.billing_cycle}</span>
+                if (unique.length === 0) return (
+                  <p style={{ color:'rgba(255,255,255,0.55)', fontSize:'0.9rem' }}>No active services yet.</p>
+                )
+                return unique.map((s:any) => (
+                  <div key={s.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.8rem 0', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
+                    <span style={{ color:'#fff', fontWeight:600, fontSize:'0.95rem' }}>{s.services?.name}</span>
+                    <span style={{ color:'rgba(255,255,255,0.65)', fontSize:'0.85rem' }}>${s.rate}/mo · {s.billing_cycle}</span>
                   </div>
                 ))
               })()}
             </div>
 
             {availableServices.length > 0 && (
-              <div style={card}>
-                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Add a Service</div>
-                {availableServices.map(s => (
-                  <div key={s.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.75rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.14)', borderRadius:'10px', padding:'1.5rem' }}>
+                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.55)', marginBottom:'1rem' }}>Add a Service</div>
+                {availableServices.map((s:any) => (
+                  <div key={s.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.8rem 0', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
                     <div>
-                      <div style={{ fontWeight:600, fontSize:'0.9rem' }}>{s.name}</div>
-                      <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)' }}>${s.base_price_monthly}/mo</div>
+                      <div style={{ fontWeight:600, fontSize:'0.95rem', color:'#fff' }}>{s.name}</div>
+                      <div style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.6)', marginTop:'0.2rem' }}>${s.base_price_monthly}/mo</div>
                     </div>
-                    <button onClick={() => { setSelectedService(s.id); setShowAddService(true) }} style={{ ...btnGhost, width:'auto', fontSize:'0.78rem', padding:'0.4rem 0.9rem' }}>Request →</button>
+                    <button onClick={() => { setSelectedService(s.id); setShowAddService(true) }} style={{ background:'rgba(46,125,50,0.2)', border:'1px solid rgba(46,125,50,0.45)', color:'#4caf50', borderRadius:'6px', padding:'0.45rem 1rem', cursor:'pointer', fontSize:'0.82rem', fontWeight:700, fontFamily:'inherit' }}>Request →</button>
                   </div>
                 ))}
               </div>
             )}
 
-            <div style={{ background:'rgba(46,125,50,0.06)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'8px', padding:'1rem 1.25rem', fontSize:'0.82rem', color:'rgba(255,255,255,0.7)' }}>
+            <div style={{ background:'rgba(46,125,50,0.1)', border:'1px solid rgba(46,125,50,0.3)', borderRadius:'8px', padding:'1rem 1.25rem', fontSize:'0.85rem', color:'rgba(255,255,255,0.8)' }}>
               ℹ️ Service additions are reviewed by Suntosh and activated within 1 business day. Immediate additions are prorated for the remainder of the month.
             </div>
           </div>
