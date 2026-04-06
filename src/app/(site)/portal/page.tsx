@@ -255,7 +255,7 @@ export default function Portal() {
         // Bin rental proration
         const bins = await sb(`bins?customer_id=eq.${customer.id}&status=eq.active&select=*`).catch(() => [])
         const binTotal = (bins || []).reduce((sum: number, b: any) => {
-          const binProrated = parseFloat(((b.monthly_fee / (totalPickups || 1)) * remainingPickups).toFixed(2))
+          const binProrated = parseFloat(((b.monthly_rental_fee / (totalPickups || 1)) * remainingPickups).toFixed(2))
           return sum + binProrated
         }, 0)
 
@@ -694,10 +694,10 @@ export default function Portal() {
                 <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem' }}>Bin Rentals</div>
                 {bins.map((b: any) => (
                   <div key={b.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', paddingBottom:'0.6rem', marginBottom:'0.6rem', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-                    <span style={{ fontSize:'0.88rem' }}>{b.bin_type === 'trash' ? '🗑️ Trash Bin' : '♻️ Recycling Bin'} <span style={{ color:'rgba(255,255,255,0.6)', fontSize:'0.78rem' }}>${b.monthly_fee}/mo</span></span>
+                    <span style={{ fontSize:'0.88rem' }}>{b.bin_type === 'trash' ? '🗑️ Trash Bin' : '♻️ Recycling Bin'} <span style={{ color:'rgba(255,255,255,0.6)', fontSize:'0.78rem' }}>${b.monthly_rental_fee}/mo</span></span>
                     {b.bin_type === 'trash' && (
-                      <span style={{ fontSize:'0.75rem', fontWeight:700, color: b.deposit_paid ? '#4caf50' : '#f59e0b', background: b.deposit_paid ? 'rgba(76,175,80,0.1)' : 'rgba(245,158,11,0.1)', padding:'0.2rem 0.6rem', borderRadius:'4px' }}>
-                        {b.deposit_paid ? '✅ Deposit Paid' : '⚠️ Deposit Due ($25)'}
+                      <span style={{ fontSize:'0.75rem', fontWeight:700, color: !(b.notes||'').includes('unpaid') ? '#4caf50' : '#f59e0b', background: !(b.notes||'').includes('unpaid') ? 'rgba(76,175,80,0.1)' : 'rgba(245,158,11,0.1)', padding:'0.2rem 0.6rem', borderRadius:'4px' }}>
+                        {!(b.notes||'').includes('unpaid') ? '✅ Deposit Paid' : '⚠️ Deposit Due ($25)'}
                       </span>
                     )}
                   </div>
@@ -1171,7 +1171,7 @@ export default function Portal() {
               )}
               {bins.map((b: any) => (
                 <div key={b.id} style={{ display:'flex', justifyContent:'space-between', padding:'0.5rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.88rem' }}>
-                  <span>{b.bin_type === 'trash' ? 'Trash Bin Rental' : 'Recycling Bin Rental'}</span><span>${b.monthly_fee}/mo</span>
+                  <span>{b.bin_type === 'trash' ? 'Trash Bin Rental' : 'Recycling Bin Rental'}</span><span>${b.monthly_rental_fee}/mo</span>
                 </div>
               ))}
               {customer.garage_side_pickup && (
@@ -1181,7 +1181,7 @@ export default function Portal() {
               )}
               <div style={{ display:'flex', justifyContent:'space-between', padding:'0.75rem 0', fontWeight:700, fontSize:'1rem' }}>
                 <span>Monthly Total</span>
-                <span style={{ color:'#4caf50' }}>${((activeSub?.rate||0) + bins.reduce((s:number,b:any)=>s+Number(b.monthly_fee),0) + (customer.garage_side_pickup?10:0)).toFixed(2)}/mo</span>
+                <span style={{ color:'#4caf50' }}>${((activeSub?.rate||0) + bins.reduce((s:number,b:any)=>s+Number(b.monthly_rental_fee),0) + (customer.garage_side_pickup?10:0)).toFixed(2)}/mo</span>
               </div>
             </div>
 

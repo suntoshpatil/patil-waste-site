@@ -171,8 +171,8 @@ export default function Admin() {
       // Create bin rental rows
       if (newCustomer?.id) {
         const binInserts = []
-        if (addTrashBin) binInserts.push({ customer_id: newCustomer.id, bin_type:'trash', monthly_fee:7.99, deposit_amount:25.00, deposit_paid:false, status:'active' })
-        if (addRecyclingBin) binInserts.push({ customer_id: newCustomer.id, bin_type:'recycling', monthly_fee:3.99, deposit_amount:0, deposit_paid:true, status:'active' })
+        if (addTrashBin) binInserts.push({ customer_id: newCustomer.id, bin_type:'trash', ownership:'rental', monthly_rental_fee:7.99, assigned_date:new Date().toISOString().split('T')[0], notes:'Deposit: unpaid $25' })
+        if (addRecyclingBin) binInserts.push({ customer_id: newCustomer.id, bin_type:'recycling', ownership:'rental', monthly_rental_fee:3.99, assigned_date:new Date().toISOString().split('T')[0], notes:'No deposit required' })
         for (const bin of binInserts) {
           await sb('bins', { method:'POST', body: bin })
         }
@@ -257,10 +257,10 @@ export default function Admin() {
       }
       // Create bin rentals if selected
       if (onboardTrashBin) {
-        await sb('bins', { method:'POST', body:{ customer_id:onboardCustomer.id, bin_type:'trash', monthly_fee:7.99, deposit_amount:25.00, deposit_paid:false, status:'active' }})
+        await sb('bins', { method:'POST', body:{ customer_id:onboardCustomer.id, bin_type:'trash', ownership:'rental', monthly_rental_fee:7.99, assigned_date:new Date().toISOString().split('T')[0], notes:'Deposit: unpaid $25' }})
       }
       if (onboardRecyclingBin) {
-        await sb('bins', { method:'POST', body:{ customer_id:onboardCustomer.id, bin_type:'recycling', monthly_fee:3.99, deposit_amount:0, deposit_paid:true, status:'active' }})
+        await sb('bins', { method:'POST', body:{ customer_id:onboardCustomer.id, bin_type:'recycling', ownership:'rental', monthly_rental_fee:3.99, assigned_date:new Date().toISOString().split('T')[0], notes:'No deposit required' }})
       }
       showToast(`Contract sent to ${onboardCustomer.first_name}! Awaiting their acceptance. ✅`)
       setOnboardCustomer(null)
@@ -283,7 +283,7 @@ export default function Admin() {
   }
 
   async function toggleDepositPaid(binId: string, current: boolean) {
-    await sb(`bins?id=eq.${binId}`, { method:'PATCH', body:{ deposit_paid: !current }, prefer:'return=minimal' })
+    await sb(`bins?id=eq.${binId}`, { method:'PATCH', body:{ notes: current ? 'Deposit: unpaid $25' : 'Deposit: paid' }, prefer:'return=minimal' })
     if (selected) loadSelectedBins(selected.id)
   }
 
@@ -897,11 +897,11 @@ export default function Admin() {
                           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                             <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
                               <span style={{ fontSize:'0.88rem' }}>{bin.bin_type==='trash' ? '🗑️ Trash Bin' : '♻️ Recycling Bin'}</span>
-                              <span style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.4)' }}>${bin.monthly_fee}/mo</span>
+                              <span style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.4)' }}>${bin.monthly_rental_fee}/mo</span>
                             </div>
                             {bin.bin_type === 'trash' && (
                               <button
-                                onClick={() => toggleDepositPaid(bin.id, bin.deposit_paid)}
+                                onClick={() => toggleDepositPaid(bin.id, !(bin.notes || '').includes('unpaid'))}
                                 style={{
                                   background: bin.deposit_paid ? 'rgba(46,125,50,0.15)' : 'rgba(220,38,38,0.12)',
                                   border: `1px solid ${bin.deposit_paid ? 'rgba(46,125,50,0.4)' : 'rgba(220,38,38,0.35)'}`,
@@ -909,7 +909,7 @@ export default function Admin() {
                                   borderRadius:'5px', padding:'0.25rem 0.6rem', cursor:'pointer', fontSize:'0.72rem', fontWeight:700, fontFamily:'inherit'
                                 }}
                               >
-                                {bin.deposit_paid ? '✅ Deposit Paid' : '❌ Deposit Unpaid ($25)'}
+                                {!(bin.notes || '').includes('unpaid') ? '✅ Deposit Paid' : '❌ Deposit Unpaid ($25)'}
                               </button>
                             )}
                           </div>
