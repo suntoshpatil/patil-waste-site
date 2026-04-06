@@ -66,6 +66,7 @@ type Customer = {
   payment_method: string
   garage_side_pickup: boolean
   notes: string
+  portal_pin?: string
   subscriptions?: { id: string; rate: number; billing_cycle: string; status: string; services: { name: string } }[]
 }
 
@@ -131,26 +132,37 @@ export default function Portal() {
     setPickupAddons(addons || [])
   }
 
-  async function handleLogin() {
-    if (!email || !pin) { setError('Please enter your email and PIN.'); return }
-    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { setError('PIN must be 4 digits.'); return }
+  const [loginStep, setLoginStep] = useState<'email'|'pin'>('email')
+  const [foundCustomer, setFoundCustomer] = useState<Customer|null>(null)
+
+  async function handleEmailLookup() {
+    if (!email) { setError('Please enter your email address.'); return }
     setLoading(true); setError('')
     try {
       const results = await sb(`customers?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&select=*,subscriptions(id,rate,billing_cycle,status,services(name))`)
-      if (!results || results.length === 0) { setError('No account found with that email.'); setLoading(false); return }
+      if (!results || results.length === 0) { setError('No account found with that email. Make sure you used the same email you signed up with.'); setLoading(false); return }
       const cust = results[0]
       if (!cust.portal_pin) {
+        // First time — go straight to set PIN
         setCustomer(cust)
         setScreen('set-pin')
         setLoading(false); return
       }
-      if (cust.portal_pin !== pin) { setError('Incorrect PIN.'); setLoading(false); return }
-      sessionStorage.setItem('portal_customer', JSON.stringify(cust))
-      setCustomer(cust)
-      setScreen('dashboard')
-      loadPortalData(cust)
-    } catch (e: any) { setError(e.message || 'Login failed.') }
+      // Has a PIN — show PIN entry step
+      setFoundCustomer(cust)
+      setLoginStep('pin')
+    } catch (e: any) { setError(e.message || 'Something went wrong.') }
     setLoading(false)
+  }
+
+  async function handleLogin() {
+    if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) { setError('Please enter your 4-digit PIN.'); return }
+    if (!foundCustomer) return
+    if (foundCustomer.portal_pin !== pin) { setError('Incorrect PIN. Please try again.'); return }
+    sessionStorage.setItem('portal_customer', JSON.stringify(foundCustomer))
+    setCustomer(foundCustomer)
+    setScreen('dashboard')
+    loadPortalData(foundCustomer)
   }
 
   async function handleSetPin() {
@@ -265,21 +277,34 @@ export default function Portal() {
       <div style={{ width:'100%', maxWidth:'420px' }}>
         <div style={{ textAlign:'center', marginBottom:'2.5rem' }}>
           <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'2.5rem', letterSpacing:'0.05em', marginBottom:'0.5rem' }}>My Account</div>
-          <p style={{ color:'rgba(255,255,255,0.45)', fontSize:'0.9rem' }}>Sign in to manage your Patil Waste Removal service</p>
+          <p style={{ color:'rgba(255,255,255,0.45)', fontSize:'0.9rem' }}>Manage your Patil Waste Removal service</p>
         </div>
-        <div style={{ ...card, padding:'2rem' }}>
-          <div style={{ marginBottom:'1.25rem' }}>
-            <label style={{ display:'block', fontSize:'0.75rem', color:'rgba(255,255,255,0.5)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:'0.4rem' }}>Email Address</label>
-            <input style={inputStyle} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" onKeyDown={e => e.key === 'Enter' && handleLogin()} />
+
+        {loginStep === 'email' ? (
+          <div style={{ ...card, padding:'2rem' }}>
+            <div style={{ marginBottom:'1.5rem' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', color:'rgba(255,255,255,0.5)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:'0.4rem' }}>Email Address</label>
+              <input style={inputStyle} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" onKeyDown={e => e.key === 'Enter' && handleEmailLookup()} autoFocus />
+              <p style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.3)', marginTop:'0.5rem' }}>Use the email address you signed up with.</p>
+            </div>
+            {error && <div style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.3)', borderRadius:'6px', padding:'0.65rem 0.9rem', fontSize:'0.83rem', color:'#f87171', marginBottom:'1rem' }}>{error}</div>}
+            <button style={btnGreen} onClick={handleEmailLookup} disabled={loading}>{loading ? 'Looking up…' : 'Continue →'}</button>
           </div>
-          <div style={{ marginBottom:'1.5rem' }}>
-            <label style={{ display:'block', fontSize:'0.75rem', color:'rgba(255,255,255,0.5)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:'0.4rem' }}>4-Digit PIN</label>
-            <input style={inputStyle} type="password" inputMode="numeric" maxLength={4} value={pin} onChange={e => setPin(e.target.value.replace(/\D/g,''))} placeholder="••••" onKeyDown={e => e.key === 'Enter' && handleLogin()} />
-            <p style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.35)', marginTop:'0.4rem' }}>First time? Enter your email and any 4 digits — you'll be prompted to set your PIN.</p>
+        ) : (
+          <div style={{ ...card, padding:'2rem' }}>
+            <div style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.5)', marginBottom:'1.25rem', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <span>Signed in as <strong style={{ color:'#fff' }}>{email}</strong></span>
+              <button onClick={() => { setLoginStep('email'); setPin(''); setError('') }} style={{ background:'none', border:'none', color:'#4caf50', fontSize:'0.78rem', cursor:'pointer', fontFamily:'inherit' }}>Change</button>
+            </div>
+            <div style={{ marginBottom:'1.5rem' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', color:'rgba(255,255,255,0.5)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:'0.4rem' }}>4-Digit PIN</label>
+              <input style={inputStyle} type="password" inputMode="numeric" maxLength={4} value={pin} onChange={e => setPin(e.target.value.replace(/\D/g,''))} placeholder="••••" onKeyDown={e => e.key === 'Enter' && handleLogin()} autoFocus />
+            </div>
+            {error && <div style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.3)', borderRadius:'6px', padding:'0.65rem 0.9rem', fontSize:'0.83rem', color:'#f87171', marginBottom:'1rem' }}>{error}</div>}
+            <button style={btnGreen} onClick={handleLogin} disabled={loading}>{loading ? 'Signing in…' : 'Sign In'}</button>
           </div>
-          {error && <div style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.3)', borderRadius:'6px', padding:'0.65rem 0.9rem', fontSize:'0.83rem', color:'#f87171', marginBottom:'1rem' }}>{error}</div>}
-          <button style={btnGreen} onClick={handleLogin} disabled={loading}>{loading ? 'Signing in…' : 'Sign In'}</button>
-        </div>
+        )}
+
         <p style={{ textAlign:'center', fontSize:'0.8rem', color:'rgba(255,255,255,0.3)', marginTop:'1.5rem' }}>
           Not a customer yet? <a href="/signup" style={{ color:'#4caf50' }}>Sign up here →</a>
         </p>
