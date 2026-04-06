@@ -346,6 +346,7 @@ export default function Portal() {
   // ── DASHBOARD ──
   if (!customer) return null
   const activeSub = customer.subscriptions?.find(s => s.status === 'active')
+  const pickupDay = (activeSub as any)?.pickup_day || (customer as any).pickup_day || ''
   const skipsUsed = quarterSkipsUsed(skips)
   const skipsLeft = Math.max(0, 2 - skipsUsed)
 
@@ -427,11 +428,11 @@ export default function Portal() {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
                 <div>
                   <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.2rem' }}>Pickup Day</div>
-                  <div style={{ fontWeight:600, fontSize:'1rem', textTransform:'capitalize' }}>{customer.pickup_day || '—'}</div>
+                  <div style={{ fontWeight:600, fontSize:'1rem', textTransform:'capitalize' }}>{pickupDay || '—'}</div>
                 </div>
                 <div>
                   <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.2rem' }}>Next Pickup</div>
-                  <div style={{ fontWeight:600, fontSize:'1rem', color:'#4caf50' }}>{nextPickupDate(customer.pickup_day)}</div>
+                  <div style={{ fontWeight:600, fontSize:'1rem', color:'#4caf50' }}>{nextPickupDate(pickupDay)}</div>
                 </div>
               </div>
               {customer.garage_side_pickup && (
@@ -477,7 +478,7 @@ export default function Portal() {
           const { year, month } = calMonth
           const firstDay = new Date(year, month, 1).getDay()
           const daysInMonth = new Date(year, month + 1, 0).getDate()
-          const pickupDayIndex = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].indexOf((customer.pickup_day || '').toLowerCase())
+          const pickupDayIndex = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].indexOf((pickupDay || '').toLowerCase())
 
           // Build a set of notice dates for quick lookup
           const noticeMap: Record<string, any> = {}

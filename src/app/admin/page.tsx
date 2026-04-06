@@ -293,9 +293,16 @@ export default function Admin() {
 
   async function saveEdit() {
     if (!selected) return
-    // Only send real customer columns — strip nested objects and non-column fields
     const { pickup_day, subscriptions, bins, created_at, id, ...patchData } = editData as any
+    // Save customer fields
     await sb(`customers?id=eq.${selected.id}`, { method:'PATCH', body:patchData, prefer:'return=minimal' })
+    // Save pickup_day to active subscription
+    if (pickup_day !== undefined) {
+      const activeSub = (selected as any).subscriptions?.find((s:any) => s.status === 'active')
+      if (activeSub) {
+        await sb(`subscriptions?id=eq.${activeSub.id}`, { method:'PATCH', body:{ pickup_day }, prefer:'return=minimal' })
+      }
+    }
     showToast('Customer updated')
     setEditMode(false)
     loadAll()
@@ -325,7 +332,8 @@ export default function Admin() {
   days.forEach(d => byDay[d]=[])
   byDay['unassigned']=[]
   customers.filter(c => c.status==='active').forEach(c => {
-    const d = c.pickup_day && days.includes(c.pickup_day) ? c.pickup_day : 'unassigned'
+    const subPickupDay = (c as any).subscriptions?.find((s:any)=>s.status==='active')?.pickup_day || ''
+    const d = subPickupDay && days.includes(subPickupDay) ? subPickupDay : 'unassigned'
     byDay[d].push(c)
   })
 
@@ -823,14 +831,14 @@ export default function Admin() {
                   </div>
                 ) : (
                   <div>
-                    {([['Status', <Badge key="s" status={selected.status} />],['Email',selected.email],['Phone',selected.phone||'—'],['Address',selected.service_address],['Town',cap(selected.town)],['Pickup Day',cap(selected.pickup_day)||'—'],['Payment',cap(selected.payment_method)],['Bin',cap(selected.bin_situation)],['Garage Pickup',selected.garage_side_pickup?'✅ Yes':'No'],['Gate Notes',selected.gate_notes||'—'],['Started',fmt(selected.start_date||selected.created_at)]] as [string,any][]).map(([label,val])=>(
+                    {(()=>{const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); return [['Status', <Badge key="s" status={selected.status} />],['Email',selected.email],['Phone',selected.phone||'—'],['Address',selected.service_address],['Town',cap(selected.town)],['Pickup Day',cap(activeSub?.pickup_day)||'—'],['Plan',activeSub?.services?.name||'—'],['Payment',cap(selected.payment_method)],['Bin',cap(selected.bin_situation)],['Garage Pickup',selected.garage_side_pickup?'✅ Yes':'No'],['Gate Notes',selected.gate_notes||'—'],['Started',fmt(selected.created_at)]] as [string,any][]})().map(([label,val])=>(
                       <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.45rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.84rem' }}>
                         <span style={{ color:'#6b7280', fontSize:'0.75rem' }}>{label}</span>
                         <span>{val}</span>
                       </div>
                     ))}
                     <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginTop:'1.25rem' }}>
-                      <Btn small onClick={()=>{setEditData({...selected});setEditMode(true);setConfirmDelete(false)}}>✏️ Edit</Btn>
+                      <Btn small onClick={()=>{ const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); setEditData({...selected, pickup_day: activeSub?.pickup_day||''}); setEditMode(true); setConfirmDelete(false) }}>✏️ Edit</Btn>
                       <Btn small color='#7f1d1d' onClick={()=>{setConfirmDelete(true)}}>🗑️ Delete</Btn>
                     </div>
                   </div>
