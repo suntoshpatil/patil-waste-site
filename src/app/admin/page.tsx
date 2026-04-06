@@ -248,7 +248,10 @@ export default function Admin() {
 
   async function saveEdit() {
     if (!selected) return
-    await sb(`customers?id=eq.${selected.id}`, { method:'PATCH', body:editData, prefer:'return=minimal' })
+    // Strip pickup_day — it's not a real column in the customers table
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { pickup_day, ...patchData } = editData as any
+    await sb(`customers?id=eq.${selected.id}`, { method:'PATCH', body:patchData, prefer:'return=minimal' })
     showToast('Customer updated')
     setEditMode(false)
     loadAll()

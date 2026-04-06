@@ -636,13 +636,13 @@ export default function Portal() {
         {/* ── ADD TO PICKUP TAB ── */}
         {tab === 'pickup' && (
           <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
-            <div style={{ background:'rgba(46,125,50,0.06)', border:'1px solid rgba(46,125,50,0.15)', borderRadius:'8px', padding:'1rem 1.25rem', fontSize:'0.84rem', color:'rgba(255,255,255,0.6)' }}>
-              📦 Add bulky items or extra bags to your next scheduled pickup. Items with fixed prices are confirmed automatically — anything else will be quoted by Suntosh before your pickup.
+            <div style={{ background:'rgba(46,125,50,0.08)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'8px', padding:'1rem 1.25rem', fontSize:'0.84rem', color:'rgba(255,255,255,0.8)' }}>
+              📦 Add bulky items or extra bags to your next scheduled pickup. Fixed-price items are confirmed automatically — anything else will be quoted by Suntosh before your pickup.
             </div>
 
             {/* Catalog items */}
             <div style={card}>
-              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Common Items</div>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'1rem' }}>Common Items</div>
               {catalog.length === 0 ? (
                 <p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.3)' }}>No items available yet.</p>
               ) : (
@@ -650,17 +650,17 @@ export default function Portal() {
                   {catalog.map((item: any) => {
                     const sel = selectedItems.find(s => s.id === item.id)
                     return (
-                      <div key={item.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background: sel ? 'rgba(46,125,50,0.08)' : 'rgba(255,255,255,0.02)', border:`1px solid ${sel ? 'rgba(46,125,50,0.3)' : 'rgba(255,255,255,0.07)'}`, borderRadius:'7px', padding:'0.65rem 0.9rem', transition:'all 0.15s' }}>
+                      <div key={item.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background: sel ? 'rgba(46,125,50,0.12)' : 'rgba(255,255,255,0.05)', border:`1px solid ${sel ? 'rgba(46,125,50,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius:'7px', padding:'0.65rem 0.9rem', transition:'all 0.15s' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
                           <input type='checkbox' checked={!!sel} onChange={e => {
                             setSelectedItems(prev => e.target.checked ? [...prev, {id:item.id, qty:1}] : prev.filter(s => s.id !== item.id))
                           }} style={{ accentColor:'#2e7d32', width:'16px', height:'16px' }} />
                           <div>
-                            <div style={{ fontSize:'0.88rem', fontWeight:500 }}>{item.name}</div>
+                            <div style={{ fontSize:'0.88rem', fontWeight:500, color:'#fff' }}>{item.name}</div>
                             <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.4)', marginTop:'0.1rem' }}>
                               {item.is_fixed_price
-                                ? <span style={{ color:'#4caf50' }}>${item.fixed_price} flat</span>
-                                : <span>Est. ${item.estimate_min}–${item.estimate_max}</span>
+                                ? <span style={{ color:'#4caf50', fontWeight:600 }}>${item.fixed_price} flat</span>
+                                : <span style={{ color:'rgba(255,255,255,0.65)' }}>Est. ${item.estimate_min}–${item.estimate_max}</span>
                               }
                               {!item.is_fixed_price && <span style={{ color:'#f59e0b', marginLeft:'0.4rem' }}>· quote required</span>}
                             </div>
@@ -682,16 +682,16 @@ export default function Portal() {
 
             {/* Custom item */}
             <div style={card}>
-              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.75rem' }}>Something Not Listed?</div>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.75rem' }}>Something Not Listed?</div>
               <textarea value={customItem} onChange={e => setCustomItem(e.target.value)} rows={2} placeholder="Describe what you need picked up (e.g. old recliner, broken dishwasher)..." style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'7px', padding:'0.65rem 0.85rem', color:'#fff', fontSize:'0.86rem', resize:'vertical', fontFamily:'inherit', boxSizing:'border-box' as const }} />
-              <p style={{ fontSize:'0.76rem', color:'rgba(255,255,255,0.35)', marginTop:'0.4rem' }}>Suntosh will review and send you a price before confirming.</p>
+              <p style={{ fontSize:'0.76rem', color:'rgba(255,255,255,0.5)', marginTop:'0.4rem' }}>Suntosh will review and send you a price before confirming.</p>
             </div>
 
             {/* Preferred pickup date */}
             <div style={card}>
-              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.75rem' }}>Preferred Pickup Date</div>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.75rem' }}>Preferred Pickup Date</div>
               <input type='date' value={addonPickupDate} onChange={e => setAddonPickupDate(e.target.value)} style={{ background:'#111', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'7px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.86rem' }} />
-              <p style={{ fontSize:'0.76rem', color:'rgba(255,255,255,0.35)', marginTop:'0.4rem' }}>Leave blank and it will be added to your next regular pickup.</p>
+              <p style={{ fontSize:'0.76rem', color:'rgba(255,255,255,0.5)', marginTop:'0.4rem' }}>Leave blank and it will be added to your next regular pickup.</p>
             </div>
 
             {/* Summary + submit */}
@@ -732,14 +732,23 @@ export default function Portal() {
           <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
             <div style={card}>
               <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Current Services</div>
-              {(customer.subscriptions || []).length === 0 ? (
-                <p style={{ color:'rgba(255,255,255,0.35)', fontSize:'0.88rem' }}>No active services.</p>
-              ) : customer.subscriptions!.map(s => (
-                <div key={s.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.75rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.88rem' }}>
-                  <span>{s.services?.name}</span>
-                  <span style={{ color:'rgba(255,255,255,0.5)' }}>${s.rate}/mo · {s.billing_cycle}</span>
-                </div>
-              ))}
+              {(() => {
+                const activeSubs = (customer.subscriptions || []).filter(s => s.status === 'active')
+                // Deduplicate by service name
+                const seen = new Set()
+                const unique = activeSubs.filter(s => {
+                  const key = s.services?.name
+                  if (seen.has(key)) return false
+                  seen.add(key); return true
+                })
+                if (unique.length === 0) return <p style={{ color:'rgba(255,255,255,0.35)', fontSize:'0.88rem' }}>No active services.</p>
+                return unique.map(s => (
+                  <div key={s.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.75rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.88rem' }}>
+                    <span style={{ color:'#fff', fontWeight:500 }}>{s.services?.name}</span>
+                    <span style={{ color:'rgba(255,255,255,0.6)' }}>${s.rate}/mo · {s.billing_cycle}</span>
+                  </div>
+                ))
+              })()}
             </div>
 
             {availableServices.length > 0 && (
@@ -757,7 +766,7 @@ export default function Portal() {
               </div>
             )}
 
-            <div style={{ background:'rgba(46,125,50,0.06)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'8px', padding:'1rem 1.25rem', fontSize:'0.82rem', color:'rgba(255,255,255,0.5)' }}>
+            <div style={{ background:'rgba(46,125,50,0.06)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'8px', padding:'1rem 1.25rem', fontSize:'0.82rem', color:'rgba(255,255,255,0.7)' }}>
               ℹ️ Service additions are reviewed by Suntosh and activated within 1 business day. Immediate additions are prorated for the remainder of the month.
             </div>
           </div>
