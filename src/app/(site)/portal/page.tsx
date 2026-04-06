@@ -428,7 +428,7 @@ export default function Portal() {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
                 <div>
                   <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.2rem' }}>Pickup Day</div>
-                  <div style={{ fontWeight:600, fontSize:'1rem', textTransform:'capitalize' }}>{pickupDay || '—'}</div>
+                  <div style={{ fontWeight:600, fontSize:'1rem', textTransform:'capitalize', color:'#fff' }}>{pickupDay || '—'}</div>
                 </div>
                 <div>
                   <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.2rem' }}>Next Pickup</div>

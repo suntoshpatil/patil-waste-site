@@ -305,6 +305,9 @@ export default function Admin() {
     }
     showToast('Customer updated')
     setEditMode(false)
+    // Re-fetch this customer so the panel updates immediately without closing
+    const updated = await sb(`customers?id=eq.${selected.id}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,services(name))`)
+    if (updated?.[0]) setSelected(updated[0])
     loadAll()
   }
 
