@@ -82,6 +82,10 @@ export default function Admin() {
   const [addRate, setAddRate] = useState('')
   const [addBillingCycle, setAddBillingCycle] = useState('monthly')
   const [servicesList, setServicesList] = useState<{id:string,name:string,base_price:number}[]>([])
+  const [serviceRequests, setServiceRequests] = useState<any[]>([])
+  const [skipRequests, setSkipRequests] = useState<any[]>([])
+  const [noticeMsg, setNoticeMsg] = useState('')
+  const [noticeDate, setNoticeDate] = useState('')
   const [addTrashBin, setAddTrashBin] = useState(false)
   const [addRecyclingBin, setAddRecyclingBin] = useState(false)
   const [selectedBins, setSelectedBins] = useState<any[]>([])
@@ -92,17 +96,21 @@ export default function Admin() {
   const showToast = (msg: string, type = 'success') => { setToast(msg); setToastType(type); setTimeout(() => setToast(''), 3500) }
 
   const loadAll = useCallback(async () => {
-    const [custs, subs, invs, pays, svcs] = await Promise.all([
+    const [custs, subs, invs, pays, svcs, svcReqs, skipReqs] = await Promise.all([
       sb('customers?select=*,subscriptions(rate,billing_cycle,services(name))&order=created_at.desc'),
       sb('subscriptions?select=rate,billing_cycle,status&status=eq.active'),
       sb('invoices?select=*,customers(first_name,last_name)&order=created_at.desc&limit=50'),
       sb('payment_logs?select=*,customers(first_name,last_name)&order=paid_at.desc&limit=20'),
       sb('services?select=id,name,base_price&order=base_price.asc'),
+      sb('service_requests?select=*,customers(first_name,last_name),services(name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
+      sb('skip_requests?select=*,customers(first_name,last_name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
     ])
     setCustomers(custs || [])
     setInvoices(invs || [])
     setPayments(pays || [])
     setServicesList(svcs || [])
+    setServiceRequests(svcReqs || [])
+    setSkipRequests(skipReqs || [])
     const active = (custs||[]).filter((c:Customer) => c.status==='active').length
     const pending = (custs||[]).filter((c:Customer) => c.status==='pending').length
     const overdue = (custs||[]).filter((c:Customer) => c.status==='overdue').length
@@ -161,6 +169,35 @@ export default function Admin() {
       setAddRecyclingBin(false)
       loadAll()
     } catch (e: unknown) { showToast('Error: ' + (e instanceof Error ? e.message : 'Unknown error'), 'error') }
+  }
+
+  async function approveServiceRequest(id: string, customerId: string, serviceId: string, timing: string, rate: number) {
+    if (timing === 'immediate' || timing === 'next_month') {
+      await sb('subscriptions', { method:'POST', body:{ customer_id:customerId, service_id:serviceId, rate, billing_cycle:'monthly', status:'active', start_date:new Date().toISOString().split('T')[0] }})
+    }
+    await sb(`service_requests?id=eq.${id}`, { method:'PATCH', body:{ status:'approved' }, prefer:'return=minimal' })
+    showToast('Service approved and activated!')
+    loadAll()
+  }
+
+  async function denyRequest(table: string, id: string) {
+    await sb(`${table}?id=eq.${id}`, { method:'PATCH', body:{ status:'denied' }, prefer:'return=minimal' })
+    showToast('Request denied.')
+    loadAll()
+  }
+
+  async function approveSkip(id: string) {
+    await sb(`skip_requests?id=eq.${id}`, { method:'PATCH', body:{ status:'approved' }, prefer:'return=minimal' })
+    showToast('Skip approved — credit will apply to next bill.')
+    loadAll()
+  }
+
+  async function postNotice() {
+    if (!noticeMsg || !noticeDate) { showToast('Message and date required', 'error'); return }
+    await sb('schedule_notices', { method:'POST', body:{ message:noticeMsg, notice_date:noticeDate }})
+    showToast('Notice posted!')
+    setNoticeMsg(''); setNoticeDate('')
+    loadAll()
   }
 
   async function loadSelectedBins(customerId: string) {
@@ -248,7 +285,7 @@ export default function Admin() {
     </div>
   )
 
-  const navItems: [string,string,string][] = [['dashboard','📊','Dashboard'],['customers','👥','Customers'],['routes','🗓️','Routes'],['invoices','🧾','Invoices'],['payments','💵','Payments']]
+  const navItems: [string,string,string][] = [['dashboard','📊','Dashboard'],['customers','👥','Customers'],['routes','🗓️','Routes'],['invoices','🧾','Invoices'],['payments','💵','Payments'],['requests','🔔','Requests'],['notices','📢','Notices']]
 
   return (
     <div style={{ fontFamily:'DM Sans,sans-serif', background:'#0f0f0f', color:'#f9f9f6', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
@@ -265,11 +302,15 @@ export default function Admin() {
       <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
         {/* Sidebar */}
         <nav style={{ width:'180px', background:'#141414', borderRight:'1px solid rgba(255,255,255,0.07)', padding:'1rem 0', flexShrink:0, overflowY:'auto' }}>
-          {navItems.map(([id,icon,label]) => (
-            <div key={id} onClick={() => setView(id)} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.7rem 1.25rem', fontSize:'0.82rem', fontWeight:500, color:view===id?'#fff':'#6b7280', cursor:'pointer', borderLeft:`2px solid ${view===id?'#4caf50':'transparent'}`, background:view===id?'rgba(61,158,64,0.08)':'transparent', transition:'all 0.15s' }}>
-              <span>{icon}</span><span>{label}</span>
-            </div>
-          ))}
+          {navItems.map(([id,icon,label]) => {
+            const pendingCount = id === 'requests' ? serviceRequests.length + skipRequests.length : 0
+            return (
+              <div key={id} onClick={() => setView(id)} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.7rem 1.25rem', fontSize:'0.82rem', fontWeight:500, color:view===id?'#fff':'#6b7280', cursor:'pointer', borderLeft:`2px solid ${view===id?'#4caf50':'transparent'}`, background:view===id?'rgba(61,158,64,0.08)':'transparent', transition:'all 0.15s' }}>
+                <span>{icon}</span><span>{label}</span>
+                {pendingCount > 0 && <span style={{ marginLeft:'auto', background:'#dc2626', color:'#fff', borderRadius:'10px', fontSize:'0.65rem', fontWeight:700, padding:'0.1rem 0.45rem', minWidth:'18px', textAlign:'center' }}>{pendingCount}</span>}
+              </div>
+            )
+          })}
         </nav>
 
         {/* Main content */}
@@ -467,6 +508,76 @@ export default function Admin() {
             </div>
           )}
         </div>
+
+          {/* ── REQUESTS VIEW ── */}
+          {view==='requests' && (
+            <div style={{ maxWidth:'680px' }}>
+              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'2rem', letterSpacing:'0.02em', marginBottom:'1.5rem' }}>Pending Requests</div>
+
+              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.2rem', letterSpacing:'0.05em', color:'#6b7280', marginBottom:'0.75rem' }}>Service Additions</div>
+              {serviceRequests.length === 0 ? (
+                <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', padding:'2rem', textAlign:'center', color:'#6b7280', fontSize:'0.88rem', marginBottom:'1.5rem' }}>No pending service requests</div>
+              ) : serviceRequests.map((r:any) => (
+                <div key={r.id} style={{ background:'#1a1a1a', border:'1px solid rgba(255,179,0,0.2)', borderRadius:'8px', padding:'1.25rem', marginBottom:'0.75rem' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'0.75rem' }}>
+                    <div>
+                      <div style={{ fontWeight:700 }}>{r.customers?.first_name} {r.customers?.last_name}</div>
+                      <div style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.5)' }}>Wants to add: <strong style={{ color:'#fff' }}>{r.services?.name}</strong></div>
+                      <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)', marginTop:'0.2rem' }}>
+                        Timing: {r.timing === 'immediate' ? `Immediate (prorated $${r.prorated_amount})` : 'Next billing cycle'}
+                      </div>
+                    </div>
+                    <span style={{ fontSize:'0.7rem', fontWeight:700, color:'#f59e0b', background:'rgba(245,158,11,0.1)', padding:'0.2rem 0.6rem', borderRadius:'4px' }}>PENDING</span>
+                  </div>
+                  <div style={{ display:'flex', gap:'0.5rem' }}>
+                    <Btn small onClick={() => approveServiceRequest(r.id, r.customer_id, r.service_id, r.timing, servicesList.find(s=>s.id===r.service_id)?.base_price||0)}>✅ Approve</Btn>
+                    <Btn small color='#7f1d1d' onClick={() => denyRequest('service_requests', r.id)}>❌ Deny</Btn>
+                  </div>
+                </div>
+              ))}
+
+              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.2rem', letterSpacing:'0.05em', color:'#6b7280', marginBottom:'0.75rem', marginTop:'1.5rem' }}>Skip Requests</div>
+              {skipRequests.length === 0 ? (
+                <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', padding:'2rem', textAlign:'center', color:'#6b7280', fontSize:'0.88rem' }}>No pending skip requests</div>
+              ) : skipRequests.map((r:any) => (
+                <div key={r.id} style={{ background:'#1a1a1a', border:'1px solid rgba(255,179,0,0.2)', borderRadius:'8px', padding:'1.25rem', marginBottom:'0.75rem' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'0.75rem' }}>
+                    <div>
+                      <div style={{ fontWeight:700 }}>{r.customers?.first_name} {r.customers?.last_name}</div>
+                      <div style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.5)' }}>Skip date: <strong style={{ color:'#fff' }}>{new Date(r.skip_date).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</strong></div>
+                      {r.refund_amount && <div style={{ fontSize:'0.78rem', color:'#4caf50', marginTop:'0.2rem' }}>Credit: ${r.refund_amount}</div>}
+                    </div>
+                    <span style={{ fontSize:'0.7rem', fontWeight:700, color:'#f59e0b', background:'rgba(245,158,11,0.1)', padding:'0.2rem 0.6rem', borderRadius:'4px' }}>PENDING</span>
+                  </div>
+                  <div style={{ display:'flex', gap:'0.5rem' }}>
+                    <Btn small onClick={() => approveSkip(r.id)}>✅ Approve Skip</Btn>
+                    <Btn small color='#7f1d1d' onClick={() => denyRequest('skip_requests', r.id)}>❌ Deny</Btn>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── NOTICES VIEW ── */}
+          {view==='notices' && (
+            <div style={{ maxWidth:'560px' }}>
+              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'2rem', letterSpacing:'0.02em', marginBottom:'1.5rem' }}>Schedule Notices</div>
+              <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', padding:'1.5rem', marginBottom:'1.5rem' }}>
+                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.2rem', marginBottom:'1rem' }}>Post a Notice</div>
+                <div style={{ marginBottom:'0.75rem' }}>
+                  <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Notice Date</label>
+                  <input type='date' value={noticeDate} onChange={e=>setNoticeDate(e.target.value)} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none' }} />
+                </div>
+                <div style={{ marginBottom:'1rem' }}>
+                  <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Message</label>
+                  <textarea value={noticeMsg} onChange={e=>setNoticeMsg(e.target.value)} rows={3} placeholder="e.g. No pickup Monday July 4th — pickup will be Tuesday July 5th" style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%', resize:'vertical' }} />
+                </div>
+                <Btn onClick={postNotice}>📢 Post Notice</Btn>
+              </div>
+            </div>
+          )}
+
+      </div>
       </div>
 
       {/* ── CUSTOMER PROFILE MODAL ── */}

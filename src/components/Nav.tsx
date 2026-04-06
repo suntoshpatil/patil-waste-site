@@ -11,6 +11,7 @@ const links = [
   { href: '/faqs',        label: 'FAQs' },
   { href: '/promotions',  label: 'Promotions' },
   { href: '/contact',     label: 'Contact' },
+  { href: '/portal',      label: 'My Account' },
 ]
 
 export default function Nav() {
