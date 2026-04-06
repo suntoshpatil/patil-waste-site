@@ -507,7 +507,6 @@ export default function Admin() {
               </div>
             </div>
           )}
-        </div>
 
           {/* ── REQUESTS VIEW ── */}
           {view==='requests' && (
@@ -577,8 +576,8 @@ export default function Admin() {
             </div>
           )}
 
-      </div>
-      </div>
+        </div> {/* end content area */}
+      </div> {/* end flex row */}
 
       {/* ── CUSTOMER PROFILE MODAL ── */}
       {selected && !showAddModal && (
