@@ -229,18 +229,73 @@ export default function Portal() {
     if (!customer) return
     setContractAccepting(true)
     try {
+      // 1. Activate customer and mark contract accepted
       await sb(`customers?id=eq.${customer.id}`, { method:'PATCH', body:{
         contract_accepted: true,
         contract_accepted_at: new Date().toISOString(),
         status: 'active',
       }, prefer:'return=minimal' })
-      // Trigger invoice generation
-      fetch('/api/cron/generate-invoices', { headers:{ Authorization:'Bearer patilwaste_cron_2024' } }).catch(()=>{})
+
+      // 2. Generate prorated first invoice
+      const sub = (customer as any).subscriptions?.[0]
+      if (sub) {
+        const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+        const now = new Date()
+        const year = now.getFullYear()
+        const month = now.getMonth()
+
+        // Count total and remaining pickups this month
+        const weekday = pickupDay ? DAYS.indexOf(pickupDay.toLowerCase()) : -1
+        const totalPickups = weekday !== -1 ? countWeekdayInMonth(year, month, weekday) : 4
+        const remainingPickups = weekday !== -1 ? countRemainingWeekdays(now, weekday) : 4
+
+        // Prorate: remaining pickups / total pickups * monthly rate
+        const proratedRate = parseFloat(((sub.rate / (totalPickups || 1)) * remainingPickups).toFixed(2))
+
+        // Bin rental proration
+        const bins = await sb(`bins?customer_id=eq.${customer.id}&status=eq.active&select=*`).catch(() => [])
+        const binTotal = (bins || []).reduce((sum: number, b: any) => {
+          const binProrated = parseFloat(((b.monthly_fee / (totalPickups || 1)) * remainingPickups).toFixed(2))
+          return sum + binProrated
+        }, 0)
+
+        // Garage pickup proration
+        const garageProrated = customer.garage_side_pickup
+          ? parseFloat(((10 / (totalPickups || 1)) * remainingPickups).toFixed(2))
+          : 0
+
+        const subtotal = proratedRate + binTotal + garageProrated
+        const periodStart = now.toISOString().split('T')[0]
+        const periodEnd = new Date(year, month + 1, 0).toISOString().split('T')[0]
+        const dueDate = new Date(year, month + 1, 1).toISOString().split('T')[0]
+
+        const lines = [
+          `${sub.services?.name || 'Service'} (${remainingPickups}/${totalPickups} pickups): $${proratedRate.toFixed(2)}`,
+          ...(binTotal > 0 ? [`Bin rental (prorated): $${binTotal.toFixed(2)}`] : []),
+          ...(garageProrated > 0 ? [`Garage pickup (prorated): $${garageProrated.toFixed(2)}`] : []),
+        ].join(' | ')
+
+        await sb('invoices', { method:'POST', body:{
+          customer_id: customer.id,
+          subscription_id: sub.id,
+          subtotal,
+          adjustments_total: 0,
+          tax_rate: 0,
+          tax_amount: 0,
+          total: subtotal,
+          status: 'sent',
+          period_start: periodStart,
+          period_end: periodEnd,
+          due_date: dueDate,
+          notes: `First invoice (prorated ${remainingPickups}/${totalPickups} ${pickupDay || 'weekly'} pickups). ${lines}`,
+        }})
+      }
+
       const updated = { ...customer, contract_accepted: true, status: 'active' } as any
       setCustomer(updated)
       sessionStorage.setItem('portal_customer', JSON.stringify(updated))
-      showToast('Contract accepted! Welcome aboard 🎉')
-    } catch (e: any) { showToast('Failed to accept. Please contact us.', 'error') }
+      showToast('Contract accepted! Your first invoice has been generated. Welcome aboard 🎉')
+    } catch (e: any) { showToast('Failed to accept. Please contact us directly.', 'error') }
     setContractAccepting(false)
   }
 
