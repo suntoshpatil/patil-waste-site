@@ -140,7 +140,28 @@ export default function Signup() {
                 Need junk removal or a yard cleanup? <a href="/junk-removal" style={{ color: "#4caf50" }}>Request a quote here instead →</a>
               </p>
 
-              <div className="f-grp"><label>Requested Start Week</label><input name="startDate" type="week" {...inp} /></div>
+              <div className="f-grp">
+                <label>Requested Start Week</label>
+                <select name="startDate" {...sel}>
+                  <option value="">Select a week...</option>
+                  {(() => {
+                    const opts = []
+                    const d = new Date()
+                    // Start from next Monday
+                    d.setDate(d.getDate() + ((1 + 7 - d.getDay()) % 7 || 7))
+                    for (let i = 0; i < 8; i++) {
+                      const start = new Date(d)
+                      const end = new Date(d)
+                      end.setDate(end.getDate() + 6)
+                      const fmt = (dt: Date) => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                      const val = start.toISOString().split('T')[0]
+                      opts.push(<option key={val} value={val}>Week of {fmt(start)} – {fmt(end)}</option>)
+                      d.setDate(d.getDate() + 7)
+                    }
+                    return opts
+                  })()}
+                </select>
+              </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div className="f-grp">
