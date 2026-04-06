@@ -84,7 +84,14 @@ export default function Portal() {
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState('')
   const [toastType, setToastType] = useState('success')
-  const [tab, setTab] = useState<'home'|'services'|'skips'|'billing'>('home')
+  const [tab, setTab] = useState<'home'|'services'|'pickup'|'skips'|'billing'>('home')
+
+  // Bulky items / pickup addons
+  const [catalog, setCatalog] = useState<any[]>([])
+  const [pickupAddons, setPickupAddons] = useState<any[]>([])
+  const [selectedItems, setSelectedItems] = useState<{id:string, qty:number}[]>([])
+  const [customItem, setCustomItem] = useState('')
+  const [addonPickupDate, setAddonPickupDate] = useState('')
 
   // Add service modal
   const [showAddService, setShowAddService] = useState(false)
@@ -112,16 +119,20 @@ export default function Portal() {
   }, [])
 
   async function loadPortalData(cust: Customer) {
-    const [b, sk, n, sv] = await Promise.all([
+    const [b, sk, n, sv, cat, addons] = await Promise.all([
       sb(`bins?customer_id=eq.${cust.id}&select=*`).catch(() => []),
       sb(`skip_requests?customer_id=eq.${cust.id}&select=*&order=created_at.desc`).catch(() => []),
       sb(`schedule_notices?select=*&order=notice_date.desc&limit=5`).catch(() => []),
-      sb(`services?select=id,name,base_price_monthly&order=base_price_monthly.asc`).catch(() => []),
+      sb(`services?select=id,name,base_price_monthly&is_active=eq.true&type=in.(recurring,addon)&order=base_price_monthly.asc`).catch(() => []),
+      sb(`bulky_item_catalog?select=*&is_active=eq.true&order=name.asc`).catch(() => []),
+      sb(`pickup_addons?customer_id=eq.${cust.id}&select=*&order=created_at.desc&limit=20`).catch(() => []),
     ])
     setBins(b || [])
     setSkips(sk || [])
     setNotices(n || [])
     setServices(sv || [])
+    setCatalog(cat || [])
+    setPickupAddons(addons || [])
   }
 
   async function handleLogin() {
@@ -160,6 +171,45 @@ export default function Portal() {
       loadPortalData(updated as any)
     } catch (e: any) { setError(e.message || 'Failed to set PIN.') }
     setLoading(false)
+  }
+
+  async function submitPickupAddon() {
+    if (!customer) return
+    if (selectedItems.length === 0 && !customItem.trim()) {
+      showToast('Please select at least one item or describe what you need picked up.', 'error'); return
+    }
+    try {
+      // Insert each catalog item
+      for (const sel of selectedItems) {
+        const item = catalog.find(c => c.id === sel.id)
+        if (!item) continue
+        for (let i = 0; i < sel.qty; i++) {
+          await sb('pickup_addons', { method:'POST', body:{
+            customer_id: customer.id,
+            catalog_item_id: item.id,
+            quantity: 1,
+            estimated_price: item.is_fixed_price ? item.fixed_price : null,
+            status: item.is_fixed_price ? 'confirmed' : 'pending_quote',
+            requested_pickup_date: addonPickupDate || null,
+          }})
+        }
+      }
+      // Insert custom item if filled in
+      if (customItem.trim()) {
+        await sb('pickup_addons', { method:'POST', body:{
+          customer_id: customer.id,
+          custom_description: customItem.trim(),
+          quantity: 1,
+          status: 'pending_quote',
+          requested_pickup_date: addonPickupDate || null,
+        }})
+      }
+      showToast('Added to your next pickup! Suntosh will confirm.')
+      setSelectedItems([])
+      setCustomItem('')
+      setAddonPickupDate('')
+      loadPortalData(customer)
+    } catch (e: any) { showToast(e.message || 'Failed to submit.', 'error') }
   }
 
   async function handleRequestService() {
@@ -292,7 +342,7 @@ export default function Portal() {
 
       {/* Tabs */}
       <div style={{ display:'flex', borderBottom:'1px solid rgba(255,255,255,0.07)', padding:'0 2rem', gap:'0.25rem', overflowX:'auto' }}>
-        {([['home','🏠 Overview'],['services','➕ Services'],['skips','⏸️ Skip Pickup'],['billing','💳 Billing']] as [typeof tab, string][]).map(([id, label]) => (
+        {([['home','🏠 Overview'],['pickup','📦 Add to Pickup'],['services','➕ Services'],['skips','⏸️ Skip Pickup'],['billing','💳 Billing']] as [typeof tab, string][]).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{ background:'none', border:'none', color: tab===id ? '#4caf50' : 'rgba(255,255,255,0.4)', borderBottom: tab===id ? '2px solid #4caf50' : '2px solid transparent', padding:'0.85rem 1.25rem', cursor:'pointer', fontSize:'0.82rem', fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', transition:'color 0.15s' }}>
             {label}
           </button>
@@ -382,6 +432,100 @@ export default function Portal() {
               </div>
               <button onClick={() => setTab('skips')} style={{ ...btnGhost, width:'auto' }}>Skip a Pickup →</button>
             </div>
+          </div>
+        )}
+
+        {/* ── ADD TO PICKUP TAB ── */}
+        {tab === 'pickup' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+            <div style={{ background:'rgba(46,125,50,0.06)', border:'1px solid rgba(46,125,50,0.15)', borderRadius:'8px', padding:'1rem 1.25rem', fontSize:'0.84rem', color:'rgba(255,255,255,0.6)' }}>
+              📦 Add bulky items or extra bags to your next scheduled pickup. Items with fixed prices are confirmed automatically — anything else will be quoted by Suntosh before your pickup.
+            </div>
+
+            {/* Catalog items */}
+            <div style={card}>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Common Items</div>
+              {catalog.length === 0 ? (
+                <p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.3)' }}>No items available yet.</p>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
+                  {catalog.map((item: any) => {
+                    const sel = selectedItems.find(s => s.id === item.id)
+                    return (
+                      <div key={item.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background: sel ? 'rgba(46,125,50,0.08)' : 'rgba(255,255,255,0.02)', border:`1px solid ${sel ? 'rgba(46,125,50,0.3)' : 'rgba(255,255,255,0.07)'}`, borderRadius:'7px', padding:'0.65rem 0.9rem', transition:'all 0.15s' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+                          <input type='checkbox' checked={!!sel} onChange={e => {
+                            setSelectedItems(prev => e.target.checked ? [...prev, {id:item.id, qty:1}] : prev.filter(s => s.id !== item.id))
+                          }} style={{ accentColor:'#2e7d32', width:'16px', height:'16px' }} />
+                          <div>
+                            <div style={{ fontSize:'0.88rem', fontWeight:500 }}>{item.name}</div>
+                            <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.4)', marginTop:'0.1rem' }}>
+                              {item.is_fixed_price
+                                ? <span style={{ color:'#4caf50' }}>${item.fixed_price} flat</span>
+                                : <span>Est. ${item.estimate_min}–${item.estimate_max}</span>
+                              }
+                              {!item.is_fixed_price && <span style={{ color:'#f59e0b', marginLeft:'0.4rem' }}>· quote required</span>}
+                            </div>
+                          </div>
+                        </div>
+                        {sel && (
+                          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                            <button onClick={() => setSelectedItems(prev => prev.map(s => s.id===item.id ? {...s, qty:Math.max(1,s.qty-1)} : s))} style={{ background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', borderRadius:'4px', width:'26px', height:'26px', cursor:'pointer', fontSize:'1rem', display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
+                            <span style={{ fontSize:'0.88rem', minWidth:'20px', textAlign:'center' }}>{sel.qty}</span>
+                            <button onClick={() => setSelectedItems(prev => prev.map(s => s.id===item.id ? {...s, qty:s.qty+1} : s))} style={{ background:'rgba(255,255,255,0.08)', border:'none', color:'#fff', borderRadius:'4px', width:'26px', height:'26px', cursor:'pointer', fontSize:'1rem', display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Custom item */}
+            <div style={card}>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.75rem' }}>Something Not Listed?</div>
+              <textarea value={customItem} onChange={e => setCustomItem(e.target.value)} rows={2} placeholder="Describe what you need picked up (e.g. old recliner, broken dishwasher)..." style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'7px', padding:'0.65rem 0.85rem', color:'#fff', fontSize:'0.86rem', resize:'vertical', fontFamily:'inherit', boxSizing:'border-box' as const }} />
+              <p style={{ fontSize:'0.76rem', color:'rgba(255,255,255,0.35)', marginTop:'0.4rem' }}>Suntosh will review and send you a price before confirming.</p>
+            </div>
+
+            {/* Preferred pickup date */}
+            <div style={card}>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.75rem' }}>Preferred Pickup Date</div>
+              <input type='date' value={addonPickupDate} onChange={e => setAddonPickupDate(e.target.value)} style={{ background:'#111', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'7px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.86rem' }} />
+              <p style={{ fontSize:'0.76rem', color:'rgba(255,255,255,0.35)', marginTop:'0.4rem' }}>Leave blank and it will be added to your next regular pickup.</p>
+            </div>
+
+            {/* Summary + submit */}
+            {(selectedItems.length > 0 || customItem.trim()) && (
+              <div style={{ background:'rgba(46,125,50,0.08)', border:'1px solid rgba(46,125,50,0.25)', borderRadius:'8px', padding:'1rem 1.25rem' }}>
+                <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.5)', marginBottom:'0.5rem' }}>Summary</div>
+                {selectedItems.map(sel => {
+                  const item = catalog.find(c => c.id === sel.id)
+                  if (!item) return null
+                  const price = item.is_fixed_price ? `$${item.fixed_price}` : `$${item.estimate_min}–$${item.estimate_max} est.`
+                  return <div key={sel.id} style={{ fontSize:'0.86rem', display:'flex', justifyContent:'space-between', paddingBottom:'0.3rem' }}><span>{sel.qty}× {item.name}</span><span style={{ color:'#4caf50' }}>{price}</span></div>
+                })}
+                {customItem.trim() && <div style={{ fontSize:'0.86rem', display:'flex', justifyContent:'space-between', paddingBottom:'0.3rem' }}><span>Custom: {customItem.trim().slice(0,40)}{customItem.length>40?'…':''}</span><span style={{ color:'#f59e0b' }}>To be quoted</span></div>}
+              </div>
+            )}
+            <button onClick={submitPickupAddon} style={{ ...btnGreen, width:'auto', alignSelf:'flex-start', padding:'0.75rem 2rem' }}>Submit Pickup Request</button>
+
+            {/* Past addons */}
+            {pickupAddons.length > 0 && (
+              <div style={card}>
+                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.75rem' }}>Recent Requests</div>
+                {pickupAddons.slice(0,5).map((a: any) => (
+                  <div key={a.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.55rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.84rem' }}>
+                    <span style={{ color:'rgba(255,255,255,0.7)' }}>{a.custom_description || a.catalog_item_id}</span>
+                    <span style={{ fontSize:'0.72rem', fontWeight:700, textTransform:'uppercase', padding:'0.15rem 0.5rem', borderRadius:'4px',
+                      color: a.status==='confirmed'?'#4caf50': a.status==='pending_quote'?'#f59e0b':'#9ca3af',
+                      background: a.status==='confirmed'?'rgba(76,175,80,0.1)': a.status==='pending_quote'?'rgba(245,158,11,0.1)':'rgba(156,163,175,0.1)'
+                    }}>{a.status==='pending_quote'?'Pending Quote':a.status}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

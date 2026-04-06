@@ -79,12 +79,13 @@ export default function Admin() {
   const [toastType, setToastType] = useState('success')
   const [showAddModal, setShowAddModal] = useState(false)
   const [addData, setAddData] = useState<any>({ ...BLANK_CUSTOMER })
-  const [addServiceId, setAddServiceId] = useState('')
-  const [addRate, setAddRate] = useState('')
+  const [addServiceIds, setAddServiceIds] = useState<string[]>([])
   const [addBillingCycle, setAddBillingCycle] = useState('monthly')
   const [servicesList, setServicesList] = useState<{id:string,name:string,base_price_monthly:number}[]>([])
   const [serviceRequests, setServiceRequests] = useState<any[]>([])
   const [skipRequests, setSkipRequests] = useState<any[]>([])
+  const [jobRequests, setJobRequests] = useState<any[]>([])
+  const [pickupAddons, setPickupAddons] = useState<any[]>([])
   const [noticeMsg, setNoticeMsg] = useState('')
   const [noticeDate, setNoticeDate] = useState('')
   const [addTrashBin, setAddTrashBin] = useState(false)
@@ -97,14 +98,16 @@ export default function Admin() {
   const showToast = (msg: string, type = 'success') => { setToast(msg); setToastType(type); setTimeout(() => setToast(''), 3500) }
 
   const loadAll = useCallback(async () => {
-    const [custs, subs, invs, pays, svcs, svcReqs, skipReqs] = await Promise.all([
+    const [custs, subs, invs, pays, svcs, svcReqs, skipReqs, jobReqs, addons] = await Promise.all([
       sb('customers?select=*,subscriptions(rate,billing_cycle,services(name))&order=created_at.desc'),
       sb('subscriptions?select=rate,billing_cycle,status&status=eq.active'),
       sb('invoices?select=*,customers(first_name,last_name)&order=created_at.desc&limit=50'),
       sb('payment_logs?select=*,customers(first_name,last_name)&order=paid_at.desc&limit=20'),
-      sb('services?select=id,name,base_price_monthly&order=base_price_monthly.asc'),
+      sb('services?select=id,name,base_price_monthly&is_active=eq.true&type=in.(recurring,addon)&order=base_price_monthly.asc'),
       sb('service_requests?select=*,customers(first_name,last_name),services(name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
       sb('skip_requests?select=*,customers(first_name,last_name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
+      sb('job_requests?select=*&order=created_at.desc&limit=50').catch(()=>[]),
+      sb('pickup_addons?select=*,customers(first_name,last_name)&status=in.(pending_quote,confirmed)&order=created_at.desc').catch(()=>[]),
     ])
     setCustomers(custs || [])
     setInvoices(invs || [])
@@ -112,6 +115,8 @@ export default function Admin() {
     setServicesList(svcs || [])
     setServiceRequests(svcReqs || [])
     setSkipRequests(skipReqs || [])
+    setJobRequests(jobReqs || [])
+    setPickupAddons(addons || [])
     const active = (custs||[]).filter((c:Customer) => c.status==='active').length
     const pending = (custs||[]).filter((c:Customer) => c.status==='pending').length
     const overdue = (custs||[]).filter((c:Customer) => c.status==='overdue').length
@@ -137,13 +142,14 @@ export default function Admin() {
       const { pickup_day, ...insertData } = addData
       const result = await sb('customers', { method:'POST', body: insertData })
       const newCustomer = Array.isArray(result) ? result[0] : result
-      // If a service was chosen, create a subscription too
-      if (newCustomer?.id && addServiceId) {
-        const rate = parseFloat(addRate)
-        if (!isNaN(rate) && rate > 0) {
+      // Create one subscription per selected service
+      if (newCustomer?.id && addServiceIds.length > 0) {
+        for (const svcId of addServiceIds) {
+          const svc = servicesList.find(s => s.id === svcId)
+          const rate = svc?.base_price_monthly || 0
           await sb('subscriptions', { method:'POST', body:{
             customer_id: newCustomer.id,
-            service_id: addServiceId,
+            service_id: svcId,
             rate,
             billing_cycle: addBillingCycle,
             status: 'active',
@@ -163,8 +169,7 @@ export default function Admin() {
       showToast('Customer added!')
       setShowAddModal(false)
       setAddData({ ...BLANK_CUSTOMER })
-      setAddServiceId('')
-      setAddRate('')
+      setAddServiceIds([])
       setAddBillingCycle('monthly')
       setAddTrashBin(false)
       setAddRecyclingBin(false)
@@ -286,7 +291,7 @@ export default function Admin() {
     </div>
   )
 
-  const navItems: [string,string,string][] = [['dashboard','📊','Dashboard'],['customers','👥','Customers'],['routes','🗓️','Routes'],['invoices','🧾','Invoices'],['payments','💵','Payments'],['requests','🔔','Requests'],['notices','📢','Notices']]
+  const navItems: [string,string,string][] = [['dashboard','📊','Dashboard'],['customers','👥','Customers'],['routes','🗓️','Routes'],['invoices','🧾','Invoices'],['payments','💵','Payments'],['requests','🔔','Requests'],['jobs','🚛','Jobs'],['notices','📢','Notices']]
 
   return (
     <div style={{ fontFamily:'DM Sans,sans-serif', background:'#0f0f0f', color:'#f9f9f6', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
@@ -304,7 +309,7 @@ export default function Admin() {
         {/* Sidebar */}
         <nav style={{ width:'180px', background:'#141414', borderRight:'1px solid rgba(255,255,255,0.07)', padding:'1rem 0', flexShrink:0, overflowY:'auto' }}>
           {navItems.map(([id,icon,label]) => {
-            const pendingCount = id === 'requests' ? serviceRequests.length + skipRequests.length : 0
+            const pendingCount = id === 'requests' ? serviceRequests.length + skipRequests.length : id === 'jobs' ? jobRequests.filter((j:any)=>j.status==='new').length + pickupAddons.filter((a:any)=>a.status==='pending_quote').length : 0
             return (
               <div key={id} onClick={() => setView(id)} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.7rem 1.25rem', fontSize:'0.82rem', fontWeight:500, color:view===id?'#fff':'#6b7280', cursor:'pointer', borderLeft:`2px solid ${view===id?'#4caf50':'transparent'}`, background:view===id?'rgba(61,158,64,0.08)':'transparent', transition:'all 0.15s' }}>
                 <span>{icon}</span><span>{label}</span>
@@ -558,6 +563,78 @@ export default function Admin() {
             </div>
           )}
 
+          {/* ── JOBS VIEW ── */}
+          {view==='jobs' && (
+            <div style={{ maxWidth:'720px' }}>
+              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'2rem', letterSpacing:'0.02em', marginBottom:'1.5rem' }}>Jobs &amp; Work Orders</div>
+
+              {/* Pickup addons from portal */}
+              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.2rem', letterSpacing:'0.05em', color:'#6b7280', marginBottom:'0.75rem' }}>📦 Customer Pickup Add-ons</div>
+              {pickupAddons.length === 0 ? (
+                <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', padding:'2rem', textAlign:'center', color:'#6b7280', fontSize:'0.88rem', marginBottom:'1.5rem' }}>No pending pickup add-ons</div>
+              ) : pickupAddons.map((a:any) => (
+                <div key={a.id} style={{ background:'#1a1a1a', border:'1px solid rgba(255,179,0,0.2)', borderRadius:'8px', padding:'1.25rem', marginBottom:'0.75rem' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'0.5rem' }}>
+                    <div>
+                      <div style={{ fontWeight:700 }}>{a.customers?.first_name} {a.customers?.last_name}</div>
+                      <div style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.5)', marginTop:'0.2rem' }}>{a.custom_description || `Catalog item: ${a.catalog_item_id}`}</div>
+                      {a.requested_pickup_date && <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)' }}>Requested: {new Date(a.requested_pickup_date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>}
+                    </div>
+                    <span style={{ fontSize:'0.7rem', fontWeight:700, color:'#f59e0b', background:'rgba(245,158,11,0.1)', padding:'0.2rem 0.6rem', borderRadius:'4px' }}>{a.status==='pending_quote'?'NEEDS QUOTE':'CONFIRMED'}</span>
+                  </div>
+                  {a.status === 'pending_quote' && (
+                    <div style={{ display:'flex', gap:'0.5rem', alignItems:'center', marginTop:'0.5rem' }}>
+                      <input type='number' placeholder='Set price $' style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'4px', padding:'0.4rem 0.65rem', color:'#fff', fontSize:'0.82rem', fontFamily:'inherit', width:'120px' }}
+                        onBlur={async e => {
+                          const price = parseFloat(e.target.value)
+                          if (!isNaN(price)) {
+                            await sb(`pickup_addons?id=eq.${a.id}`, { method:'PATCH', body:{ final_price:price, status:'confirmed' }, prefer:'return=minimal' })
+                            showToast('Price set, status confirmed')
+                            loadAll()
+                          }
+                        }}
+                      />
+                      <Btn small color='#7f1d1d' onClick={async()=>{ await sb(`pickup_addons?id=eq.${a.id}`,{method:'PATCH',body:{status:'cancelled'},prefer:'return=minimal'}); showToast('Cancelled'); loadAll() }}>Cancel</Btn>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Public job requests */}
+              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.2rem', letterSpacing:'0.05em', color:'#6b7280', marginBottom:'0.75rem', marginTop:'1.5rem' }}>🚛 Junk Removal &amp; Yard Cleanup Requests</div>
+              {jobRequests.length === 0 ? (
+                <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', padding:'2rem', textAlign:'center', color:'#6b7280', fontSize:'0.88rem' }}>No job requests yet</div>
+              ) : jobRequests.map((j:any) => (
+                <div key={j.id} style={{ background:'#1a1a1a', border:`1px solid ${j.status==='new'?'rgba(255,179,0,0.2)':'rgba(255,255,255,0.07)'}`, borderRadius:'8px', padding:'1.25rem', marginBottom:'0.75rem' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'0.75rem' }}>
+                    <div>
+                      <div style={{ fontWeight:700, fontSize:'1rem' }}>{j.name}</div>
+                      <div style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.5)' }}>{j.phone}{j.email ? ` · ${j.email}` : ''}</div>
+                      <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.4)', marginTop:'0.15rem' }}>{j.address}</div>
+                    </div>
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'0.3rem' }}>
+                      <span style={{ fontSize:'0.7rem', fontWeight:700, textTransform:'uppercase', padding:'0.2rem 0.6rem', borderRadius:'4px',
+                        color:j.status==='new'?'#f59e0b':j.status==='completed'?'#4caf50':'#9ca3af',
+                        background:j.status==='new'?'rgba(245,158,11,0.1)':j.status==='completed'?'rgba(76,175,80,0.1)':'rgba(156,163,175,0.1)'
+                      }}>{j.status}</span>
+                      <span style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.3)', textTransform:'capitalize' }}>{j.job_type?.replace('_',' ')}</span>
+                    </div>
+                  </div>
+                  <div style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.6)', marginBottom:'0.75rem', background:'rgba(255,255,255,0.03)', borderRadius:'5px', padding:'0.6rem 0.75rem' }}>{j.description}</div>
+                  {j.preferred_date && <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.75rem' }}>Preferred: {new Date(j.preferred_date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>}
+                  <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+                    {['new','quoted','scheduled','completed','cancelled'].filter(s=>s!==j.status).map(s => (
+                      <button key={s} onClick={async()=>{ await sb(`job_requests?id=eq.${j.id}`,{method:'PATCH',body:{status:s},prefer:'return=minimal'}); showToast(`Marked as ${s}`); loadAll() }}
+                        style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.6)', borderRadius:'4px', padding:'0.3rem 0.7rem', cursor:'pointer', fontSize:'0.72rem', textTransform:'capitalize', fontFamily:'inherit' }}>
+                        → {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* ── NOTICES VIEW ── */}
           {view==='notices' && (
             <div style={{ maxWidth:'560px' }}>
@@ -722,34 +799,30 @@ export default function Admin() {
             {/* ── PLAN / SUBSCRIPTION ── */}
             <div style={{ marginTop:'1.25rem', paddingTop:'1.25rem', borderTop:'1px solid rgba(255,255,255,0.07)' }}>
               <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.1rem', letterSpacing:'0.05em', marginBottom:'0.75rem', color:'#2e7d32' }}>Plan &amp; Subscription</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
-                <div>
-                  <label style={{ display:'block', fontSize:'0.78rem', color:'rgba(255,255,255,0.5)', marginBottom:'0.3rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Service Plan</label>
-                  <select
-                    value={addServiceId}
-                    onChange={e => {
-                      const svc = servicesList.find(s => s.id === e.target.value)
-                      setAddServiceId(e.target.value)
-                      if (svc) setAddRate(String(svc.base_price_monthly))
-                    }}
-                    style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'6px', padding:'0.55rem 0.75rem', color:'#fff', fontSize:'0.88rem' }}
-                  >
-                    <option value=''>— None / Add later —</option>
-                    {servicesList.map(s => (
-                      <option key={s.id} value={s.id}>{s.name} (${s.base_price_monthly}/mo)</option>
-                    ))}
-                  </select>
+              <div>
+                <label style={{ display:'block', fontSize:'0.78rem', color:'rgba(255,255,255,0.5)', marginBottom:'0.5rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Select Services (choose all that apply)</label>
+                <div style={{ display:'flex', flexDirection:'column', gap:'0.4rem' }}>
+                  {servicesList.map(s => {
+                    const checked = addServiceIds.includes(s.id)
+                    return (
+                      <label key={s.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', background: checked ? 'rgba(46,125,50,0.1)' : 'rgba(255,255,255,0.03)', border:`1px solid ${checked ? 'rgba(46,125,50,0.4)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'6px', padding:'0.55rem 0.85rem', transition:'all 0.15s' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:'0.6rem' }}>
+                          <input type='checkbox' checked={checked} onChange={e => {
+                            setAddServiceIds(prev => e.target.checked ? [...prev, s.id] : prev.filter(id => id !== s.id))
+                          }} style={{ accentColor:'#2e7d32', width:'15px', height:'15px' }} />
+                          <span style={{ fontSize:'0.88rem' }}>{s.name}</span>
+                        </div>
+                        <span style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.45)' }}>${s.base_price_monthly}/mo</span>
+                      </label>
+                    )
+                  })}
+                  {servicesList.length === 0 && <p style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.3)' }}>No services found — add them in Supabase first.</p>}
                 </div>
-                <div>
-                  <label style={{ display:'block', fontSize:'0.78rem', color:'rgba(255,255,255,0.5)', marginBottom:'0.3rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Monthly Rate ($)</label>
-                  <input
-                    type='number'
-                    value={addRate}
-                    onChange={e => setAddRate(e.target.value)}
-                    placeholder='e.g. 42'
-                    style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'6px', padding:'0.55rem 0.75rem', color:'#fff', fontSize:'0.88rem', boxSizing:'border-box' }}
-                  />
-                </div>
+                {addServiceIds.length > 0 && (
+                  <div style={{ marginTop:'0.6rem', fontSize:'0.82rem', color:'#4caf50' }}>
+                    Total: ${servicesList.filter(s => addServiceIds.includes(s.id)).reduce((sum, s) => sum + s.base_price_monthly, 0).toFixed(2)}/mo
+                  </div>
+                )}
               </div>
               <div style={{ marginTop:'0.75rem' }}>
                 <label style={{ display:'block', fontSize:'0.78rem', color:'rgba(255,255,255,0.5)', marginBottom:'0.3rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Billing Cycle</label>
