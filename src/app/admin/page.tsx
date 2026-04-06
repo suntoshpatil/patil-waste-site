@@ -78,6 +78,10 @@ export default function Admin() {
   const [toastType, setToastType] = useState('success')
   const [showAddModal, setShowAddModal] = useState(false)
   const [addData, setAddData] = useState<any>({ ...BLANK_CUSTOMER })
+  const [addServiceId, setAddServiceId] = useState('')
+  const [addRate, setAddRate] = useState('')
+  const [addBillingCycle, setAddBillingCycle] = useState('monthly')
+  const [servicesList, setServicesList] = useState<{id:string,name:string,base_price:number}[]>([])
   const [editMode, setEditMode] = useState(false)
   const [editData, setEditData] = useState<Partial<Customer>>({})
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -85,15 +89,17 @@ export default function Admin() {
   const showToast = (msg: string, type = 'success') => { setToast(msg); setToastType(type); setTimeout(() => setToast(''), 3500) }
 
   const loadAll = useCallback(async () => {
-    const [custs, subs, invs, pays] = await Promise.all([
+    const [custs, subs, invs, pays, svcs] = await Promise.all([
       sb('customers?select=*,subscriptions(rate,billing_cycle,services(name))&order=created_at.desc'),
       sb('subscriptions?select=rate,billing_cycle,status&status=eq.active'),
       sb('invoices?select=*,customers(first_name,last_name)&order=created_at.desc&limit=50'),
       sb('payment_logs?select=*,customers(first_name,last_name)&order=paid_at.desc&limit=20'),
+      sb('services?select=id,name,base_price&order=base_price.asc'),
     ])
     setCustomers(custs || [])
     setInvoices(invs || [])
     setPayments(pays || [])
+    setServicesList(svcs || [])
     const active = (custs||[]).filter((c:Customer) => c.status==='active').length
     const pending = (custs||[]).filter((c:Customer) => c.status==='pending').length
     const overdue = (custs||[]).filter((c:Customer) => c.status==='overdue').length
@@ -115,10 +121,30 @@ export default function Admin() {
       showToast('Name, email, address, and town are required', 'error'); return
     }
     try {
-      await sb('customers', { method:'POST', body: addData })
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { pickup_day, ...insertData } = addData
+      const result = await sb('customers', { method:'POST', body: insertData })
+      const newCustomer = Array.isArray(result) ? result[0] : result
+      // If a service was chosen, create a subscription too
+      if (newCustomer?.id && addServiceId) {
+        const rate = parseFloat(addRate)
+        if (!isNaN(rate) && rate > 0) {
+          await sb('subscriptions', { method:'POST', body:{
+            customer_id: newCustomer.id,
+            service_id: addServiceId,
+            rate,
+            billing_cycle: addBillingCycle,
+            status: 'active',
+            start_date: addData.start_date || new Date().toISOString().split('T')[0],
+          }})
+        }
+      }
       showToast('Customer added!')
       setShowAddModal(false)
       setAddData({ ...BLANK_CUSTOMER })
+      setAddServiceId('')
+      setAddRate('')
+      setAddBillingCycle('monthly')
       loadAll()
     } catch (e: unknown) { showToast('Error: ' + (e instanceof Error ? e.message : 'Unknown error'), 'error') }
   }
@@ -521,6 +547,50 @@ export default function Admin() {
                 <input type="checkbox" name="garage_side_pickup" checked={addData.garage_side_pickup} onChange={onAdd} style={{ accentColor:'#4caf50' }} />
                 Garage-side pickup add-on
               </label>
+            </div>
+            {/* ── PLAN / SUBSCRIPTION ── */}
+            <div style={{ marginTop:'1.25rem', paddingTop:'1.25rem', borderTop:'1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.1rem', letterSpacing:'0.05em', marginBottom:'0.75rem', color:'#2e7d32' }}>Plan &amp; Subscription</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
+                <div>
+                  <label style={{ display:'block', fontSize:'0.78rem', color:'rgba(255,255,255,0.5)', marginBottom:'0.3rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Service Plan</label>
+                  <select
+                    value={addServiceId}
+                    onChange={e => {
+                      const svc = servicesList.find(s => s.id === e.target.value)
+                      setAddServiceId(e.target.value)
+                      if (svc) setAddRate(String(svc.base_price))
+                    }}
+                    style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'6px', padding:'0.55rem 0.75rem', color:'#fff', fontSize:'0.88rem' }}
+                  >
+                    <option value=''>— None / Add later —</option>
+                    {servicesList.map(s => (
+                      <option key={s.id} value={s.id}>{s.name} (${s.base_price}/mo)</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display:'block', fontSize:'0.78rem', color:'rgba(255,255,255,0.5)', marginBottom:'0.3rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Monthly Rate ($)</label>
+                  <input
+                    type='number'
+                    value={addRate}
+                    onChange={e => setAddRate(e.target.value)}
+                    placeholder='e.g. 42'
+                    style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'6px', padding:'0.55rem 0.75rem', color:'#fff', fontSize:'0.88rem', boxSizing:'border-box' }}
+                  />
+                </div>
+              </div>
+              <div style={{ marginTop:'0.75rem' }}>
+                <label style={{ display:'block', fontSize:'0.78rem', color:'rgba(255,255,255,0.5)', marginBottom:'0.3rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Billing Cycle</label>
+                <div style={{ display:'flex', gap:'0.75rem' }}>
+                  {(['monthly','quarterly'] as const).map(cycle => (
+                    <label key={cycle} style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.88rem', color:'rgba(255,255,255,0.7)' }}>
+                      <input type='radio' name='billing_cycle' value={cycle} checked={addBillingCycle===cycle} onChange={()=>setAddBillingCycle(cycle)} style={{ accentColor:'#2e7d32' }} />
+                      {cycle.charAt(0).toUpperCase()+cycle.slice(1)}
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
             <div style={{ display:'flex', gap:'0.75rem', marginTop:'1.5rem', paddingTop:'1.25rem', borderTop:'1px solid rgba(255,255,255,0.07)', justifyContent:'flex-end' }}>
               <Btn color='transparent' textColor='#6b7280' onClick={()=>setShowAddModal(false)}>Cancel</Btn>
