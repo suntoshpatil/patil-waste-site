@@ -255,11 +255,14 @@ export default function Admin() {
           }})
         }
       }
-      // Create bin rentals if selected
-      if (onboardTrashBin) {
+      // Create bin rentals if selected — check for existing first to avoid duplicates
+      const existingBins = await sb(`bins?customer_id=eq.${onboardCustomer.id}&ownership=eq.rental&select=bin_type`).catch(() => [])
+      const hasTrash = (existingBins || []).some((b:any) => b.bin_type === 'trash')
+      const hasRecycling = (existingBins || []).some((b:any) => b.bin_type === 'recycling')
+      if (onboardTrashBin && !hasTrash) {
         await sb('bins', { method:'POST', body:{ customer_id:onboardCustomer.id, bin_type:'trash', ownership:'rental', monthly_rental_fee:7.99, assigned_date:new Date().toISOString().split('T')[0], notes:'Deposit: unpaid $25' }})
       }
-      if (onboardRecyclingBin) {
+      if (onboardRecyclingBin && !hasRecycling) {
         await sb('bins', { method:'POST', body:{ customer_id:onboardCustomer.id, bin_type:'recycling', ownership:'rental', monthly_rental_fee:3.99, assigned_date:new Date().toISOString().split('T')[0], notes:'No deposit required' }})
       }
       showToast(`Contract sent to ${onboardCustomer.first_name}! Awaiting their acceptance. ✅`)
