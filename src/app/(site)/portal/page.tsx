@@ -85,12 +85,13 @@ export default function Portal() {
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState('')
   const [toastType, setToastType] = useState('success')
-  const [tab, setTab] = useState<'home'|'services'|'pickup'|'skips'|'billing'>('home')
+  const [tab, setTab] = useState<'home'|'calendar'|'pickup'|'services'|'skips'|'billing'>('home')
 
   // Bulky items / pickup addons
   const [catalog, setCatalog] = useState<any[]>([])
   const [pickupAddons, setPickupAddons] = useState<any[]>([])
   const [invoices, setInvoices] = useState<any[]>([])
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() } })
   const [cardSaving, setCardSaving] = useState(false)
   const [cardSaved, setCardSaved] = useState(false)
   const [selectedItems, setSelectedItems] = useState<{id:string, qty:number}[]>([])
@@ -367,7 +368,7 @@ export default function Portal() {
 
       {/* Tabs */}
       <div style={{ display:'flex', borderBottom:'1px solid rgba(255,255,255,0.07)', padding:'0 2rem', gap:'0.25rem', overflowX:'auto' }}>
-        {([['home','🏠 Overview'],['pickup','📦 Add to Pickup'],['services','➕ Services'],['skips','⏸️ Skip Pickup'],['billing','💳 Billing']] as [typeof tab, string][]).map(([id, label]) => (
+        {([['home','🏠 Overview'],['calendar','📅 Schedule'],['pickup','📦 Add to Pickup'],['services','➕ Services'],['skips','⏸️ Skip Pickup'],['billing','💳 Billing']] as [typeof tab, string][]).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{ background:'none', border:'none', color: tab===id ? '#4caf50' : 'rgba(255,255,255,0.4)', borderBottom: tab===id ? '2px solid #4caf50' : '2px solid transparent', padding:'0.85rem 1.25rem', cursor:'pointer', fontSize:'0.82rem', fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', transition:'color 0.15s' }}>
             {label}
           </button>
@@ -459,6 +460,178 @@ export default function Portal() {
             </div>
           </div>
         )}
+
+        {/* ── CALENDAR TAB ── */}
+        {tab === 'calendar' && (() => {
+          const DAYS_OF_WEEK = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+          const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+          const { year, month } = calMonth
+          const firstDay = new Date(year, month, 1).getDay()
+          const daysInMonth = new Date(year, month + 1, 0).getDate()
+          const pickupDayIndex = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].indexOf((customer.pickup_day || '').toLowerCase())
+
+          // Build a set of notice dates for quick lookup
+          const noticeMap: Record<string, any> = {}
+          for (const n of notices) {
+            if (n.affected_date) noticeMap[n.affected_date] = n
+          }
+
+          const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({length: daysInMonth}, (_, i) => i + 1)]
+          while (cells.length % 7 !== 0) cells.push(null)
+
+          const today = new Date()
+          const todayStr = today.toISOString().split('T')[0]
+
+          return (
+            <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+              {/* Month navigator */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <button onClick={() => setCalMonth(p => {
+                  const d = new Date(p.year, p.month - 1, 1)
+                  return { year: d.getFullYear(), month: d.getMonth() }
+                })} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', color:'#fff', borderRadius:'6px', padding:'0.4rem 0.85rem', cursor:'pointer', fontSize:'1rem', fontFamily:'inherit' }}>‹</button>
+                <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.6rem', letterSpacing:'0.05em' }}>{MONTHS[month]} {year}</div>
+                <button onClick={() => setCalMonth(p => {
+                  const d = new Date(p.year, p.month + 1, 1)
+                  return { year: d.getFullYear(), month: d.getMonth() }
+                })} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', color:'#fff', borderRadius:'6px', padding:'0.4rem 0.85rem', cursor:'pointer', fontSize:'1rem', fontFamily:'inherit' }}>›</button>
+              </div>
+
+              {/* Legend */}
+              <div style={{ display:'flex', gap:'1.25rem', flexWrap:'wrap' }}>
+                {[
+                  ['#2e7d32','rgba(46,125,50,0.15)','Pickup Day'],
+                  ['#f59e0b','rgba(245,158,11,0.15)','Rescheduled'],
+                  ['#dc2626','rgba(220,38,38,0.12)','Cancelled'],
+                  ['rgba(255,255,255,0.15)','rgba(255,255,255,0.04)','Today'],
+                ].map(([border, bg, label]) => (
+                  <div key={label} style={{ display:'flex', alignItems:'center', gap:'0.4rem', fontSize:'0.75rem', color:'rgba(255,255,255,0.5)' }}>
+                    <div style={{ width:'14px', height:'14px', borderRadius:'3px', background: bg as string, border:`1.5px solid ${border}` }} />
+                    {label}
+                  </div>
+                ))}
+              </div>
+
+              {/* Calendar grid */}
+              <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', overflow:'hidden' }}>
+                {/* Day headers */}
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+                  {DAYS_OF_WEEK.map(d => (
+                    <div key={d} style={{ padding:'0.6rem 0', textAlign:'center', fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'rgba(255,255,255,0.35)' }}>{d}</div>
+                  ))}
+                </div>
+                {/* Weeks */}
+                {Array.from({ length: cells.length / 7 }, (_, week) => (
+                  <div key={week} style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                    {cells.slice(week * 7, week * 7 + 7).map((day, i) => {
+                      if (!day) return <div key={i} style={{ padding:'0.75rem', minHeight:'52px' }} />
+                      const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+                      const dayOfWeek = new Date(year, month, day).getDay()
+                      const isPickupDay = pickupDayIndex !== -1 && dayOfWeek === pickupDayIndex
+                      const notice = noticeMap[dateStr]
+                      const isCancelled = notice?.notice_type === 'cancellation'
+                      const isRescheduled = notice?.notice_type === 'reschedule'
+                      const isToday = dateStr === todayStr
+                      const isPast = dateStr < todayStr
+
+                      let bg = 'transparent'
+                      let border = 'transparent'
+                      let dotColor = ''
+
+                      if (isPickupDay && !isCancelled) { bg = 'rgba(46,125,50,0.15)'; border = '#2e7d32' }
+                      if (isCancelled) { bg = 'rgba(220,38,38,0.12)'; border = '#dc2626' }
+                      if (isRescheduled) { bg = 'rgba(245,158,11,0.12)'; border = '#f59e0b' }
+                      if (isToday) { border = 'rgba(255,255,255,0.4)' }
+
+                      // Check if this date is a replacement day
+                      const isReplacement = notices.some((n:any) => n.replacement_date === dateStr)
+                      if (isReplacement) { bg = 'rgba(245,158,11,0.12)'; border = '#f59e0b' }
+
+                      return (
+                        <div key={i} title={notice?.message || (isReplacement ? 'Replacement pickup' : '')} style={{
+                          padding:'0.5rem',
+                          minHeight:'52px',
+                          background: bg,
+                          border: `1.5px solid ${border}`,
+                          margin:'1px',
+                          borderRadius:'5px',
+                          cursor: notice ? 'pointer' : 'default',
+                          opacity: isPast && !isToday ? 0.45 : 1,
+                          transition:'opacity 0.15s',
+                        }}>
+                          <div style={{ fontSize:'0.82rem', fontWeight: isToday ? 700 : 400, color: isToday ? '#fff' : 'rgba(255,255,255,0.7)', marginBottom:'0.2rem' }}>{day}</div>
+                          {isPickupDay && !isCancelled && !isRescheduled && (
+                            <div style={{ fontSize:'0.6rem', color:'#4caf50', fontWeight:700 }}>PICKUP</div>
+                          )}
+                          {isCancelled && <div style={{ fontSize:'0.6rem', color:'#f87171', fontWeight:700 }}>CANCELLED</div>}
+                          {isRescheduled && <div style={{ fontSize:'0.6rem', color:'#fbbf24', fontWeight:700 }}>MOVED</div>}
+                          {isReplacement && <div style={{ fontSize:'0.6rem', color:'#fbbf24', fontWeight:700 }}>NEW DAY</div>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+
+              {/* Notices for this month */}
+              {notices.filter((n:any) => {
+                const d = n.affected_date || n.notice_date
+                return d && d.startsWith(`${year}-${String(month+1).padStart(2,'0')}`)
+              }).length > 0 && (
+                <div style={card}>
+                  <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.75rem' }}>This Month's Notices</div>
+                  {notices.filter((n:any) => {
+                    const d = n.affected_date || n.notice_date
+                    return d && d.startsWith(`${year}-${String(month+1).padStart(2,'0')}`)
+                  }).map((n:any) => (
+                    <div key={n.id} style={{ padding:'0.65rem 0.85rem', marginBottom:'0.5rem', borderRadius:'6px', background: n.notice_type==='cancellation'?'rgba(220,38,38,0.08)': n.notice_type==='reschedule'?'rgba(245,158,11,0.08)':'rgba(255,255,255,0.04)', border:`1px solid ${n.notice_type==='cancellation'?'rgba(220,38,38,0.25)': n.notice_type==='reschedule'?'rgba(245,158,11,0.25)':'rgba(255,255,255,0.08)'}` }}>
+                      <div style={{ fontSize:'0.82rem', fontWeight:600, marginBottom:'0.2rem' }}>
+                        {n.notice_type==='cancellation'?'❌':n.notice_type==='reschedule'?'🔄':'📢'} {n.message}
+                      </div>
+                      {n.affected_date && <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.4)' }}>Affected: {new Date(n.affected_date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>}
+                      {n.replacement_date && <div style={{ fontSize:'0.75rem', color:'#fbbf24', marginTop:'0.15rem' }}>New pickup: {new Date(n.replacement_date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upcoming pickups summary */}
+              <div style={card}>
+                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.75rem' }}>Upcoming Pickups</div>
+                {pickupDayIndex === -1 ? (
+                  <p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.35)' }}>Pickup day not set yet — Suntosh will confirm when activating your account.</p>
+                ) : (() => {
+                  const upcoming: string[] = []
+                  const d = new Date()
+                  d.setDate(d.getDate() + 1)
+                  while (upcoming.length < 4) {
+                    if (d.getDay() === pickupDayIndex) {
+                      const ds = d.toISOString().split('T')[0]
+                      const notice = noticeMap[ds]
+                      upcoming.push(ds)
+                    }
+                    d.setDate(d.getDate() + 1)
+                  }
+                  return upcoming.map(ds => {
+                    const notice = noticeMap[ds]
+                    const isCancelled = notice?.notice_type === 'cancellation'
+                    const replacementDate = notice?.replacement_date
+                    return (
+                      <div key={ds} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.55rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.85rem' }}>
+                        <span style={{ textDecoration: isCancelled ? 'line-through' : 'none', color: isCancelled ? 'rgba(255,255,255,0.35)' : '#fff' }}>
+                          {new Date(ds+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}
+                        </span>
+                        {isCancelled && !replacementDate && <span style={{ fontSize:'0.72rem', color:'#f87171', fontWeight:700 }}>CANCELLED</span>}
+                        {replacementDate && <span style={{ fontSize:'0.72rem', color:'#fbbf24', fontWeight:700 }}>→ {new Date(replacementDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>}
+                        {!notice && <span style={{ fontSize:'0.72rem', color:'#4caf50', fontWeight:700 }}>✓ On schedule</span>}
+                      </div>
+                    )
+                  })
+                })()}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* ── ADD TO PICKUP TAB ── */}
         {tab === 'pickup' && (

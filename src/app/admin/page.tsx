@@ -88,6 +88,8 @@ export default function Admin() {
   const [pickupAddons, setPickupAddons] = useState<any[]>([])
   const [noticeMsg, setNoticeMsg] = useState('')
   const [noticeDate, setNoticeDate] = useState('')
+  const [noticeType, setNoticeType] = useState('info')
+  const [replacementDate, setReplacementDate] = useState('')
   const [addTrashBin, setAddTrashBin] = useState(false)
   const [addRecyclingBin, setAddRecyclingBin] = useState(false)
   const [selectedBins, setSelectedBins] = useState<any[]>([])
@@ -200,9 +202,15 @@ export default function Admin() {
 
   async function postNotice() {
     if (!noticeMsg || !noticeDate) { showToast('Message and date required', 'error'); return }
-    await sb('schedule_notices', { method:'POST', body:{ message:noticeMsg, notice_date:noticeDate }})
-    showToast('Notice posted!')
-    setNoticeMsg(''); setNoticeDate('')
+    await sb('schedule_notices', { method:'POST', body:{
+      message: noticeMsg,
+      notice_date: noticeDate,
+      affected_date: noticeDate,
+      replacement_date: replacementDate || null,
+      notice_type: noticeType,
+    }})
+    showToast('Notice posted — customers will see it on their calendar!')
+    setNoticeMsg(''); setNoticeDate(''); setReplacementDate(''); setNoticeType('info')
     loadAll()
   }
 
@@ -667,14 +675,30 @@ export default function Admin() {
             <div style={{ maxWidth:'560px' }}>
               <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'2rem', letterSpacing:'0.02em', marginBottom:'1.5rem' }}>Schedule Notices</div>
               <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', padding:'1.5rem', marginBottom:'1.5rem' }}>
-                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.2rem', marginBottom:'1rem' }}>Post a Notice</div>
+                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.2rem', marginBottom:'1rem' }}>Post a Schedule Notice</div>
                 <div style={{ marginBottom:'0.75rem' }}>
-                  <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Notice Date</label>
-                  <input type='date' value={noticeDate} onChange={e=>setNoticeDate(e.target.value)} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none' }} />
+                  <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Notice Type</label>
+                  <select value={noticeType||'info'} onChange={e=>setNoticeType(e.target.value)} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%' }}>
+                    <option value='info' style={{background:'#111'}}>📢 General Info</option>
+                    <option value='cancellation' style={{background:'#111'}}>❌ Cancellation — no pickup this day</option>
+                    <option value='reschedule' style={{background:'#111'}}>🔄 Reschedule — moved to another day</option>
+                  </select>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns: noticeType==='reschedule' ? '1fr 1fr' : '1fr', gap:'0.75rem', marginBottom:'0.75rem' }}>
+                  <div>
+                    <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>{noticeType==='info' ? 'Notice Date' : 'Affected Pickup Date'}</label>
+                    <input type='date' value={noticeDate} onChange={e=>setNoticeDate(e.target.value)} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%' }} />
+                  </div>
+                  {noticeType==='reschedule' && (
+                    <div>
+                      <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Replacement Pickup Date</label>
+                      <input type='date' value={replacementDate||''} onChange={e=>setReplacementDate(e.target.value)} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%' }} />
+                    </div>
+                  )}
                 </div>
                 <div style={{ marginBottom:'1rem' }}>
-                  <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Message</label>
-                  <textarea value={noticeMsg} onChange={e=>setNoticeMsg(e.target.value)} rows={3} placeholder="e.g. No pickup Monday July 4th — pickup will be Tuesday July 5th" style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%', resize:'vertical' }} />
+                  <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Message to Customers</label>
+                  <textarea value={noticeMsg} onChange={e=>setNoticeMsg(e.target.value)} rows={2} placeholder={noticeType==='cancellation'?'e.g. No pickup Monday July 4th due to Independence Day':noticeType==='reschedule'?'e.g. Monday July 4th pickup moved to Tuesday July 5th':'e.g. Service may be delayed due to weather'} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%', resize:'vertical' }} />
                 </div>
                 <Btn onClick={postNotice}>📢 Post Notice</Btn>
               </div>
