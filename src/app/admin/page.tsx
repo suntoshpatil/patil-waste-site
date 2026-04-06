@@ -159,7 +159,8 @@ export default function Admin() {
             rate,
             billing_cycle: addBillingCycle,
             status: 'active',
-            start_date: addData.start_date || new Date().toISOString().split('T')[0],
+            billing_start: addData.start_date || new Date().toISOString().split('T')[0],
+            next_billing_date: addData.start_date || new Date().toISOString().split('T')[0],
           }})
         }
       }
@@ -185,7 +186,7 @@ export default function Admin() {
 
   async function approveServiceRequest(id: string, customerId: string, serviceId: string, timing: string, rate: number) {
     if (timing === 'immediate' || timing === 'next_month') {
-      await sb('subscriptions', { method:'POST', body:{ customer_id:customerId, service_id:serviceId, rate, billing_cycle:'monthly', status:'active', start_date:new Date().toISOString().split('T')[0] }})
+      await sb('subscriptions', { method:'POST', body:{ customer_id:customerId, service_id:serviceId, rate, billing_cycle:'monthly', status:'active', billing_start:new Date().toISOString().split('T')[0], next_billing_date:new Date().toISOString().split('T')[0] }})
     }
     await sb(`service_requests?id=eq.${id}`, { method:'PATCH', body:{ status:'approved' }, prefer:'return=minimal' })
     showToast('Service approved and activated!')
@@ -227,8 +228,7 @@ export default function Admin() {
         method: 'PATCH',
         body: {
           status: 'active',
-          start_date: onboardData.start_date || new Date().toISOString().split('T')[0],
-          notes: onboardData.notes || onboardCustomer.notes,
+          notes: onboardData.notes || onboardCustomer.notes || null,
         },
         prefer: 'return=minimal',
       })
@@ -237,13 +237,16 @@ export default function Admin() {
         const existing = await sb(`subscriptions?customer_id=eq.${onboardCustomer.id}&status=eq.active&select=id`)
         if (!existing || existing.length === 0) {
           const svc = servicesList.find((s:any) => s.id === onboardServiceId)
+          const billingStart = onboardData.start_date || new Date().toISOString().split('T')[0]
           await sb('subscriptions', { method: 'POST', body: {
             customer_id: onboardCustomer.id,
             service_id: onboardServiceId,
             rate: svc?.base_price_monthly || 0,
             billing_cycle: onboardBillingCycle,
             status: 'active',
-            start_date: onboardData.start_date || new Date().toISOString().split('T')[0],
+            pickup_day: onboardData.pickup_day,
+            billing_start: billingStart,
+            next_billing_date: billingStart,
           }})
         }
       }
