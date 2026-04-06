@@ -649,6 +649,11 @@ export default function Portal() {
                 <div style={section}>
                   <h3 style={h3}>Payment</h3>
                   <p style={p}>With chosen services the monthly bill is ${rate.toFixed(2)} or ${quarterlyRate} quarterly. This can be paid through our online credit card processor listed on your invoice, through Venmo, Cashapp, or Cash handed to driver. (If paying cash please inform us so we will know to collect it along with your pick up.)</p>
+                  <p style={p}>Your first invoice is <strong>due on receipt</strong> and covers the prorated period from your start date to the end of the month. Recurring invoices are issued on the <strong>25th of each month</strong> and due on the <strong>1st of the following month</strong>.</p>
+                </div>
+                <div style={section}>
+                  <h3 style={h3}>Auto-Pay</h3>
+                  <p style={p}>You may optionally save a credit or debit card through your customer portal to enable automatic monthly payments. If auto-pay is enabled, your card on file will be charged on the <strong>1st of each month</strong> for the outstanding invoice amount. Your first invoice will be charged immediately upon saving your card. You may disable auto-pay at any time by contacting Suntosh. Patil Waste Removal uses <strong>Stripe</strong> to process card payments — your card details are never stored on our servers.</p>
                 </div>
                 <div style={section}>
                   <h3 style={h3}>Payment Refund</h3>
