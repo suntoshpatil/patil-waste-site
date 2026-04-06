@@ -175,6 +175,17 @@ export default function Portal() {
       showToast('Payment successful! Thank you 🎉')
       window.history.replaceState({}, '', '/portal')
     }
+    // Handle Stripe card setup success
+    if (params.get('card_saved') === 'true') {
+      const sessionId = params.get('session_id')
+      const custId = params.get('customer_id')
+      if (sessionId && custId) {
+        fetch(`/api/stripe/confirm-setup?session_id=${sessionId}&customer_id=${custId}`)
+          .then(() => showToast('Card saved! Auto-pay is now enabled. ✅'))
+          .catch(() => showToast('Card saved but auto-pay setup had an issue. Contact us.', 'error'))
+      }
+      window.history.replaceState({}, '', '/portal')
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadPortalData(cust: Customer) {
@@ -1243,9 +1254,9 @@ export default function Portal() {
                     setCardSaving(true)
                     try {
                       const res = await fetch('/api/stripe/setup-intent', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ customerId: customer.id }) })
-                      const { clientSecret } = await res.json()
-                      // Redirect to Stripe-hosted setup page (simplest, no Stripe.js needed)
-                      window.location.href = `https://billing.stripe.com/p/login/test_${clientSecret}`
+                      const { url, error } = await res.json()
+                      if (url) window.location.href = url
+                      else showToast(error || 'Could not start card setup. Please call us.', 'error')
                     } catch { showToast('Could not start card setup. Please call us.', 'error') }
                     setCardSaving(false)
                   }} style={{ ...btnGreen, width:'auto', padding:'0.65rem 1.5rem' }} disabled={cardSaving}>

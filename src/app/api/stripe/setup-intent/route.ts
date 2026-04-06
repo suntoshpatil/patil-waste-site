@@ -3,19 +3,17 @@ import Stripe from 'stripe'
 import { sbServer } from '@/lib/billing'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://patil-waste-site.vercel.app'
 
-// POST /api/stripe/setup-intent
-// Creates or retrieves a Stripe customer and returns a SetupIntent client secret
 export async function POST(req: Request) {
   try {
     const { customerId } = await req.json()
     if (!customerId) return NextResponse.json({ error: 'Missing customerId' }, { status: 400 })
 
-    // Load customer from Supabase
     const [customer] = await sbServer(`customers?id=eq.${customerId}&select=id,first_name,last_name,email,stripe_customer_id`)
     if (!customer) return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
 
-    // Create Stripe customer if they don't have one yet
+    // Create or retrieve Stripe customer
     let stripeCustomerId = customer.stripe_customer_id
     if (!stripeCustomerId) {
       const stripeCustomer = await stripe.customers.create({
@@ -31,13 +29,16 @@ export async function POST(req: Request) {
       })
     }
 
-    // Create SetupIntent
-    const setupIntent = await stripe.setupIntents.create({
+    // Checkout session in setup mode — collects card without charging
+    const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       payment_method_types: ['card'],
+      mode: 'setup',
+      success_url: `${SITE_URL}/portal?card_saved=true&session_id={CHECKOUT_SESSION_ID}&customer_id=${customerId}`,
+      cancel_url: `${SITE_URL}/portal?tab=billing`,
     })
 
-    return NextResponse.json({ clientSecret: setupIntent.client_secret })
+    return NextResponse.json({ url: session.url })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
