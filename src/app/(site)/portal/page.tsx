@@ -99,7 +99,6 @@ export default function Portal() {
   const [addTiming, setAddTiming] = useState<'immediate'|'next_month'>('next_month')
 
   // Skip modal
-  const [showSkip, setShowSkip] = useState(false) // used in skip tab
   const [skipDate, setSkipDate] = useState('')
 
   const showToast = (msg: string, type = 'success') => {
@@ -108,15 +107,12 @@ export default function Portal() {
 
   useEffect(() => {
     const saved = sessionStorage.getItem('portal_customer')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      // Use startTransition to avoid cascading render warning
-      Promise.resolve().then(() => {
-        setCustomer(parsed)
-        setScreen('dashboard')
-      })
-    }
-  }, [])
+    if (!saved) return
+    const parsed = JSON.parse(saved)
+    setCustomer(parsed)
+    setScreen('dashboard')
+    loadPortalData(parsed)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadPortalData(cust: Customer) {
     const [b, sk, n, sv, cat, addons] = await Promise.all([
@@ -246,7 +242,6 @@ export default function Portal() {
           : null,
       }})
       showToast('Skip request submitted! Credit will appear on your next bill.')
-      setShowSkip(false)
       setSkipDate('')
       loadPortalData(customer)
     } catch (e: any) { showToast(e.message || 'Failed to submit skip request.', 'error') }

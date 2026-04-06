@@ -11,7 +11,7 @@ export default function FAQs() {
     ["Do you offer quarterly billing?","Yes! You can pay quarterly (3 months upfront) instead of monthly — same price, just paid in one cycle."],
     ["Is there a contract required?","No! Our plans are month-to-month or pay-by-quarter with no long-term contract required. We earn your business every single pickup."],
     ["What payment methods do you accept?","We accept credit/debit cards via Stripe, Venmo, Zelle, and cash."],
-    ["What can NOT be picked up?","We cannot pick up explosives, firearms, hazardous waste (chemicals, paints, gas, oil), medical waste, yard waste, or construction materials. Many of these can be scheduled separately — contact us for a quote."],
+    ["What can NOT be picked up?","We cannot pick up explosives, firearms, hazardous waste (chemicals, paints, gas, oil), medical waste, yard waste, or construction materials. Many of these can be scheduled separately — visit our Junk Removal page to request a quote."],
   ]
   const [open, setOpen] = useState<number|null>(null)
   return (

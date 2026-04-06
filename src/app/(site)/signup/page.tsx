@@ -91,9 +91,6 @@ export default function Signup() {
                     <option value="">Select...</option>
                     <option value="standard">Trash Only — $42/mo</option>
                     <option value="recycling">Trash & Recycling — $52/mo</option>
-                    <option value="junk">Junk Removal (one-time)</option>
-                    <option value="yard">Yard Waste (one-time)</option>
-                    <option value="bulky">Bulky / Special Item</option>
                     <option value="info">Just requesting info</option>
                   </select>
                 </div>
@@ -105,6 +102,9 @@ export default function Signup() {
                   </select>
                 </div>
               </div>
+              <p style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.35)', marginBottom:'0.75rem' }}>
+                Need junk removal or a yard cleanup? <a href="/junk-removal" style={{ color:'#4caf50' }}>Request a quote here instead →</a>
+              </p>
 
               {/* Start Date */}
               <div className="f-grp"><label>Requested Start Date</label><input name="startDate" type="date" {...inp} /></div>
