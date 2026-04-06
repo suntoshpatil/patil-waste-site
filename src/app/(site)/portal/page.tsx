@@ -141,6 +141,10 @@ export default function Portal() {
   const [cardSaving, setCardSaving] = useState(false)
   const [payingNow, setPayingNow] = useState(false)
   const [portalMenuOpen, setPortalMenuOpen] = useState(false)
+  const [forgotPin, setForgotPin] = useState(false)
+  const [resetPhone, setResetPhone] = useState('')
+  const [resetNewPin, setResetNewPin] = useState('')
+  const [resetConfirmPin, setResetConfirmPin] = useState('')
   const [cardSaved, setCardSaved] = useState(false)
   const [selectedItems, setSelectedItems] = useState<{id:string, qty:number}[]>([])
   const [customItem, setCustomItem] = useState('')
@@ -238,6 +242,33 @@ export default function Portal() {
       setFoundCustomer(cust)
       setLoginStep('pin')
     } catch (e: any) { setError(e.message || 'Something went wrong.') }
+    setLoading(false)
+  }
+
+  async function handleResetPin() {
+    if (!resetPhone || !foundCustomer) { setError('Please enter your phone number.'); return }
+    // Verify last 4 digits of phone match
+    const stored = (foundCustomer.phone || '').replace(/\D/g, '').slice(-4)
+    const entered = resetPhone.replace(/\D/g, '').slice(-4)
+    if (stored !== entered || stored.length < 4) {
+      setError('Phone number does not match our records. Contact Suntosh at (802) 416-9484.'); return
+    }
+    if (!resetNewPin || resetNewPin.length !== 4) { setError('Please enter a valid 4-digit PIN.'); return }
+    if (resetNewPin !== resetConfirmPin) { setError('PINs do not match.'); return }
+    setLoading(true); setError('')
+    try {
+      await sb(`customers?id=eq.${foundCustomer.id}`, { method:'PATCH', body:{ portal_pin: resetNewPin }, prefer:'return=minimal' })
+      setForgotPin(false)
+      setResetPhone(''); setResetNewPin(''); setResetConfirmPin('')
+      setPin(resetNewPin)
+      setError('')
+      // Auto login
+      const updated = { ...foundCustomer, portal_pin: resetNewPin }
+      sessionStorage.setItem('portal_customer', JSON.stringify(updated))
+      setCustomer(updated as any)
+      setScreen('dashboard')
+      loadPortalData(updated as any)
+    } catch (e: any) { setError(e.message || 'Reset failed.') }
     setLoading(false)
   }
 
@@ -484,7 +515,32 @@ export default function Portal() {
               <input style={inputStyle} type="password" inputMode="numeric" maxLength={4} value={pin} onChange={e => setPin(e.target.value.replace(/\D/g,''))} placeholder="••••" onKeyDown={e => e.key === 'Enter' && handleLogin()} autoFocus />
             </div>
             {error && <div style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.3)', borderRadius:'6px', padding:'0.65rem 0.9rem', fontSize:'0.83rem', color:'#f87171', marginBottom:'1rem' }}>{error}</div>}
-            <button style={btnGreen} onClick={handleLogin} disabled={loading}>{loading ? 'Signing in…' : 'Sign In'}</button>
+            {!forgotPin ? (
+              <>
+                <button style={btnGreen} onClick={handleLogin} disabled={loading}>{loading ? 'Signing in…' : 'Sign In'}</button>
+                <button onClick={() => { setForgotPin(true); setError('') }} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.4)', fontSize:'0.78rem', cursor:'pointer', fontFamily:'inherit', marginTop:'0.75rem', display:'block', width:'100%', textAlign:'center' }}>Forgot PIN?</button>
+              </>
+            ) : (
+              <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)', paddingTop:'1.25rem', marginTop:'0.5rem' }}>
+                <div style={{ fontSize:'0.82rem', fontWeight:600, color:'#fff', marginBottom:'0.75rem' }}>Reset your PIN</div>
+                <div style={{ marginBottom:'0.75rem' }}>
+                  <label style={{ display:'block', fontSize:'0.72rem', color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'0.35rem' }}>Last 4 digits of your phone</label>
+                  <input style={inputStyle} type="tel" inputMode="numeric" maxLength={4} value={resetPhone} onChange={e => setResetPhone(e.target.value.replace(/\D/g,''))} placeholder="e.g. 9484" />
+                </div>
+                <div style={{ marginBottom:'0.75rem' }}>
+                  <label style={{ display:'block', fontSize:'0.72rem', color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'0.35rem' }}>New PIN</label>
+                  <input style={inputStyle} type="password" inputMode="numeric" maxLength={4} value={resetNewPin} onChange={e => setResetNewPin(e.target.value.replace(/\D/g,''))} placeholder="••••" />
+                </div>
+                <div style={{ marginBottom:'1rem' }}>
+                  <label style={{ display:'block', fontSize:'0.72rem', color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'0.35rem' }}>Confirm New PIN</label>
+                  <input style={inputStyle} type="password" inputMode="numeric" maxLength={4} value={resetConfirmPin} onChange={e => setResetConfirmPin(e.target.value.replace(/\D/g,''))} placeholder="••••" />
+                </div>
+                <div style={{ display:'flex', gap:'0.5rem' }}>
+                  <button onClick={() => { setForgotPin(false); setError('') }} style={{ flex:1, background:'transparent', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.5)', borderRadius:'8px', padding:'0.65rem', cursor:'pointer', fontFamily:'inherit', fontSize:'0.85rem' }}>Cancel</button>
+                  <button style={{ ...btnGreen, flex:2 }} onClick={handleResetPin} disabled={loading}>{loading ? 'Resetting…' : 'Reset PIN'}</button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

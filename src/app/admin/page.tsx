@@ -275,6 +275,12 @@ export default function Admin() {
     } catch (e: any) { showToast('Error: ' + e.message, 'error') }
   }
 
+  async function resetCustomerPin(customerId: string, name: string) {
+    await sb(`customers?id=eq.${customerId}`, { method:'PATCH', body:{ portal_pin: null }, prefer:'return=minimal' })
+    showToast(`${name}'s PIN cleared — they'll set a new one on next login`)
+    loadAll()
+  }
+
   async function loadSelectedBins(customerId: string) {
     try {
       const bins = await sb(`bins?customer_id=eq.${customerId}&select=*`)
