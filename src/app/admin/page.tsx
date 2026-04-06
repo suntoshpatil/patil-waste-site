@@ -26,7 +26,7 @@ async function sb(path: string, opts: { method?: string; body?: object; prefer?:
 }
 
 function Badge({ status }: { status: string }) {
-  const colors: Record<string, string> = { active:'#16a34a', pending:'#d97706', paused:'#2563eb', cancelled:'#dc2626', overdue:'#dc2626', paid:'#16a34a', draft:'#6b7280' }
+  const colors: Record<string, string> = { active:'#16a34a', pending:'#d97706', contract_pending:'#7c3aed', paused:'#2563eb', cancelled:'#dc2626', overdue:'#dc2626', paid:'#16a34a', draft:'#6b7280', sent:'#d97706', new:'#d97706' }
   const c = colors[status] || '#6b7280'
   return <span style={{ background:`${c}22`, color:c, padding:'0.15rem 0.5rem', borderRadius:'20px', fontSize:'0.68rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{status}</span>
 }
@@ -227,7 +227,7 @@ export default function Admin() {
       await sb(`customers?id=eq.${onboardCustomer.id}`, {
         method: 'PATCH',
         body: {
-          status: 'active',
+          status: 'contract_pending',
           notes: onboardData.notes || onboardCustomer.notes || null,
         },
         prefer: 'return=minimal',
@@ -250,7 +250,7 @@ export default function Admin() {
           }})
         }
       }
-      showToast(`${onboardCustomer.first_name} is now active! ✅`)
+      showToast(`Contract sent to ${onboardCustomer.first_name}! Awaiting their acceptance. ✅`)
       setOnboardCustomer(null)
       setOnboardData({ pickup_day:'', start_date:'', notes:'' })
       setOnboardServiceId('')
@@ -357,6 +357,7 @@ export default function Admin() {
     </div>
   )
 
+  // Also add contract_pending badge color
   const navItems: [string,string,string][] = [['dashboard','📊','Dashboard'],['customers','👥','Customers'],['routes','🗓️','Routes'],['invoices','🧾','Invoices'],['payments','💵','Payments'],['requests','🔔','Requests'],['jobs','🚛','Jobs'],['notices','📢','Notices']]
 
   return (
@@ -404,13 +405,13 @@ export default function Admin() {
                 ))}
               </div>
               {/* Pending onboarding alert */}
-              {customers.filter(c => c.status === 'pending').length > 0 && (
+              {customers.filter(c => c.status === 'pending' || c.status === 'contract_pending').length > 0 && (
                 <div style={{ background:'rgba(245,158,11,0.07)', border:'1px solid rgba(245,158,11,0.3)', borderRadius:'8px', padding:'1.25rem', marginBottom:'1.25rem' }}>
                   <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.1rem', letterSpacing:'0.04em', color:'#fbbf24', marginBottom:'0.75rem' }}>
-                    🕐 {customers.filter(c => c.status === 'pending').length} Customer{customers.filter(c => c.status === 'pending').length > 1 ? 's' : ''} Awaiting Onboarding
+                    🕐 {customers.filter(c => c.status === 'pending' || c.status === 'contract_pending').length} Customer{customers.filter(c => c.status === 'pending' || c.status === 'contract_pending').length > 1 ? 's' : ''} Awaiting Onboarding
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
-                    {customers.filter(c => c.status === 'pending').map(c => (
+                    {customers.filter(c => c.status === 'pending' || c.status === 'contract_pending').map(c => (
                       <div key={c.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(0,0,0,0.2)', borderRadius:'6px', padding:'0.65rem 0.9rem' }}>
                         <div>
                           <span style={{ fontWeight:600 }}>{c.first_name} {c.last_name}</span>
@@ -988,7 +989,7 @@ export default function Admin() {
 
             <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end', paddingTop:'1.25rem', borderTop:'1px solid rgba(255,255,255,0.07)' }}>
               <Btn color='transparent' textColor='#6b7280' onClick={()=>setOnboardCustomer(null)}>Cancel</Btn>
-              <Btn onClick={completeOnboarding}>✅ Activate Customer</Btn>
+              <Btn onClick={completeOnboarding}>📋 Send Contract to Customer</Btn>
             </div>
           </div>
         </div>

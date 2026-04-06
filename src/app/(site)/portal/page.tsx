@@ -139,6 +139,7 @@ export default function Portal() {
   }
 
   const [loginStep, setLoginStep] = useState<'email'|'pin'>('email')
+  const [contractAccepting, setContractAccepting] = useState(false)
   const [foundCustomer, setFoundCustomer] = useState<Customer|null>(null)
 
   async function handleEmailLookup() {
@@ -185,6 +186,25 @@ export default function Portal() {
       loadPortalData(updated as any)
     } catch (e: any) { setError(e.message || 'Failed to set PIN.') }
     setLoading(false)
+  }
+
+  async function acceptContract() {
+    if (!customer) return
+    setContractAccepting(true)
+    try {
+      await sb(`customers?id=eq.${customer.id}`, { method:'PATCH', body:{
+        contract_accepted: true,
+        contract_accepted_at: new Date().toISOString(),
+        status: 'active',
+      }, prefer:'return=minimal' })
+      // Trigger invoice generation
+      fetch('/api/cron/generate-invoices', { headers:{ Authorization:'Bearer patilwaste_cron_2024' } }).catch(()=>{})
+      const updated = { ...customer, contract_accepted: true, status: 'active' } as any
+      setCustomer(updated)
+      sessionStorage.setItem('portal_customer', JSON.stringify(updated))
+      showToast('Contract accepted! Welcome aboard 🎉')
+    } catch (e: any) { showToast('Failed to accept. Please contact us.', 'error') }
+    setContractAccepting(false)
   }
 
   async function submitPickupAddon() {
@@ -291,7 +311,7 @@ export default function Portal() {
             <div style={{ marginBottom:'1.5rem' }}>
               <label style={{ display:'block', fontSize:'0.75rem', color:'rgba(255,255,255,0.5)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:'0.4rem' }}>Email Address</label>
               <input style={inputStyle} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" onKeyDown={e => e.key === 'Enter' && handleEmailLookup()} autoFocus />
-              <p style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.3)', marginTop:'0.5rem' }}>Use the email address you signed up with.</p>
+              <p style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.5)', marginTop:'0.5rem' }}>Use the email address you signed up with.</p>
             </div>
             {error && <div style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.3)', borderRadius:'6px', padding:'0.65rem 0.9rem', fontSize:'0.83rem', color:'#f87171', marginBottom:'1rem' }}>{error}</div>}
             <button style={btnGreen} onClick={handleEmailLookup} disabled={loading}>{loading ? 'Looking up…' : 'Continue →'}</button>
@@ -311,7 +331,7 @@ export default function Portal() {
           </div>
         )}
 
-        <p style={{ textAlign:'center', fontSize:'0.8rem', color:'rgba(255,255,255,0.3)', marginTop:'1.5rem' }}>
+        <p style={{ textAlign:'center', fontSize:'0.8rem', color:'rgba(255,255,255,0.5)', marginTop:'1.5rem' }}>
           Not a customer yet? <a href="/signup" style={{ color:'#4caf50' }}>Sign up here →</a>
         </p>
       </div>
@@ -343,10 +363,53 @@ export default function Portal() {
     </main>
   )
 
+  // Derive pickupDay early so it's available for both contract screen and dashboard
+  const activeSub = customer ? customer.subscriptions?.find(s => s.status === 'active') : null
+  const pickupDay = (activeSub as any)?.pickup_day || (customer as any)?.pickup_day || ''
+
+  // ── CONTRACT SCREEN ──
+  if (customer && (customer as any).status === 'contract_pending' && !(customer as any).contract_accepted) return (
+    <main style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', padding:'2rem', paddingTop:'5rem' }}>
+      <div style={{ width:'100%', maxWidth:'640px' }}>
+        <div style={{ textAlign:'center', marginBottom:'2rem' }}>
+          <div style={{ fontSize:'3rem', marginBottom:'0.75rem' }}>📋</div>
+          <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'2.2rem', letterSpacing:'0.05em', marginBottom:'0.5rem', color:'#fff' }}>Service Agreement</div>
+          <p style={{ color:'rgba(255,255,255,0.65)', fontSize:'0.95rem' }}>Please review and accept your service agreement to activate your account.</p>
+        </div>
+        <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'1.75rem', marginBottom:'1.5rem', maxHeight:'400px', overflowY:'auto' }}>
+          <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.1rem', letterSpacing:'0.05em', marginBottom:'1.25rem', color:'#4caf50' }}>Patil Waste Removal LLC — Service Agreement</div>
+          {([
+            ['Service', `You are signing up for ${(customer as any).subscriptions?.[0]?.services?.name || 'curbside waste removal'} service at the address on file.`],
+            ['Pickup Schedule', `Your scheduled pickup day is ${pickupDay ? pickupDay.charAt(0).toUpperCase()+pickupDay.slice(1) : 'to be confirmed'}. Please have bins at the curb by 8:00 AM on your pickup day.`],
+            ['Billing', `Your plan rate is $${(customer as any).subscriptions?.[0]?.rate || '—'}/month, billed ${(customer as any).subscriptions?.[0]?.billing_cycle || 'monthly'}. Invoices are issued on the 25th and due on the 1st.`],
+            ['Extra Bags', 'Extra bags beyond your plan limit are charged per bag ($2.00 small / $3.50 large with advance notice). Rates are higher without notice.'],
+            ['Skip Credits', 'You may skip up to 2 pickups per quarter for a bill credit. Submit skip requests by 5:00 PM the day before your pickup.'],
+            ['Cancellation', 'Month-to-month service — no long-term contract. Cancel any time by contacting Suntosh.'],
+            ['Items Not Accepted', 'No hazardous waste, chemicals, paints, oils, explosives, firearms, or medical waste. Contact us for large bulky items not listed in the portal.'],
+            ['Payment', `Preferred payment: ${(customer as any).payment_method || 'to be confirmed'}. Payment is due by the 1st of each month. Late payments may result in service suspension.`],
+          ] as [string,string][]).map(([heading, body]) => (
+            <div key={heading} style={{ marginBottom:'1rem', paddingBottom:'1rem', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ fontSize:'0.72rem', fontWeight:700, letterSpacing:'0.09em', textTransform:'uppercase', color:'rgba(255,255,255,0.55)', marginBottom:'0.3rem' }}>{heading}</div>
+              <p style={{ fontSize:'0.88rem', color:'rgba(255,255,255,0.85)', lineHeight:1.65, margin:0 }}>{body}</p>
+            </div>
+          ))}
+        </div>
+        <div style={{ background:'rgba(46,125,50,0.1)', border:'1px solid rgba(46,125,50,0.3)', borderRadius:'8px', padding:'1rem 1.25rem', marginBottom:'1.25rem', fontSize:'0.85rem', color:'rgba(255,255,255,0.8)' }}>
+          By clicking Accept, <strong style={{ color:'#fff' }}>{customer.first_name} {customer.last_name}</strong>, you agree to the Patil Waste Removal service agreement and authorize billing as described above.
+        </div>
+        <div style={{ display:'flex', gap:'0.75rem' }}>
+          <button onClick={logout} style={{ flex:1, background:'transparent', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.55)', borderRadius:'8px', padding:'0.85rem', cursor:'pointer', fontFamily:'inherit', fontSize:'0.9rem' }}>Decline</button>
+          <button onClick={acceptContract} disabled={contractAccepting} style={{ flex:2, background:'#2e7d32', color:'#fff', border:'none', borderRadius:'8px', padding:'0.85rem', cursor:'pointer', fontFamily:'Bebas Neue, sans-serif', fontSize:'1.1rem', letterSpacing:'0.05em', opacity:contractAccepting?0.7:1 }}>
+            {contractAccepting ? 'Processing…' : '✅ I Accept — Activate My Account'}
+          </button>
+        </div>
+        <p style={{ textAlign:'center', fontSize:'0.75rem', color:'rgba(255,255,255,0.4)', marginTop:'0.75rem' }}>Questions? Call Suntosh at (802) 416-9484</p>
+      </div>
+    </main>
+  )
+
   // ── DASHBOARD ──
   if (!customer) return null
-  const activeSub = customer.subscriptions?.find(s => s.status === 'active')
-  const pickupDay = (activeSub as any)?.pickup_day || (customer as any).pickup_day || ''
   const skipsUsed = quarterSkipsUsed(skips)
   const skipsLeft = Math.max(0, 2 - skipsUsed)
 
@@ -371,7 +434,7 @@ export default function Portal() {
           <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.5rem', letterSpacing:'0.05em' }}>
             Hey, {customer.first_name} 👋
           </div>
-          <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)' }}>{customer.service_address}</div>
+          <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.6)' }}>{customer.service_address}</div>
         </div>
         <button style={btnGhost} onClick={logout}>Sign Out</button>
       </div>
@@ -406,7 +469,7 @@ export default function Portal() {
 
             {/* Plan card */}
             <div style={{ ...card, borderLeft:'3px solid #2e7d32' }}>
-              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Your Plan</div>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem' }}>Your Plan</div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px,1fr))', gap:'1rem' }}>
                 {[
                   ['Service', activeSub?.services?.name || '—'],
@@ -415,7 +478,7 @@ export default function Portal() {
                   ['Status', customer.status.charAt(0).toUpperCase() + customer.status.slice(1)],
                 ].map(([label, val]) => (
                   <div key={label}>
-                    <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.2rem' }}>{label}</div>
+                    <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.6)', marginBottom:'0.2rem' }}>{label}</div>
                     <div style={{ fontWeight:600, fontSize:'0.95rem' }}>{val}</div>
                   </div>
                 ))}
@@ -424,14 +487,14 @@ export default function Portal() {
 
             {/* Pickup info */}
             <div style={card}>
-              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Pickup Schedule</div>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem' }}>Pickup Schedule</div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
                 <div>
-                  <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.2rem' }}>Pickup Day</div>
+                  <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.6)', marginBottom:'0.2rem' }}>Pickup Day</div>
                   <div style={{ fontWeight:600, fontSize:'1rem', textTransform:'capitalize', color:'#fff' }}>{pickupDay || '—'}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.2rem' }}>Next Pickup</div>
+                  <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.6)', marginBottom:'0.2rem' }}>Next Pickup</div>
                   <div style={{ fontWeight:600, fontSize:'1rem', color:'#4caf50' }}>{nextPickupDate(pickupDay)}</div>
                 </div>
               </div>
@@ -443,10 +506,10 @@ export default function Portal() {
             {/* Bin rentals */}
             {bins.length > 0 && (
               <div style={card}>
-                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Bin Rentals</div>
+                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem' }}>Bin Rentals</div>
                 {bins.map((b: any) => (
                   <div key={b.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', paddingBottom:'0.6rem', marginBottom:'0.6rem', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-                    <span style={{ fontSize:'0.88rem' }}>{b.bin_type === 'trash' ? '🗑️ Trash Bin' : '♻️ Recycling Bin'} <span style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.78rem' }}>${b.monthly_fee}/mo</span></span>
+                    <span style={{ fontSize:'0.88rem' }}>{b.bin_type === 'trash' ? '🗑️ Trash Bin' : '♻️ Recycling Bin'} <span style={{ color:'rgba(255,255,255,0.6)', fontSize:'0.78rem' }}>${b.monthly_fee}/mo</span></span>
                     {b.bin_type === 'trash' && (
                       <span style={{ fontSize:'0.75rem', fontWeight:700, color: b.deposit_paid ? '#4caf50' : '#f59e0b', background: b.deposit_paid ? 'rgba(76,175,80,0.1)' : 'rgba(245,158,11,0.1)', padding:'0.2rem 0.6rem', borderRadius:'4px' }}>
                         {b.deposit_paid ? '✅ Deposit Paid' : '⚠️ Deposit Due ($25)'}
@@ -460,10 +523,10 @@ export default function Portal() {
             {/* Skip credits */}
             <div style={{ ...card, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'1rem' }}>
               <div>
-                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.4rem' }}>Skip Credits This Quarter</div>
+                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'0.4rem' }}>Skip Credits This Quarter</div>
                 <div style={{ fontSize:'0.9rem' }}>
                   <span style={{ fontSize:'1.4rem', fontWeight:700, color: skipsLeft > 0 ? '#4caf50' : '#f87171' }}>{skipsLeft}</span>
-                  <span style={{ color:'rgba(255,255,255,0.4)' }}> / 2 remaining</span>
+                  <span style={{ color:'rgba(255,255,255,0.6)' }}> / 2 remaining</span>
                 </div>
               </div>
               <button onClick={() => setTab('skips')} style={{ ...btnGhost, width:'auto' }}>Skip a Pickup →</button>
@@ -500,7 +563,7 @@ export default function Portal() {
                   const d = new Date(p.year, p.month - 1, 1)
                   return { year: d.getFullYear(), month: d.getMonth() }
                 })} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', color:'#fff', borderRadius:'6px', padding:'0.4rem 0.85rem', cursor:'pointer', fontSize:'1rem', fontFamily:'inherit' }}>‹</button>
-                <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.6rem', letterSpacing:'0.05em' }}>{MONTHS[month]} {year}</div>
+                <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.6rem', letterSpacing:'0.05em', color:'#fff' }}>{MONTHS[month]} {year}</div>
                 <button onClick={() => setCalMonth(p => {
                   const d = new Date(p.year, p.month + 1, 1)
                   return { year: d.getFullYear(), month: d.getMonth() }
@@ -527,7 +590,7 @@ export default function Portal() {
                 {/* Day headers */}
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
                   {DAYS_OF_WEEK.map(d => (
-                    <div key={d} style={{ padding:'0.6rem 0', textAlign:'center', fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'rgba(255,255,255,0.35)' }}>{d}</div>
+                    <div key={d} style={{ padding:'0.6rem 0', textAlign:'center', fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'rgba(255,255,255,0.55)' }}>{d}</div>
                   ))}
                 </div>
                 {/* Weeks */}
@@ -569,7 +632,7 @@ export default function Portal() {
                           opacity: isPast && !isToday ? 0.45 : 1,
                           transition:'opacity 0.15s',
                         }}>
-                          <div style={{ fontSize:'0.82rem', fontWeight: isToday ? 700 : 400, color: isToday ? '#fff' : 'rgba(255,255,255,0.7)', marginBottom:'0.2rem' }}>{day}</div>
+                          <div style={{ fontSize:'0.82rem', fontWeight: isToday ? 700 : 400, color: isToday ? '#fff' : 'rgba(255,255,255,0.9)', marginBottom:'0.2rem' }}>{day}</div>
                           {isPickupDay && !isCancelled && !isRescheduled && (
                             <div style={{ fontSize:'0.6rem', color:'#4caf50', fontWeight:700 }}>PICKUP</div>
                           )}
@@ -589,7 +652,7 @@ export default function Portal() {
                 return d && d.startsWith(`${year}-${String(month+1).padStart(2,'0')}`)
               }).length > 0 && (
                 <div style={card}>
-                  <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.75rem' }}>This Month's Notices</div>
+                  <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'0.75rem' }}>This Month's Notices</div>
                   {notices.filter((n:any) => {
                     const d = n.affected_date || n.notice_date
                     return d && d.startsWith(`${year}-${String(month+1).padStart(2,'0')}`)
@@ -598,7 +661,7 @@ export default function Portal() {
                       <div style={{ fontSize:'0.82rem', fontWeight:600, marginBottom:'0.2rem' }}>
                         {n.notice_type==='cancellation'?'❌':n.notice_type==='reschedule'?'🔄':'📢'} {n.message}
                       </div>
-                      {n.affected_date && <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.4)' }}>Affected: {new Date(n.affected_date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>}
+                      {n.affected_date && <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.6)' }}>Affected: {new Date(n.affected_date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>}
                       {n.replacement_date && <div style={{ fontSize:'0.75rem', color:'#fbbf24', marginTop:'0.15rem' }}>New pickup: {new Date(n.replacement_date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>}
                     </div>
                   ))}
@@ -607,9 +670,9 @@ export default function Portal() {
 
               {/* Upcoming pickups summary */}
               <div style={card}>
-                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.75rem' }}>Upcoming Pickups</div>
+                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'0.75rem' }}>Upcoming Pickups</div>
                 {pickupDayIndex === -1 ? (
-                  <p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.35)' }}>Pickup day not set yet — Suntosh will confirm when activating your account.</p>
+                  <p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.55)' }}>Pickup day not set yet — Suntosh will confirm when activating your account.</p>
                 ) : (() => {
                   const upcoming: string[] = []
                   const d = new Date()
@@ -705,7 +768,7 @@ export default function Portal() {
                       </div>
                     </div>
                   )}
-                  {catalog.length === 0 && <div style={card}><p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.3)' }}>No items available yet.</p></div>}
+                  {catalog.length === 0 && <div style={card}><p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.5)' }}>No items available yet.</p></div>}
                 </>
               )
             })()}
@@ -742,7 +805,7 @@ export default function Portal() {
             {/* Past addons */}
             {pickupAddons.length > 0 && (
               <div style={card}>
-                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.75rem' }}>Recent Requests</div>
+                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'0.75rem' }}>Recent Requests</div>
                 {pickupAddons.slice(0,5).map((a: any) => (
                   <div key={a.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.55rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.84rem' }}>
                     <span style={{ color:'rgba(255,255,255,0.7)' }}>{a.custom_description || a.catalog_item_id}</span>
@@ -807,7 +870,7 @@ export default function Portal() {
         {tab === 'skips' && (
           <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
             <div style={{ ...card, borderLeft:`3px solid ${skipsLeft > 0 ? '#2e7d32' : '#dc2626'}` }}>
-              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.75rem' }}>This Quarter</div>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'0.75rem' }}>This Quarter</div>
               <div style={{ fontSize:'2rem', fontWeight:700, color: skipsLeft > 0 ? '#4caf50' : '#f87171' }}>{skipsLeft} skip{skipsLeft !== 1 ? 's' : ''} remaining</div>
               <p style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.45)', marginTop:'0.4rem' }}>
                 You get 2 refundable skip credits per quarter. Credits appear as a deduction on your next bill.
@@ -816,10 +879,10 @@ export default function Portal() {
 
             {skipsLeft > 0 && (
               <div style={card}>
-                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Request a Skip</div>
+                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem' }}>Request a Skip</div>
                 <label style={{ display:'block', fontSize:'0.78rem', color:'rgba(255,255,255,0.5)', marginBottom:'0.4rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Which pickup date to skip?</label>
                 <input type="date" value={skipDate} onChange={e => setSkipDate(e.target.value)} style={{ ...inputStyle, marginBottom:'1rem', width:'auto' }} />
-                <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.4)', marginBottom:'1.25rem' }}>
+                <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.6)', marginBottom:'1.25rem' }}>
                   Estimated credit: <strong style={{ color:'#4caf50' }}>${activeSub ? ((activeSub.rate / 4.33)).toFixed(2) : '—'}</strong> on your next bill
                 </div>
                 <button onClick={handleSkipPickup} style={{ ...btnGreen, width:'auto', padding:'0.65rem 1.5rem' }}>Submit Skip Request</button>
@@ -828,7 +891,7 @@ export default function Portal() {
 
             {skips.length > 0 && (
               <div style={card}>
-                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Skip History</div>
+                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem' }}>Skip History</div>
                 {skips.map((sk: any) => (
                   <div key={sk.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.65rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.85rem' }}>
                     <span>{new Date(sk.skip_date).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })}</span>
@@ -859,7 +922,7 @@ export default function Portal() {
                         {current.status === 'overdue' ? '⚠️ Payment Overdue' : '📄 Invoice Due'}
                       </div>
                       <div style={{ fontSize:'1.8rem', fontWeight:700, color:'#fff' }}>${Number(current.total).toFixed(2)}</div>
-                      <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.4)', marginTop:'0.2rem' }}>Due {current.due_date} · Period {current.period_start} – {current.period_end}</div>
+                      <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.6)', marginTop:'0.2rem' }}>Due {current.due_date} · Period {current.period_start} – {current.period_end}</div>
                     </div>
                     {(customer as any).auto_pay && (customer as any).stripe_payment_method_id ? (
                       <div style={{ background:'rgba(46,125,50,0.1)', border:'1px solid rgba(46,125,50,0.3)', borderRadius:'6px', padding:'0.4rem 0.8rem', fontSize:'0.75rem', color:'#4caf50', fontWeight:700 }}>✅ Auto-pay on</div>
@@ -868,7 +931,7 @@ export default function Portal() {
                     )}
                   </div>
                   {current.notes && (
-                    <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)', borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:'0.6rem', marginTop:'0.25rem' }}>{current.notes}</div>
+                    <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.6)', borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:'0.6rem', marginTop:'0.25rem' }}>{current.notes}</div>
                   )}
                 </div>
               )
@@ -876,14 +939,14 @@ export default function Portal() {
 
             {/* Auto-pay card setup */}
             <div style={card}>
-              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Auto-Pay</div>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem' }}>Auto-Pay</div>
               {(customer as any).auto_pay && (customer as any).stripe_payment_method_id ? (
                 <div>
                   <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.5rem' }}>
                     <span style={{ fontSize:'1.2rem' }}>💳</span>
                     <span style={{ fontSize:'0.9rem', fontWeight:600 }}>Card saved — auto-pay enabled</span>
                   </div>
-                  <p style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.4)' }}>Your card will be charged automatically on the 1st of each month. To update your card, contact Suntosh.</p>
+                  <p style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.6)' }}>Your card will be charged automatically on the 1st of each month. To update your card, contact Suntosh.</p>
                 </div>
               ) : cardSaved ? (
                 <div style={{ color:'#4caf50', fontSize:'0.9rem', fontWeight:600 }}>✅ Card saved! Auto-pay is now enabled.</div>
@@ -902,14 +965,14 @@ export default function Portal() {
                   }} style={{ ...btnGreen, width:'auto', padding:'0.65rem 1.5rem' }} disabled={cardSaving}>
                     {cardSaving ? 'Loading…' : '💳 Save a Card'}
                   </button>
-                  <p style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.3)', marginTop:'0.5rem' }}>Secured by Stripe. We never store your card details.</p>
+                  <p style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.5)', marginTop:'0.5rem' }}>Secured by Stripe. We never store your card details.</p>
                 </div>
               )}
             </div>
 
             {/* Monthly breakdown */}
             <div style={card}>
-              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Monthly Charges</div>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem' }}>Monthly Charges</div>
               {activeSub && (
                 <div style={{ display:'flex', justifyContent:'space-between', padding:'0.5rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.88rem' }}>
                   <span>{activeSub.services?.name}</span><span>${activeSub.rate}/mo</span>
@@ -934,12 +997,12 @@ export default function Portal() {
             {/* Invoice history */}
             {invoices.length > 0 && (
               <div style={card}>
-                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Invoice History</div>
+                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem' }}>Invoice History</div>
                 {invoices.map((inv: any) => (
                   <div key={inv.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.6rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.85rem' }}>
                     <div>
                       <div style={{ fontWeight:500 }}>{inv.period_start} – {inv.period_end}</div>
-                      <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.4)' }}>Due {inv.due_date}</div>
+                      <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.6)' }}>Due {inv.due_date}</div>
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
                       <span style={{ fontWeight:600 }}>${Number(inv.total).toFixed(2)}</span>
@@ -953,7 +1016,7 @@ export default function Portal() {
               </div>
             )}
 
-            <div style={{ background:'rgba(255,255,255,0.02)', borderRadius:'8px', padding:'1rem 1.25rem', fontSize:'0.82rem', color:'rgba(255,255,255,0.4)' }}>
+            <div style={{ background:'rgba(255,255,255,0.02)', borderRadius:'8px', padding:'1rem 1.25rem', fontSize:'0.82rem', color:'rgba(255,255,255,0.6)' }}>
               Questions about your bill? Call or text Suntosh at <a href="tel:8024169484" style={{ color:'#4caf50' }}>(802) 416-9484</a> or email <a href="mailto:patilwasteremoval@gmail.com" style={{ color:'#4caf50' }}>patilwasteremoval@gmail.com</a>
             </div>
           </div>
@@ -980,14 +1043,14 @@ export default function Portal() {
                         <input type="radio" value="next_month" checked={addTiming==='next_month'} onChange={() => setAddTiming('next_month')} style={{ accentColor:'#2e7d32', marginTop:'2px' }} />
                         <div>
                           <div style={{ fontWeight:600, fontSize:'0.88rem' }}>Next billing cycle</div>
-                          <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)' }}>Starts at your next billing date — no extra charge</div>
+                          <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.6)' }}>Starts at your next billing date — no extra charge</div>
                         </div>
                       </label>
                       <label style={{ display:'flex', alignItems:'flex-start', gap:'0.75rem', cursor:'pointer', background:'rgba(255,255,255,0.03)', border:`1px solid ${addTiming==='immediate'?'rgba(46,125,50,0.5)':'rgba(255,255,255,0.08)'}`, borderRadius:'7px', padding:'0.85rem' }}>
                         <input type="radio" value="immediate" checked={addTiming==='immediate'} onChange={() => setAddTiming('immediate')} style={{ accentColor:'#2e7d32', marginTop:'2px' }} />
                         <div>
                           <div style={{ fontWeight:600, fontSize:'0.88rem' }}>Start immediately</div>
-                          <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)' }}>Prorated charge of <strong style={{ color:'#fff' }}>${prorateDays(svc.base_price_monthly)}</strong> added to next bill</div>
+                          <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.6)' }}>Prorated charge of <strong style={{ color:'#fff' }}>${prorateDays(svc.base_price_monthly)}</strong> added to next bill</div>
                         </div>
                       </label>
                     </div>
