@@ -16,7 +16,12 @@ async function sb(path: string, opts: { method?: string; body?: object; prefer?:
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   })
   const txt = await res.text()
-  return txt ? JSON.parse(txt) : null
+  const data = txt ? JSON.parse(txt) : null
+  if (!res.ok) {
+    const msg = data?.message || data?.error || `HTTP ${res.status}`
+    throw new Error(msg)
+  }
+  return data
 }
 
 function Badge({ status }: { status: string }) {
@@ -115,7 +120,7 @@ export default function Admin() {
       setShowAddModal(false)
       setAddData({ ...BLANK_CUSTOMER })
       loadAll()
-    } catch { showToast('Error adding customer', 'error') }
+    } catch (e: unknown) { showToast('Error: ' + (e instanceof Error ? e.message : 'Unknown error'), 'error') }
   }
 
   async function deleteCustomer() {
