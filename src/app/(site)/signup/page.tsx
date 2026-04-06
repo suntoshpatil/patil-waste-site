@@ -140,7 +140,7 @@ export default function Signup() {
                 Need junk removal or a yard cleanup? <a href="/junk-removal" style={{ color: "#4caf50" }}>Request a quote here instead →</a>
               </p>
 
-              <div className="f-grp"><label>Requested Start Date</label><input name="startDate" type="date" {...inp} /></div>
+              <div className="f-grp"><label>Requested Start Week</label><input name="startDate" type="week" {...inp} /></div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div className="f-grp">
