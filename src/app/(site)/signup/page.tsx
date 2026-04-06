@@ -40,7 +40,8 @@ export default function Signup() {
                             : rentTrashVal ? "Bin rental: Trash bin"
                             : rentRecyclingVal ? "Bin rental: Recycling bin"
                             : ""
-    const notes             = [extra_notes, referral ? `Referred by: ${referral}` : "", `Plan: ${plan} · Billing: ${billing_cycle}`, binRentalNote].filter(Boolean).join(" | ")
+    const startWeekLabel    = start_date ? `Requested start week: ${new Date(start_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${new Date(new Date(start_date+'T12:00:00').getTime()+6*86400000).toLocaleDateString('en-US',{month:'short',day:'numeric'})}` : ""
+    const notes             = [extra_notes, referral ? `Referred by: ${referral}` : "", `Plan: ${plan} · Billing: ${billing_cycle}`, binRentalNote, startWeekLabel].filter(Boolean).join(" | ")
 
     if (!first_name || !email || !service_address || !town || !plan) {
       setErr("Please fill in all required fields."); return

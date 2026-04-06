@@ -946,6 +946,8 @@ export default function Admin() {
                   const binDisplay = binNote || (onboardCustomer.bin_situation === 'rental' ? 'Rental (check notes)' : cap(onboardCustomer.bin_situation))
                   // Parse requested start week from notes
                   const startWeek = notes.split('|').map((s:string)=>s.trim()).find((s:string)=>s.startsWith('202') || s.includes('Week'))
+                  // Parse requested start week from notes
+                  const startWeekNote = notes.split('|').map((s:string)=>s.trim()).find((s:string)=>s.startsWith('Requested start week'))
                   return [
                     ['Address', onboardCustomer.service_address],
                     ['Town', cap(onboardCustomer.town)],
@@ -953,6 +955,7 @@ export default function Admin() {
                     ['Payment', cap(onboardCustomer.payment_method)],
                     ['Bins Requested', binDisplay],
                     ['Garage Pickup', onboardCustomer.garage_side_pickup ? '✅ Yes' : 'No'],
+                    ['Requested Start', startWeekNote ? startWeekNote.replace('Requested start week: ','') : '—'],
                   ] as [string,any][]
                 })().map(([label, val]) => (
                   <div key={label}>
@@ -969,15 +972,48 @@ export default function Admin() {
             </div>
 
             {/* Step 1: Assign pickup day */}
-            <div style={{ marginBottom:'1.1rem' }}>
+            <div style={{ marginBottom:'1.1rem', paddingBottom:'1.1rem', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
               <label style={{ display:'block', fontSize:'0.75rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.4rem' }}>Pickup Day *</label>
-              <select value={onboardData.pickup_day} onChange={e=>setOnboardData(p=>({...p, pickup_day:e.target.value}))}
+              <select value={onboardData.pickup_day} onChange={e => {
+                const day = e.target.value
+                setOnboardData(p => {
+                  // Auto-calculate first pickup date in requested week
+                  const notes = onboardCustomer?.notes || ''
+                  const startWeekNote = notes.split('|').map((s:string) => s.trim()).find((s:string) => s.startsWith('Requested start week'))
+                  // Try to get the Monday of requested week from start_date field or notes
+                  let firstPickup = ''
+                  if (day) {
+                    const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+                    const targetDay = DAYS.indexOf(day)
+                    // Use customer start_date (Monday of week) as base, or today
+                    const base = (onboardCustomer as any).start_date
+                      ? new Date((onboardCustomer as any).start_date + 'T12:00:00')
+                      : new Date()
+                    // Find the occurrence of targetDay in that week (Mon-Sun)
+                    const baseDay = base.getDay() // 0=Sun
+                    // Get Monday of that week
+                    const monday = new Date(base)
+                    monday.setDate(base.getDate() - ((baseDay === 0 ? 7 : baseDay) - 1))
+                    // Find the target day within Mon-Sun of that week
+                    const diff = (targetDay === 0 ? 7 : targetDay) - 1 // days from Monday
+                    const pickup = new Date(monday)
+                    pickup.setDate(monday.getDate() + diff)
+                    firstPickup = pickup.toISOString().split('T')[0]
+                  }
+                  return { ...p, pickup_day: day, start_date: firstPickup }
+                })
+              }}
                 style={{ width:'100%', background:'#111', border:`1px solid ${onboardData.pickup_day ? 'rgba(46,125,50,0.5)' : 'rgba(255,255,255,0.15)'}`, borderRadius:'6px', padding:'0.65rem 0.85rem', color:'#fff', fontSize:'0.9rem', fontFamily:'inherit' }}>
                 <option value=''>— Select pickup day —</option>
                 {['monday','tuesday','wednesday','thursday','friday'].map(d => (
                   <option key={d} value={d}>{d.charAt(0).toUpperCase()+d.slice(1)}</option>
                 ))}
               </select>
+              {onboardData.pickup_day && onboardData.start_date && (
+                <div style={{ marginTop:'0.5rem', fontSize:'0.82rem', color:'#4caf50', fontWeight:600 }}>
+                  📅 First pickup: {new Date(onboardData.start_date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+                </div>
+              )}
             </div>
 
             {/* Step 2: Service Plan */}
