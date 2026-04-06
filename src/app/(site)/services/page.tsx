@@ -68,7 +68,7 @@ export default function Services() {
                 <div key={title} style={{background:'var(--cream)',borderRadius:'6px',padding:'1.5rem',border:'1px solid var(--border-light)'}}>
                   <div className="d3" style={{marginBottom:'0.4rem'}}>{title}</div>
                   <p style={{fontSize:'0.82rem',color:'var(--gray)',lineHeight:1.6}}>{desc}</p>
-                  <Link href="/contact" className="btn btn-green" style={{display:'inline-block',marginTop:'1rem',fontSize:'0.72rem'}}>Get a Quote</Link>
+                  <Link href="/junk-removal" className="btn btn-green" style={{display:'inline-block',marginTop:'1rem',fontSize:'0.72rem'}}>Get a Quote</Link>
                 </div>
               ))}
             </div>
