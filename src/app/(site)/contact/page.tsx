@@ -11,7 +11,27 @@ export default function Contact() {
     const data = { firstName:(form.fn as any).value, lastName:(form.ln as any).value, phone:(form.ph as any).value, email:(form.em as any).value, message:(form.msg as any).value }
     if (!data.firstName || !data.email || !data.message) { setErr("Please fill in your name, email, and message."); return }
     setErr("")
-    fetch("https://patil-waste-backend.onrender.com/api/contact", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data) }).catch(()=>{})
+    // Save contact submission to Supabase
+    try {
+      await fetch("https://kmvwwxlwzacxvtlqugws.supabase.co/rest/v1/job_requests", {
+        method: "POST",
+        headers: {
+          "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imttdnd3eGx3emFjeHZ0bHF1Z3dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNDMxOTMsImV4cCI6MjA5MDkxOTE5M30.TELT8SLAI2CJOQ2BJQq_3FyKzCkOKoT1lxmJIhrqMhQ",
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imttdnd3eGx3emFjeHZ0bHF1Z3dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNDMxOTMsImV4cCI6MjA5MDkxOTE5M30.TELT8SLAI2CJOQ2BJQq_3FyKzCkOKoT1lxmJIhrqMhQ",
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal",
+        },
+        body: JSON.stringify({
+          name: `${data.firstName} ${data.lastName}`.trim(),
+          email: data.email,
+          phone: data.phone || null,
+          address: "",
+          job_type: "inquiry",
+          description: data.message,
+          status: "new",
+        }),
+      })
+    } catch {}
     setSent(true)
   }
   return (
