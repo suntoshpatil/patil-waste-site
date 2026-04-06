@@ -409,7 +409,7 @@ export default function Portal() {
   }
 
   // ── STYLES ──
-  const card = { background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'10px', padding:'1.5rem' }
+  const card = { background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', padding:'1.5rem', color:'#fff' }
   const inputStyle = { width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'8px', padding:'0.75rem 1rem', color:'#fff', fontSize:'0.95rem', boxSizing:'border-box' as const, outline:'none' }
   const btnGreen = { background:'#2e7d32', color:'#fff', border:'none', borderRadius:'8px', padding:'0.75rem 1.5rem', fontSize:'0.9rem', fontWeight:700, cursor:'pointer', width:'100%', fontFamily:'inherit' }
   const btnGhost = { background:'transparent', color:'rgba(255,255,255,0.5)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', padding:'0.6rem 1.2rem', fontSize:'0.85rem', cursor:'pointer', fontFamily:'inherit' }
@@ -682,7 +682,7 @@ export default function Portal() {
                   ['Status', customer.status.charAt(0).toUpperCase() + customer.status.slice(1)],
                 ].map(([label, val]) => (
                   <div key={label}>
-                    <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.6)', marginBottom:'0.2rem' }}>{label}</div>
+                    <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.65)', marginBottom:'0.2rem' }}>{label}</div>
                     <div style={{ fontWeight:600, fontSize:'0.95rem' }}>{val}</div>
                   </div>
                 ))}
@@ -694,11 +694,11 @@ export default function Portal() {
               <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem' }}>Pickup Schedule</div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
                 <div>
-                  <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.6)', marginBottom:'0.2rem' }}>Pickup Day</div>
+                  <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.65)', marginBottom:'0.2rem' }}>Pickup Day</div>
                   <div style={{ fontWeight:600, fontSize:'1rem', textTransform:'capitalize', color:'#fff' }}>{pickupDay || '—'}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.6)', marginBottom:'0.2rem' }}>Next Pickup</div>
+                  <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.65)', marginBottom:'0.2rem' }}>Next Pickup</div>
                   <div style={{ fontWeight:600, fontSize:'1rem', color:'#4caf50' }}>{nextPickupDate(pickupDay, (activeSub as any)?.billing_start)}</div>
                 </div>
               </div>
@@ -1147,7 +1147,7 @@ export default function Portal() {
                     )}
                   </div>
                   {current.notes && (
-                    <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.6)', borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:'0.6rem', marginTop:'0.25rem' }}>{current.notes}</div>
+                    <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.75)', borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:'0.6rem', marginTop:'0.25rem' }}>{current.notes}</div>
                   )}
                 </div>
               )
@@ -1160,7 +1160,7 @@ export default function Portal() {
                 <div>
                   <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.5rem' }}>
                     <span style={{ fontSize:'1.2rem' }}>💳</span>
-                    <span style={{ fontSize:'0.9rem', fontWeight:600 }}>Card saved — auto-pay enabled</span>
+                    <span style={{ fontSize:'0.9rem', fontWeight:600, color:'#fff' }}>Card saved — auto-pay enabled</span>
                   </div>
                   <p style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.6)' }}>Your card will be charged automatically on the 1st of each month. To update your card, contact Suntosh.</p>
                 </div>
@@ -1191,21 +1191,21 @@ export default function Portal() {
               <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem' }}>Monthly Charges</div>
               {activeSub && (
                 <div style={{ display:'flex', justifyContent:'space-between', padding:'0.5rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.88rem' }}>
-                  <span>{activeSub.services?.name}</span><span>${activeSub.rate}/mo</span>
+                  <span style={{ color:'#fff' }}>{activeSub.services?.name}</span><span style={{ color:'rgba(255,255,255,0.85)' }}>${activeSub.rate}/mo</span>
                 </div>
               )}
               {bins.map((b: any) => (
                 <div key={b.id} style={{ display:'flex', justifyContent:'space-between', padding:'0.5rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.88rem' }}>
-                  <span>{b.bin_type === 'trash' ? 'Trash Bin Rental' : 'Recycling Bin Rental'}</span><span>${b.monthly_rental_fee}/mo</span>
+                  <span style={{ color:'#fff' }}>{b.bin_type === 'trash' ? 'Trash Bin Rental' : 'Recycling Bin Rental'}</span><span style={{ color:'rgba(255,255,255,0.85)' }}>${b.monthly_rental_fee}/mo</span>
                 </div>
               ))}
               {customer.garage_side_pickup && (
                 <div style={{ display:'flex', justifyContent:'space-between', padding:'0.5rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.88rem' }}>
-                  <span>Garage-Side Pickup</span><span>$10/mo</span>
+                  <span style={{ color:'#fff' }}>Garage-Side Pickup</span><span style={{ color:'rgba(255,255,255,0.85)' }}>$10/mo</span>
                 </div>
               )}
               <div style={{ display:'flex', justifyContent:'space-between', padding:'0.75rem 0', fontWeight:700, fontSize:'1rem' }}>
-                <span>Monthly Total</span>
+                <span style={{ color:'#fff' }}>Monthly Total</span>
                 <span style={{ color:'#4caf50' }}>${((activeSub?.rate||0) + bins.reduce((s:number,b:any)=>s+Number(b.monthly_rental_fee),0) + (customer.garage_side_pickup?10:0)).toFixed(2)}/mo</span>
               </div>
             </div>
@@ -1217,11 +1217,11 @@ export default function Portal() {
                 {invoices.map((inv: any) => (
                   <div key={inv.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.6rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.85rem' }}>
                     <div>
-                      <div style={{ fontWeight:500 }}>{inv.period_start} – {inv.period_end}</div>
-                      <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.6)' }}>Due {inv.due_date}</div>
+                      <div style={{ fontWeight:500, color:'#fff' }}>{inv.period_start} – {inv.period_end}</div>
+                      <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.65)' }}>Due {inv.due_date}</div>
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
-                      <span style={{ fontWeight:600 }}>${Number(inv.total).toFixed(2)}</span>
+                      <span style={{ fontWeight:600, color:'#fff' }}>${Number(inv.total).toFixed(2)}</span>
                       <span style={{ fontSize:'0.72rem', fontWeight:700, textTransform:'uppercase', padding:'0.15rem 0.5rem', borderRadius:'4px',
                         color: inv.status==='paid'?'#4caf50': inv.status==='overdue'?'#f87171':'#f59e0b',
                         background: inv.status==='paid'?'rgba(76,175,80,0.1)': inv.status==='overdue'?'rgba(248,113,113,0.1)':'rgba(245,158,11,0.1)'
@@ -1232,7 +1232,7 @@ export default function Portal() {
               </div>
             )}
 
-            <div style={{ background:'rgba(255,255,255,0.02)', borderRadius:'8px', padding:'1rem 1.25rem', fontSize:'0.82rem', color:'rgba(255,255,255,0.6)' }}>
+            <div style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'8px', padding:'1rem 1.25rem', fontSize:'0.82rem', color:'rgba(255,255,255,0.75)' }}>
               Questions about your bill? Call or text Suntosh at <a href="tel:8024169484" style={{ color:'#4caf50' }}>(802) 416-9484</a> or email <a href="mailto:patilwasteremoval@gmail.com" style={{ color:'#4caf50' }}>patilwasteremoval@gmail.com</a>
             </div>
           </div>
@@ -1284,7 +1284,7 @@ export default function Portal() {
 
       {/* Toast */}
       {toast && (
-        <div style={{ position:'fixed', bottom:'1.5rem', right:'1.5rem', background:'#1a1a1a', border:`1px solid ${toastType==='error'?'#dc2626':'#2e7d32'}`, borderRadius:'8px', padding:'0.85rem 1.25rem', fontSize:'0.84rem', zIndex:2000, maxWidth:'320px', boxShadow:'0 8px 32px rgba(0,0,0,0.5)' }}>
+        <div style={{ position:'fixed', bottom:'1.5rem', right:'1.5rem', background:'#1a1a1a', border:`1px solid ${toastType==='error'?'#dc2626':'#2e7d32'}`, borderRadius:'8px', padding:'0.85rem 1.25rem', fontSize:'0.84rem', zIndex:2000, maxWidth:'320px', boxShadow:'0 8px 32px rgba(0,0,0,0.5)', color:'#fff' }}>
           {toastType === 'error' ? '❌' : '✅'} {toast}
         </div>
       )}
