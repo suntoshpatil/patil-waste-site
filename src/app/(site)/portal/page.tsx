@@ -146,7 +146,7 @@ export default function Portal() {
     if (!email) { setError('Please enter your email address.'); return }
     setLoading(true); setError('')
     try {
-      const results = await sb(`customers?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,services(id,name))`)
+      const results = await sb(`customers?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,services(id,name))`)
       if (!results || results.length === 0) { setError('No account found with that email. Make sure you used the same email you signed up with.'); setLoading(false); return }
       const cust = results[0]
       if (!cust.portal_pin) {
