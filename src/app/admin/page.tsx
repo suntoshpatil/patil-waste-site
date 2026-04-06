@@ -94,6 +94,10 @@ export default function Admin() {
   const [onboardData, setOnboardData] = useState({ pickup_day:'', start_date:'', notes:'' })
   const [onboardServiceId, setOnboardServiceId] = useState('')
   const [onboardBillingCycle, setOnboardBillingCycle] = useState('monthly')
+  const [onboardGarage, setOnboardGarage] = useState(false)
+  const [onboardGarageSenior, setOnboardGarageSenior] = useState(false)
+  const [onboardTrashBin, setOnboardTrashBin] = useState(false)
+  const [onboardRecyclingBin, setOnboardRecyclingBin] = useState(false)
   const [addTrashBin, setAddTrashBin] = useState(false)
   const [addRecyclingBin, setAddRecyclingBin] = useState(false)
   const [selectedBins, setSelectedBins] = useState<any[]>([])
@@ -228,6 +232,7 @@ export default function Admin() {
         method: 'PATCH',
         body: {
           status: 'contract_pending',
+          garage_side_pickup: onboardGarage || onboardGarageSenior,
           notes: onboardData.notes || onboardCustomer.notes || null,
         },
         prefer: 'return=minimal',
@@ -250,11 +255,22 @@ export default function Admin() {
           }})
         }
       }
+      // Create bin rentals if selected
+      if (onboardTrashBin) {
+        await sb('bins', { method:'POST', body:{ customer_id:onboardCustomer.id, bin_type:'trash', monthly_fee:7.99, deposit_amount:25.00, deposit_paid:false, status:'active' }})
+      }
+      if (onboardRecyclingBin) {
+        await sb('bins', { method:'POST', body:{ customer_id:onboardCustomer.id, bin_type:'recycling', monthly_fee:3.99, deposit_amount:0, deposit_paid:true, status:'active' }})
+      }
       showToast(`Contract sent to ${onboardCustomer.first_name}! Awaiting their acceptance. ✅`)
       setOnboardCustomer(null)
       setOnboardData({ pickup_day:'', start_date:'', notes:'' })
       setOnboardServiceId('')
       setOnboardBillingCycle('monthly')
+      setOnboardGarage(false)
+      setOnboardGarageSenior(false)
+      setOnboardTrashBin(false)
+      setOnboardRecyclingBin(false)
       loadAll()
     } catch (e: any) { showToast('Error: ' + e.message, 'error') }
   }
@@ -950,18 +966,18 @@ export default function Admin() {
               </select>
             </div>
 
-            {/* Step 2: Confirm or assign plan */}
-            <div style={{ marginBottom:'1.1rem' }}>
+            {/* Step 2: Service Plan */}
+            <div style={{ marginBottom:'1.1rem', paddingBottom:'1.1rem', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
               <label style={{ display:'block', fontSize:'0.75rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.4rem' }}>Service Plan</label>
               <select value={onboardServiceId} onChange={e=>setOnboardServiceId(e.target.value)}
                 style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'6px', padding:'0.65rem 0.85rem', color:'#fff', fontSize:'0.9rem', fontFamily:'inherit' }}>
                 <option value=''>— None / add later —</option>
-                {servicesList.map((s:any) => (
+                {servicesList.filter((s:any) => s.type === 'recurring' || !s.type).map((s:any) => (
                   <option key={s.id} value={s.id}>{s.name} (${s.base_price_monthly}/mo)</option>
                 ))}
               </select>
               {onboardServiceId && (
-                <div style={{ marginTop:'0.5rem', display:'flex', gap:'1rem' }}>
+                <div style={{ marginTop:'0.6rem', display:'flex', gap:'1rem' }}>
                   {['monthly','quarterly'].map(cycle => (
                     <label key={cycle} style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.7)' }}>
                       <input type='radio' value={cycle} checked={onboardBillingCycle===cycle} onChange={()=>setOnboardBillingCycle(cycle)} style={{ accentColor:'#2e7d32' }} />
@@ -972,7 +988,43 @@ export default function Admin() {
               )}
             </div>
 
-            {/* Step 3: Start date */}
+            {/* Step 3: Add-ons */}
+            <div style={{ marginBottom:'1.1rem', paddingBottom:'1.1rem', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.6rem' }}>Add-Ons</label>
+              <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
+                {/* Garage pickup */}
+                <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', padding:'0.65rem 0.85rem' }}>
+                  <div style={{ fontSize:'0.78rem', fontWeight:600, color:'rgba(255,255,255,0.6)', marginBottom:'0.4rem', textTransform:'uppercase', letterSpacing:'0.06em' }}>🏠 Garage-Side Pickup</div>
+                  <div style={{ display:'flex', gap:'1.5rem' }}>
+                    <label style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.75)' }}>
+                      <input type='checkbox' checked={onboardGarage} onChange={e=>{ setOnboardGarage(e.target.checked); if(e.target.checked) setOnboardGarageSenior(false) }} style={{ accentColor:'#2e7d32' }} />
+                      Standard — $10/mo
+                    </label>
+                    <label style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.75)' }}>
+                      <input type='checkbox' checked={onboardGarageSenior} onChange={e=>{ setOnboardGarageSenior(e.target.checked); if(e.target.checked) setOnboardGarage(false) }} style={{ accentColor:'#2e7d32' }} />
+                      Senior 65+ — $5/mo
+                    </label>
+                  </div>
+                </div>
+                {/* Bin rentals */}
+                <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', padding:'0.65rem 0.85rem' }}>
+                  <div style={{ fontSize:'0.78rem', fontWeight:600, color:'rgba(255,255,255,0.6)', marginBottom:'0.4rem', textTransform:'uppercase', letterSpacing:'0.06em' }}>🗑️ Bin Rentals</div>
+                  <div style={{ display:'flex', gap:'1.5rem' }}>
+                    <label style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.75)' }}>
+                      <input type='checkbox' checked={onboardTrashBin} onChange={e=>setOnboardTrashBin(e.target.checked)} style={{ accentColor:'#2e7d32' }} />
+                      Trash — $7.99/mo
+                    </label>
+                    <label style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.75)' }}>
+                      <input type='checkbox' checked={onboardRecyclingBin} onChange={e=>setOnboardRecyclingBin(e.target.checked)} style={{ accentColor:'#2e7d32' }} />
+                      Recycling — $3.99/mo
+                    </label>
+                  </div>
+                  {onboardTrashBin && <p style={{ fontSize:'0.75rem', color:'#f59e0b', marginTop:'0.4rem', marginBottom:0 }}>⚠️ $25 deposit required — mark as paid/unpaid in customer profile</p>}
+                </div>
+              </div>
+            </div>
+
+            {/* Step 4: Start date */}
             <div style={{ marginBottom:'1.1rem' }}>
               <label style={{ display:'block', fontSize:'0.75rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.4rem' }}>Start Date</label>
               <input type='date' value={onboardData.start_date} onChange={e=>setOnboardData(p=>({...p,start_date:e.target.value}))}
