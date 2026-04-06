@@ -765,6 +765,11 @@ export default function Portal() {
           for (const n of notices) {
             if (n.affected_date) noticeMap[n.affected_date] = n
           }
+          // Build skip map from customer's skip requests
+          const skipMap: Record<string, any> = {}
+          for (const sk of skips) {
+            if (sk.skip_date) skipMap[sk.skip_date] = sk
+          }
 
           const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({length: daysInMonth}, (_, i) => i + 1)]
           while (cells.length % 7 !== 0) cells.push(null)
@@ -792,7 +797,8 @@ export default function Portal() {
                 {[
                   ['#2e7d32','rgba(46,125,50,0.15)','Pickup Day'],
                   ['#f59e0b','rgba(245,158,11,0.15)','Rescheduled'],
-                  ['#dc2626','rgba(220,38,38,0.12)','Cancelled'],
+                  ['#dc2626','rgba(220,38,38,0.12)','Cancelled / Skipped'],
+                  ['#818cf8','rgba(99,102,241,0.12)','Skip Pending'],
                   ['rgba(255,255,255,0.15)','rgba(255,255,255,0.04)','Today'],
                 ].map(([border, bg, label]) => (
                   <div key={label} style={{ display:'flex', alignItems:'center', gap:'0.4rem', fontSize:'0.75rem', color:'rgba(255,255,255,0.5)' }}>
@@ -822,6 +828,9 @@ export default function Portal() {
                       const notice = noticeMap[dateStr]
                       const isCancelled = notice?.notice_type === 'cancellation'
                       const isRescheduled = notice?.notice_type === 'reschedule'
+                      const skipRequest = skipMap[dateStr]
+                      const isSkipped = !!skipRequest && skipRequest.status === 'approved'
+                      const isSkipPending = !!skipRequest && skipRequest.status === 'pending'
                       const isToday = dateStr === todayStr
                       const isPast = dateStr < todayStr
 
@@ -829,9 +838,10 @@ export default function Portal() {
                       let border = 'transparent'
                       let dotColor = ''
 
-                      if (isPickupDay && !isCancelled) { bg = 'rgba(46,125,50,0.15)'; border = '#2e7d32' }
-                      if (isCancelled) { bg = 'rgba(220,38,38,0.12)'; border = '#dc2626' }
+                      if (isPickupDay && !isCancelled && !isSkipped) { bg = 'rgba(46,125,50,0.15)'; border = '#2e7d32' }
+                      if (isCancelled || isSkipped) { bg = 'rgba(220,38,38,0.12)'; border = '#dc2626' }
                       if (isRescheduled) { bg = 'rgba(245,158,11,0.12)'; border = '#f59e0b' }
+                      if (isSkipPending) { bg = 'rgba(99,102,241,0.12)'; border = '#818cf8' }
                       if (isToday) { border = 'rgba(255,255,255,0.4)' }
 
                       // Check if this date is a replacement day
@@ -854,8 +864,9 @@ export default function Portal() {
                           {isPickupDay && !isCancelled && !isRescheduled && (
                             <div style={{ fontSize:'0.6rem', color:'#4caf50', fontWeight:700 }}>PICKUP</div>
                           )}
-                          {isCancelled && <div style={{ fontSize:'0.6rem', color:'#f87171', fontWeight:700 }}>CANCELLED</div>}
+                          {(isCancelled || isSkipped) && <div style={{ fontSize:'0.6rem', color:'#f87171', fontWeight:700 }}>{isSkipped ? 'SKIPPED' : 'CANCELLED'}</div>}
                           {isRescheduled && <div style={{ fontSize:'0.6rem', color:'#fbbf24', fontWeight:700 }}>MOVED</div>}
+                          {isSkipPending && <div style={{ fontSize:'0.6rem', color:'#a5b4fc', fontWeight:700 }}>SKIP?</div>}
                           {isReplacement && <div style={{ fontSize:'0.6rem', color:'#fbbf24', fontWeight:700 }}>NEW DAY</div>}
                         </div>
                       )
@@ -911,14 +922,19 @@ export default function Portal() {
                     const notice = noticeMap[ds]
                     const isCancelled = notice?.notice_type === 'cancellation'
                     const replacementDate = notice?.replacement_date
+                    const skipReq = skipMap[ds]
+                    const isSkipped = skipReq?.status === 'approved'
+                    const isSkipPending = skipReq?.status === 'pending'
                     return (
                       <div key={ds} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.55rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.85rem' }}>
-                        <span style={{ textDecoration: isCancelled ? 'line-through' : 'none', color: isCancelled ? 'rgba(255,255,255,0.35)' : '#fff' }}>
+                        <span style={{ textDecoration: (isCancelled || isSkipped) ? 'line-through' : 'none', color: (isCancelled || isSkipped) ? 'rgba(255,255,255,0.35)' : '#fff' }}>
                           {new Date(ds+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}
                         </span>
                         {isCancelled && !replacementDate && <span style={{ fontSize:'0.72rem', color:'#f87171', fontWeight:700 }}>CANCELLED</span>}
+                        {isSkipped && <span style={{ fontSize:'0.72rem', color:'#f87171', fontWeight:700 }}>SKIPPED ✓</span>}
+                        {isSkipPending && <span style={{ fontSize:'0.72rem', color:'#a5b4fc', fontWeight:700 }}>SKIP PENDING</span>}
                         {replacementDate && <span style={{ fontSize:'0.72rem', color:'#fbbf24', fontWeight:700 }}>→ {new Date(replacementDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>}
-                        {!notice && <span style={{ fontSize:'0.72rem', color:'#4caf50', fontWeight:700 }}>✓ On schedule</span>}
+                        {!notice && !skipReq && <span style={{ fontSize:'0.72rem', color:'#4caf50', fontWeight:700 }}>✓ On schedule</span>}
                       </div>
                     )
                   })
