@@ -34,29 +34,36 @@ export function calcInvoiceTotal(customer: any): {
     lines.push({ description: sub.services?.name || 'Service Plan', amount: Number(sub.rate) })
   }
 
-  // Bin rentals
+  // Bin rentals — always full monthly fee, never prorated after first month
+  // and skip credits do NOT apply to bin rentals
+  const binLines: { description: string; amount: number }[] = []
   for (const bin of customer.bins || []) {
-    if (bin.status === 'active') {
-      lines.push({
+    if (bin.ownership === 'rental') {
+      binLines.push({
         description: bin.bin_type === 'trash' ? 'Trash Bin Rental' : 'Recycling Bin Rental',
-        amount: Number(bin.monthly_fee),
+        amount: Number(bin.monthly_rental_fee || bin.monthly_fee || 0),
       })
     }
   }
 
-  // Garage-side pickup
+  // Garage-side pickup — also not affected by skip credits
+  const garageLines: { description: string; amount: number }[] = []
   if (customer.garage_side_pickup) {
-    lines.push({ description: 'Garage-Side Pickup', amount: 10.00 })
+    garageLines.push({ description: 'Garage-Side Pickup', amount: 10.00 })
   }
 
-  const subtotal = lines.reduce((sum, l) => sum + l.amount, 0)
+  const serviceSubtotal = lines.reduce((sum, l) => sum + l.amount, 0)
+  const binSubtotal = binLines.reduce((sum, l) => sum + l.amount, 0)
+  const garageSubtotal = garageLines.reduce((sum, l) => sum + l.amount, 0)
+  const subtotal = serviceSubtotal + binSubtotal + garageSubtotal
 
-  // Skip credits — approved skips from this billing period
+  // Skip credits only reduce the service portion, not bins or garage
   const skipCredit = (customer.skip_credits || 0)
+  const serviceAfterCredit = Math.max(0, serviceSubtotal - skipCredit)
+  const total = serviceAfterCredit + binSubtotal + garageSubtotal
 
-  const total = Math.max(0, subtotal - skipCredit)
-
-  return { lines, subtotal, skipCredit, total }
+  const allLines = [...lines, ...binLines, ...garageLines]
+  return { lines: allLines, subtotal, skipCredit, total }
 }
 
 // Format currency

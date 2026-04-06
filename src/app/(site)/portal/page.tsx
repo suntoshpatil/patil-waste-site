@@ -245,43 +245,53 @@ export default function Portal() {
         status: 'active',
       }, prefer:'return=minimal' })
 
-      // 2. Generate prorated first invoice
+      // 2. Generate prorated first invoice based on billing_start
       const sub = (customer as any).subscriptions?.[0]
       if (sub) {
         const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
-        const now = new Date()
-        const year = now.getFullYear()
-        const month = now.getMonth()
-
-        // Count total and remaining pickups this month
         const weekday = pickupDay ? DAYS.indexOf(pickupDay.toLowerCase()) : -1
-        const totalPickups = weekday !== -1 ? countWeekdayInMonth(year, month, weekday) : 4
-        const remainingPickups = weekday !== -1 ? countRemainingWeekdays(now, weekday) : 4
 
-        // Prorate: remaining pickups / total pickups * monthly rate
+        // Use billing_start as the reference point for proration (not today)
+        const billingStart = sub.billing_start
+          ? new Date(sub.billing_start + 'T12:00:00')
+          : new Date()
+        const year = billingStart.getFullYear()
+        const month = billingStart.getMonth()
+
+        // Total pickups in the billing month
+        const totalPickups = weekday !== -1 ? countWeekdayInMonth(year, month, weekday) : 4
+        // Pickups from billing_start to end of month (inclusive of start date's pickup day)
+        const remainingPickups = weekday !== -1 ? countRemainingWeekdays(billingStart, weekday) : 4
+
+        // Prorate service: (remaining pickups / total pickups) * monthly rate
         const proratedRate = parseFloat(((sub.rate / (totalPickups || 1)) * remainingPickups).toFixed(2))
 
-        // Bin rental proration
-        const bins = await sb(`bins?customer_id=eq.${customer.id}&status=eq.active&select=*`).catch(() => [])
-        const binTotal = (bins || []).reduce((sum: number, b: any) => {
+        // Bin rentals — prorated for first month only
+        // After first month they bill at full monthly_rental_fee regardless of skips
+        const fetchedBins = await sb(`bins?customer_id=eq.${customer.id}&ownership=eq.rental&select=*`).catch(() => [])
+        const binLines: string[] = []
+        const binTotal = (fetchedBins || []).reduce((sum: number, b: any) => {
           const binProrated = parseFloat(((b.monthly_rental_fee / (totalPickups || 1)) * remainingPickups).toFixed(2))
+          binLines.push(`${b.bin_type === 'trash' ? 'Trash' : 'Recycling'} bin (${remainingPickups}/${totalPickups} pickups): $${binProrated.toFixed(2)}`)
           return sum + binProrated
         }, 0)
 
-        // Garage pickup proration
-        const garageProrated = customer.garage_side_pickup
-          ? parseFloat(((10 / (totalPickups || 1)) * remainingPickups).toFixed(2))
+        // Garage pickup proration — same logic as service
+        const garageRate = customer.garage_side_pickup ? 10 : 0
+        const garageProrated = garageRate > 0
+          ? parseFloat(((garageRate / (totalPickups || 1)) * remainingPickups).toFixed(2))
           : 0
 
         const subtotal = proratedRate + binTotal + garageProrated
-        const periodStart = now.toISOString().split('T')[0]
+        const today = new Date()
+        const periodStart = billingStart.toISOString().split('T')[0]
         const periodEnd = new Date(year, month + 1, 0).toISOString().split('T')[0]
-        const dueDate = now.toISOString().split('T')[0]  // First invoice due immediately on receipt
+        const dueDate = today.toISOString().split('T')[0]  // Due on receipt
 
-        const lines = [
-          `${sub.services?.name || 'Service'} (${remainingPickups}/${totalPickups} pickups): $${proratedRate.toFixed(2)}`,
-          ...(binTotal > 0 ? [`Bin rental (prorated): $${binTotal.toFixed(2)}`] : []),
-          ...(garageProrated > 0 ? [`Garage pickup (prorated): $${garageProrated.toFixed(2)}`] : []),
+        const noteLines = [
+          `${sub.services?.name || 'Service'} (${remainingPickups}/${totalPickups} ${pickupDay || 'weekly'} pickups): $${proratedRate.toFixed(2)}`,
+          ...binLines,
+          ...(garageProrated > 0 ? [`Garage pickup (${remainingPickups}/${totalPickups} pickups): $${garageProrated.toFixed(2)}`] : []),
         ].join(' | ')
 
         await sb('invoices', { method:'POST', body:{
@@ -296,7 +306,7 @@ export default function Portal() {
           period_start: periodStart,
           period_end: periodEnd,
           due_date: dueDate,
-          notes: `First invoice — due on receipt. Prorated ${remainingPickups}/${totalPickups} ${pickupDay || 'weekly'} pickups. ${lines}`,
+          notes: `First invoice — due on receipt. ${noteLines}`,
         }})
       }
 
