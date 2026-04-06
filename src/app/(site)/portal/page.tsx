@@ -24,16 +24,25 @@ async function sb(path: string, opts: { method?: string; body?: object; prefer?:
 
 const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
 
-function nextPickupDate(pickupDay: string): string {
+function nextPickupDate(pickupDay: string, billingStart?: string): string {
   if (!pickupDay) return '—'
-  const today = new Date()
-  const todayDay = today.getDay()
   const targetDay = DAYS.indexOf(pickupDay.toLowerCase())
   if (targetDay === -1) return '—'
-  let diff = targetDay - todayDay
-  if (diff <= 0) diff += 7
-  const next = new Date(today)
-  next.setDate(today.getDate() + diff)
+
+  // If billing hasn't started yet, show the first pickup from billing_start
+  const today = new Date()
+  const startFrom = billingStart ? new Date(billingStart + 'T12:00:00') : today
+  const base = startFrom > today ? startFrom : today
+
+  const baseDay = base.getDay()
+  let diff = targetDay - baseDay
+  if (diff < 0) diff += 7
+  // If base is already the pickup day and it's the billing start, use that day
+  if (diff === 0 && startFrom > today) diff = 0
+  else if (diff === 0) diff = 7
+
+  const next = new Date(base)
+  next.setDate(base.getDate() + diff)
   return next.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })
 }
 
@@ -680,7 +689,7 @@ export default function Portal() {
                 </div>
                 <div>
                   <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.6)', marginBottom:'0.2rem' }}>Next Pickup</div>
-                  <div style={{ fontWeight:600, fontSize:'1rem', color:'#4caf50' }}>{nextPickupDate(pickupDay)}</div>
+                  <div style={{ fontWeight:600, fontSize:'1rem', color:'#4caf50' }}>{nextPickupDate(pickupDay, (activeSub as any)?.billing_start)}</div>
                 </div>
               </div>
               {customer.garage_side_pickup && (
@@ -860,8 +869,12 @@ export default function Portal() {
                   <p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.55)' }}>Pickup day not set yet — Suntosh will confirm when activating your account.</p>
                 ) : (() => {
                   const upcoming: string[] = []
-                  const d = new Date()
-                  d.setDate(d.getDate() + 1)
+                  const billingStartDate = (activeSub as any)?.billing_start
+                  const startFrom = billingStartDate && new Date(billingStartDate+'T12:00:00') > new Date()
+                    ? new Date(billingStartDate+'T12:00:00')
+                    : new Date()
+                  const d = new Date(startFrom)
+                  if (startFrom <= new Date()) d.setDate(d.getDate() + 1)
                   while (upcoming.length < 4) {
                     if (d.getDay() === pickupDayIndex) {
                       const ds = d.toISOString().split('T')[0]
