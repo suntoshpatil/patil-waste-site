@@ -267,7 +267,7 @@ export default function Portal() {
         const subtotal = proratedRate + binTotal + garageProrated
         const periodStart = now.toISOString().split('T')[0]
         const periodEnd = new Date(year, month + 1, 0).toISOString().split('T')[0]
-        const dueDate = new Date(year, month + 1, 1).toISOString().split('T')[0]
+        const dueDate = now.toISOString().split('T')[0]  // First invoice due immediately on receipt
 
         const lines = [
           `${sub.services?.name || 'Service'} (${remainingPickups}/${totalPickups} pickups): $${proratedRate.toFixed(2)}`,
@@ -287,7 +287,7 @@ export default function Portal() {
           period_start: periodStart,
           period_end: periodEnd,
           due_date: dueDate,
-          notes: `First invoice (prorated ${remainingPickups}/${totalPickups} ${pickupDay || 'weekly'} pickups). ${lines}`,
+          notes: `First invoice — due on receipt. Prorated ${remainingPickups}/${totalPickups} ${pickupDay || 'weekly'} pickups. ${lines}`,
         }})
       }
 
