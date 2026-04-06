@@ -181,7 +181,16 @@ export default function Portal() {
       const custId = params.get('customer_id')
       if (sessionId && custId) {
         fetch(`/api/stripe/confirm-setup?session_id=${sessionId}&customer_id=${custId}`)
-          .then(() => showToast('Card saved! Auto-pay is now enabled. ✅'))
+          .then(async () => {
+            // Re-fetch customer so the UI shows card saved / auto-pay enabled
+            const res = await sb(`customers?id=eq.${custId}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,services(id,name))`)
+            if (res?.[0]) {
+              const updated = res[0]
+              sessionStorage.setItem('portal_customer', JSON.stringify(updated))
+              setCustomer(updated)
+            }
+            showToast('Card saved! Auto-pay is now enabled. ✅')
+          })
           .catch(() => showToast('Card saved but auto-pay setup had an issue. Contact us.', 'error'))
       }
       window.history.replaceState({}, '', '/portal')
@@ -293,9 +302,15 @@ export default function Portal() {
         // After first month they bill at full monthly_rental_fee regardless of skips
         const fetchedBins = await sb(`bins?customer_id=eq.${customer.id}&ownership=eq.rental&select=*`).catch(() => [])
         const binLines: string[] = []
+        let depositTotal = 0
         const binTotal = (fetchedBins || []).reduce((sum: number, b: any) => {
           const binProrated = parseFloat(((b.monthly_rental_fee / (totalPickups || 1)) * remainingPickups).toFixed(2))
-          binLines.push(`${b.bin_type === 'trash' ? 'Trash' : 'Recycling'} bin (${remainingPickups}/${totalPickups} pickups): $${binProrated.toFixed(2)}`)
+          binLines.push(`${b.bin_type === 'trash' ? 'Trash' : 'Recycling'} bin rental (${remainingPickups}/${totalPickups} pickups): $${binProrated.toFixed(2)}`)
+          // Add $25 deposit for trash bin (one-time, non-refundable until bin returned)
+          if (b.bin_type === 'trash' && (b.notes || '').includes('unpaid')) {
+            depositTotal += 25
+            binLines.push('Trash bin deposit (refundable): $25.00')
+          }
           return sum + binProrated
         }, 0)
 
@@ -305,7 +320,7 @@ export default function Portal() {
           ? parseFloat(((garageRate / (totalPickups || 1)) * remainingPickups).toFixed(2))
           : 0
 
-        const subtotal = proratedRate + binTotal + garageProrated
+        const subtotal = proratedRate + binTotal + depositTotal + garageProrated
         const today = new Date()
         const periodStart = billingStart.toISOString().split('T')[0]
         const periodEnd = new Date(year, month + 1, 0).toISOString().split('T')[0]
