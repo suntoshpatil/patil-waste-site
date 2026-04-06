@@ -17,6 +17,19 @@ const links = [
 export default function Nav() {
   const [open, setOpen] = useState(false)
   const path = usePathname()
+  const isPortal = path === '/portal'
+
+  // Minimal nav on portal page — just logo + sign up
+  if (isPortal) return (
+    <nav style={{ position:'fixed', top:0, left:0, right:0, zIndex:500, background:'rgba(15,15,15,0.96)', backdropFilter:'blur(10px)', borderBottom:'1px solid rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.5rem 1.5rem', height:'46px' }}>
+      <Link href="/" style={{ display:'flex', alignItems:'center' }}>
+        <Logo height={28} />
+      </Link>
+      <Link href="/signup" style={{ fontSize:'0.72rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', textDecoration:'none' }}>
+        Not a customer? Sign Up →
+      </Link>
+    </nav>
+  )
 
   return (
     <nav style={{ position:'fixed', top:0, left:0, right:0, zIndex:500, background:'rgba(15,15,15,0.96)', backdropFilter:'blur(10px)', borderBottom:'1px solid rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.9rem 2.5rem' }}>
