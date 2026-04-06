@@ -368,45 +368,132 @@ export default function Portal() {
   const pickupDay = (activeSub as any)?.pickup_day || (customer as any)?.pickup_day || ''
 
   // ── CONTRACT SCREEN ──
-  if (customer && (customer as any).status === 'contract_pending' && !(customer as any).contract_accepted) return (
-    <main style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', padding:'2rem', paddingTop:'5rem' }}>
-      <div style={{ width:'100%', maxWidth:'640px' }}>
-        <div style={{ textAlign:'center', marginBottom:'2rem' }}>
-          <div style={{ fontSize:'3rem', marginBottom:'0.75rem' }}>📋</div>
-          <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'2.2rem', letterSpacing:'0.05em', marginBottom:'0.5rem', color:'#fff' }}>Service Agreement</div>
-          <p style={{ color:'rgba(255,255,255,0.65)', fontSize:'0.95rem' }}>Please review and accept your service agreement to activate your account.</p>
-        </div>
-        <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'10px', padding:'1.75rem', marginBottom:'1.5rem', maxHeight:'400px', overflowY:'auto' }}>
-          <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.1rem', letterSpacing:'0.05em', marginBottom:'1.25rem', color:'#4caf50' }}>Patil Waste Removal LLC — Service Agreement</div>
-          {([
-            ['Service', `You are signing up for ${(customer as any).subscriptions?.[0]?.services?.name || 'curbside waste removal'} service at the address on file.`],
-            ['Pickup Schedule', `Your scheduled pickup day is ${pickupDay ? pickupDay.charAt(0).toUpperCase()+pickupDay.slice(1) : 'to be confirmed'}. Please have bins at the curb by 8:00 AM on your pickup day.`],
-            ['Billing', `Your plan rate is $${(customer as any).subscriptions?.[0]?.rate || '—'}/month, billed ${(customer as any).subscriptions?.[0]?.billing_cycle || 'monthly'}. Invoices are issued on the 25th and due on the 1st.`],
-            ['Extra Bags', 'Extra bags beyond your plan limit are charged per bag ($2.00 small / $3.50 large with advance notice). Rates are higher without notice.'],
-            ['Skip Credits', 'You may skip up to 2 pickups per quarter for a bill credit. Submit skip requests by 5:00 PM the day before your pickup.'],
-            ['Cancellation', 'Month-to-month service — no long-term contract. Cancel any time by contacting Suntosh.'],
-            ['Items Not Accepted', 'No hazardous waste, chemicals, paints, oils, explosives, firearms, or medical waste. Contact us for large bulky items not listed in the portal.'],
-            ['Payment', `Preferred payment: ${(customer as any).payment_method || 'to be confirmed'}. Payment is due by the 1st of each month. Late payments may result in service suspension.`],
-          ] as [string,string][]).map(([heading, body]) => (
-            <div key={heading} style={{ marginBottom:'1rem', paddingBottom:'1rem', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
-              <div style={{ fontSize:'0.72rem', fontWeight:700, letterSpacing:'0.09em', textTransform:'uppercase', color:'rgba(255,255,255,0.55)', marginBottom:'0.3rem' }}>{heading}</div>
-              <p style={{ fontSize:'0.88rem', color:'rgba(255,255,255,0.85)', lineHeight:1.65, margin:0 }}>{body}</p>
+  if (customer && (customer as any).status === 'contract_pending' && !(customer as any).contract_accepted) {
+    const sub = (customer as any).subscriptions?.[0]
+    const rate = sub?.rate || 0
+    const billingCycle = sub?.billing_cycle || 'monthly'
+    const quarterlyRate = (rate * 3).toFixed(2)
+    const planName = sub?.services?.name || 'Curbside Waste Removal'
+    const pickupDayCap = pickupDay ? pickupDay.charAt(0).toUpperCase()+pickupDay.slice(1) : 'To Be Confirmed'
+    const startDate = sub?.billing_start ? new Date(sub.billing_start+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : 'To Be Confirmed'
+    const isRecycling = planName.toLowerCase().includes('recycling')
+    const p = { fontSize:'0.9rem', color:'#333', lineHeight:'1.7', margin:'0 0 0.5rem 0' }
+    const h3 = { fontSize:'0.82rem', fontWeight:700, color:'#111', margin:'0 0 0.3rem 0', textTransform:'uppercase' as const, letterSpacing:'0.04em' }
+    const section = { marginBottom:'1.25rem', paddingBottom:'1.25rem', borderBottom:'1px solid #e5e5e5' }
+
+    return (
+      <main style={{ minHeight:'100vh', background:'#f5f5f5', paddingTop:'3rem', paddingBottom:'4rem' }}>
+        <div style={{ maxWidth:'780px', margin:'0 auto', padding:'0 1.5rem' }}>
+
+          {/* Header */}
+          <div style={{ textAlign:'center', marginBottom:'2.5rem' }}>
+            <p style={{ fontSize:'0.8rem', color:'#888', letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:'0.5rem' }}>Patil Waste Removal LLC</p>
+            <h1 style={{ fontSize:'clamp(1.8rem,5vw,2.8rem)', fontWeight:700, color:'#111', margin:'0 0 1rem' }}>
+              Contract for {customer.first_name} {customer.last_name}
+            </h1>
+            <p style={{ fontSize:'0.95rem', color:'#555', maxWidth:'520px', margin:'0 auto', lineHeight:1.6 }}>
+              Please carefully review this contract. In order to make things official, this contract must be reviewed and accepted. We look forward to working with you!
+            </p>
+          </div>
+
+          <div style={{ background:'#fff', borderRadius:'10px', padding:'2.5rem', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', marginBottom:'1.5rem' }}>
+
+            {/* Parties */}
+            <div style={{ ...section, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'2rem' }}>
+              <div>
+                <h2 style={{ fontSize:'1.5rem', fontWeight:700, color:'#111', marginBottom:'0.75rem' }}>Parties</h2>
+                <p style={{ ...p, fontWeight:600, marginBottom:'0.15rem' }}>Patil Waste Removal LLC.</p>
+                <p style={{ ...p, margin:'0', color:'#555' }}>Patilwasteremoval@gmail.com</p>
+                <p style={{ ...p, margin:'0', color:'#555' }}>80 Palomino Ln, Bedford NH 03110</p>
+                <p style={{ ...p, margin:'0', color:'#555' }}>(802) 416-9484</p>
+              </div>
+              <div style={{ paddingTop:'2.75rem' }}>
+                <p style={{ ...p, fontWeight:600, marginBottom:'0.15rem' }}>{customer.first_name} {customer.last_name}</p>
+                <p style={{ ...p, margin:'0', color:'#555' }}>{customer.email}</p>
+                <p style={{ ...p, margin:'0', color:'#555' }}>{customer.service_address}</p>
+                {customer.phone && <p style={{ ...p, margin:'0', color:'#555' }}>{customer.phone}</p>}
+              </div>
             </div>
-          ))}
+
+            {/* Project Description */}
+            <div style={section}>
+              <h2 style={{ fontSize:'1.5rem', fontWeight:700, color:'#111', marginBottom:'0.75rem' }}>Project Description</h2>
+              <p style={p}>
+                Patil Waste Removal will provide you with trash{isRecycling ? ' and recycling' : ''} pick-up every <strong>{pickupDayCap}</strong> for the paid month.
+                This entitles the customer to <strong>10 (13 gallon) trash bags</strong>{isRecycling ? <> and <strong>64 gallons of recycling</strong></> : ''}.
+                The price of this service is <strong>${rate.toFixed(2)} monthly</strong> or <strong>${quarterlyRate} quarterly</strong>, due on the 25th of the prior month.
+                Your first date of service is set for <strong>{startDate}</strong>.
+              </p>
+              <p style={p}>
+                Patil Waste Removal will collect the trash every {pickupDayCap} that we are open as long as the bins are placed by the end of the driveway by <strong>8am and are easily accessible</strong>. If bins are not placed by the end of the driveway or chosen location by the time the driver arrives for pick up, the customer will still be charged.
+              </p>
+            </div>
+
+            {/* Terms */}
+            <h2 style={{ fontSize:'1.5rem', fontWeight:700, color:'#111', marginBottom:'1.25rem' }}>Terms</h2>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'2rem' }}>
+              <div>
+                <div style={section}>
+                  <h3 style={h3}>Payment</h3>
+                  <p style={p}>With chosen services the monthly bill is ${rate.toFixed(2)} or ${quarterlyRate} quarterly. This can be paid through our online credit card processor listed on your invoice, through Venmo, Cashapp, or Cash handed to driver. (If paying cash please inform us so we will know to collect it along with your pick up.)</p>
+                </div>
+                <div style={section}>
+                  <h3 style={h3}>Payment Refund</h3>
+                  <p style={p}>We do not offer refunds for services that have been completed. We can offer partial refunds for future weeks that were pre-paid if service is not needed, as long as we are <strong>informed by 5pm the day before scheduled pick up day.</strong></p>
+                </div>
+                <div style={section}>
+                  <h3 style={h3}>Service Modification</h3>
+                  <p style={p}>Patil Waste Removal reserves the right to modify, discontinue, suspend, or disable all or parts of your service.</p>
+                </div>
+                <div style={{ marginBottom:'1.25rem' }}>
+                  <h3 style={h3}>Right to Terminate</h3>
+                  <p style={p}>The customer can cancel service anytime they would like.</p>
+                  <p style={p}>- If you cancel before your prepaid term ends, service will continue until the term expires. If you choose to end service immediately, you may receive a refund equal to one (1) week of service only.</p>
+                  <p style={p}>Bins will be retrieved by the 30th of the canceled month and depending on the condition of the trash bin, the $25 deposit will be returned.</p>
+                  <p style={{ ...p, marginBottom:0 }}>To cancel service please contact Patil Waste Removal by email or phone.</p>
+                </div>
+              </div>
+              <div>
+                <div style={section}>
+                  <h3 style={h3}>Trash Pick-up</h3>
+                  <p style={p}>The customer will have trash bagged and placed in bins, maximum of 10 (13 gallon) trash bags. Trash bin shall be brought to the end of the driveway by 8am of the scheduled pick-up day. Trash shall <strong>NOT contain any BROKEN GLASS, EXPLOSIVES, FIREARMS, AMMUNITION, COMBUSTIBLES, FIREWORKS, ASHES, SYRINGES, OR MEDICAL WASTE.</strong> If trash is unbagged or any prohibited items are found the trash will not be picked up and customer will still be charged.</p>
+                </div>
+                {isRecycling && (
+                  <div style={section}>
+                    <h3 style={h3}>Recycling Pick-up</h3>
+                    <p style={p}><strong>Recycling must NOT be bagged (unless bagged in recyclable paper bags)</strong> Recycling must be placed in bin and brought to the end of the driveway by 8am of scheduled pick up day. Please ensure all items placed in recycling are recyclable, otherwise the whole bin of recycling will have to be considered as trash. <strong>Glass must be kept separate.</strong> (Either placed on top of recyclables in bin or placed in cardboard box next to recycling bin)</p>
+                  </div>
+                )}
+                <div style={section}>
+                  <h3 style={h3}>Over Allotted Trash Amount</h3>
+                  <p style={p}>If Patil Waste Removal is notified of extra bags by 5pm the night before pick-up then the extra bags will be charged at <strong>$2 per 13 gal bag extra</strong> and <strong>$3.50 per extra 32 gallon bag</strong>. If Patil Waste Removal is <strong>NOT notified</strong> then extra bags will be charged <strong>$3.50 per extra 13 gallon trash bag</strong> and <strong>$5 per extra 32 gallon bag</strong>.</p>
+                </div>
+                <div>
+                  <h3 style={h3}>Bin Rentals</h3>
+                  <p style={{ ...p, marginBottom:0 }}>Trash Bins require a $25 deposit which will be returned when Patil Waste Removal retrieves the bin given the bin is not excessively damaged. Bins are property of Patil Waste Removal and are required to be returned by the customer at the end of service.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Accept section */}
+          <div style={{ background:'#fff', borderRadius:'10px', padding:'2rem', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', textAlign:'center' }}>
+            <p style={{ fontSize:'0.9rem', color:'#555', marginBottom:'1.25rem', lineHeight:1.6 }}>
+              By clicking Accept below, <strong style={{ color:'#111' }}>{customer.first_name} {customer.last_name}</strong>, you confirm you have read and agree to the Patil Waste Removal service agreement and authorize billing as described above.
+            </p>
+            <div style={{ display:'flex', gap:'0.75rem', maxWidth:'480px', margin:'0 auto' }}>
+              <button onClick={logout} style={{ flex:1, background:'transparent', border:'1px solid #ddd', color:'#888', borderRadius:'8px', padding:'0.85rem', cursor:'pointer', fontFamily:'inherit', fontSize:'0.9rem' }}>Decline</button>
+              <button onClick={acceptContract} disabled={contractAccepting} style={{ flex:2, background:'#2e7d32', color:'#fff', border:'none', borderRadius:'8px', padding:'0.85rem', cursor:'pointer', fontFamily:'inherit', fontSize:'0.95rem', fontWeight:700, opacity:contractAccepting?0.7:1 }}>
+                {contractAccepting ? 'Processing…' : '✅ I Accept — Activate My Account'}
+              </button>
+            </div>
+            <p style={{ fontSize:'0.78rem', color:'#aaa', marginTop:'0.75rem' }}>Questions? Call or text Suntosh at (802) 416-9484</p>
+          </div>
+
         </div>
-        <div style={{ background:'rgba(46,125,50,0.1)', border:'1px solid rgba(46,125,50,0.3)', borderRadius:'8px', padding:'1rem 1.25rem', marginBottom:'1.25rem', fontSize:'0.85rem', color:'rgba(255,255,255,0.8)' }}>
-          By clicking Accept, <strong style={{ color:'#fff' }}>{customer.first_name} {customer.last_name}</strong>, you agree to the Patil Waste Removal service agreement and authorize billing as described above.
-        </div>
-        <div style={{ display:'flex', gap:'0.75rem' }}>
-          <button onClick={logout} style={{ flex:1, background:'transparent', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.55)', borderRadius:'8px', padding:'0.85rem', cursor:'pointer', fontFamily:'inherit', fontSize:'0.9rem' }}>Decline</button>
-          <button onClick={acceptContract} disabled={contractAccepting} style={{ flex:2, background:'#2e7d32', color:'#fff', border:'none', borderRadius:'8px', padding:'0.85rem', cursor:'pointer', fontFamily:'Bebas Neue, sans-serif', fontSize:'1.1rem', letterSpacing:'0.05em', opacity:contractAccepting?0.7:1 }}>
-            {contractAccepting ? 'Processing…' : '✅ I Accept — Activate My Account'}
-          </button>
-        </div>
-        <p style={{ textAlign:'center', fontSize:'0.75rem', color:'rgba(255,255,255,0.4)', marginTop:'0.75rem' }}>Questions? Call Suntosh at (802) 416-9484</p>
-      </div>
-    </main>
-  )
+      </main>
+    )
+  }
 
   // ── DASHBOARD ──
   if (!customer) return null
