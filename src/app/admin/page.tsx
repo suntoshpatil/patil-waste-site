@@ -440,6 +440,12 @@ export default function Admin() {
                           // Pre-select service if they already have a subscription
                           const sub = (c as any).subscriptions?.find((s:any) => s.status === 'active')
                           if (sub) setOnboardServiceId(sub.service_id || '')
+                          // Pre-check bin rentals from signup notes
+                          const n = (c.notes || '').toLowerCase()
+                          setOnboardTrashBin(n.includes('trash bin') || n.includes('trash + recycling'))
+                          setOnboardRecyclingBin(n.includes('recycling bin') || n.includes('trash + recycling'))
+                          // Pre-check garage pickup if they requested it
+                          setOnboardGarage(c.garage_side_pickup || false)
                         }}>Onboard →</Btn>
                       </div>
                     ))}
@@ -933,17 +939,25 @@ export default function Admin() {
             {/* Customer summary */}
             <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'6px', padding:'1rem', marginBottom:'1.25rem', fontSize:'0.84rem' }}>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.4rem' }}>
-                {[
-                  ['Address', onboardCustomer.service_address],
-                  ['Town', cap(onboardCustomer.town)],
-                  ['Phone', onboardCustomer.phone || '—'],
-                  ['Payment', cap(onboardCustomer.payment_method)],
-                  ['Bin Situation', cap(onboardCustomer.bin_situation)],
-                  ['Garage Pickup', onboardCustomer.garage_side_pickup ? '✅ Yes' : 'No'],
-                ].map(([label, val]) => (
+                {(()=>{
+                  // Parse bin rental request from notes
+                  const notes = onboardCustomer.notes || ''
+                  const binNote = notes.split('|').map((s:string)=>s.trim()).find((s:string)=>s.toLowerCase().includes('bin rental'))
+                  const binDisplay = binNote || (onboardCustomer.bin_situation === 'rental' ? 'Rental (check notes)' : cap(onboardCustomer.bin_situation))
+                  // Parse requested start week from notes
+                  const startWeek = notes.split('|').map((s:string)=>s.trim()).find((s:string)=>s.startsWith('202') || s.includes('Week'))
+                  return [
+                    ['Address', onboardCustomer.service_address],
+                    ['Town', cap(onboardCustomer.town)],
+                    ['Phone', onboardCustomer.phone || '—'],
+                    ['Payment', cap(onboardCustomer.payment_method)],
+                    ['Bins Requested', binDisplay],
+                    ['Garage Pickup', onboardCustomer.garage_side_pickup ? '✅ Yes' : 'No'],
+                  ] as [string,any][]
+                })().map(([label, val]) => (
                   <div key={label}>
                     <span style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.72rem' }}>{label}: </span>
-                    <span style={{ color:'#fff' }}>{val}</span>
+                    <span style={{ color: label==='Bins Requested' && String(val).includes('Trash') ? '#fbbf24' : '#fff' }}>{val}</span>
                   </div>
                 ))}
               </div>
