@@ -82,6 +82,9 @@ export default function Admin() {
   const [addRate, setAddRate] = useState('')
   const [addBillingCycle, setAddBillingCycle] = useState('monthly')
   const [servicesList, setServicesList] = useState<{id:string,name:string,base_price:number}[]>([])
+  const [addTrashBin, setAddTrashBin] = useState(false)
+  const [addRecyclingBin, setAddRecyclingBin] = useState(false)
+  const [selectedBins, setSelectedBins] = useState<any[]>([])
   const [editMode, setEditMode] = useState(false)
   const [editData, setEditData] = useState<Partial<Customer>>({})
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -139,14 +142,37 @@ export default function Admin() {
           }})
         }
       }
+      // Create bin rental rows
+      if (newCustomer?.id) {
+        const binInserts = []
+        if (addTrashBin) binInserts.push({ customer_id: newCustomer.id, bin_type:'trash', monthly_fee:7.99, deposit_amount:25.00, deposit_paid:false, status:'active' })
+        if (addRecyclingBin) binInserts.push({ customer_id: newCustomer.id, bin_type:'recycling', monthly_fee:3.99, deposit_amount:0, deposit_paid:true, status:'active' })
+        for (const bin of binInserts) {
+          await sb('bins', { method:'POST', body: bin })
+        }
+      }
       showToast('Customer added!')
       setShowAddModal(false)
       setAddData({ ...BLANK_CUSTOMER })
       setAddServiceId('')
       setAddRate('')
       setAddBillingCycle('monthly')
+      setAddTrashBin(false)
+      setAddRecyclingBin(false)
       loadAll()
     } catch (e: unknown) { showToast('Error: ' + (e instanceof Error ? e.message : 'Unknown error'), 'error') }
+  }
+
+  async function loadSelectedBins(customerId: string) {
+    try {
+      const bins = await sb(`bins?customer_id=eq.${customerId}&select=*`)
+      setSelectedBins(bins || [])
+    } catch { setSelectedBins([]) }
+  }
+
+  async function toggleDepositPaid(binId: string, current: boolean) {
+    await sb(`bins?id=eq.${binId}`, { method:'PATCH', body:{ deposit_paid: !current }, prefer:'return=minimal' })
+    if (selected) loadSelectedBins(selected.id)
   }
 
   async function deleteCustomer() {
@@ -270,7 +296,7 @@ export default function Admin() {
                   <thead><tr>{['Name','Town','Status','Signed Up'].map(h=><th key={h} style={{ padding:'0.75rem 1rem', textAlign:'left', fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>{h}</th>)}</tr></thead>
                   <tbody>
                     {customers.slice(0,5).map(c=>(
-                      <tr key={c.id} onClick={()=>{setSelected(c);setView('customers')}} style={{ borderBottom:'1px solid rgba(255,255,255,0.04)', cursor:'pointer' }}>
+                      <tr key={c.id} onClick={()=>{setSelected(c);setView('customers');loadSelectedBins(c.id)}} style={{ borderBottom:'1px solid rgba(255,255,255,0.04)', cursor:'pointer' }}>
                         <td style={{ padding:'0.85rem 1rem', fontWeight:600 }}>{c.first_name} {c.last_name}</td>
                         <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.5)', textTransform:'capitalize' }}>{c.town}</td>
                         <td style={{ padding:'0.85rem 1rem' }}><Badge status={c.status} /></td>
@@ -511,6 +537,40 @@ export default function Admin() {
               <div>
                 <div style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.5rem' }}>Notes</div>
                 <p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.55)', lineHeight:1.7 }}>{selected.notes||'No notes.'}</p>
+
+                {/* ── BIN RENTALS ── */}
+                <div style={{ marginTop:'1.25rem' }}>
+                  <div style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.6rem' }}>Bin Rentals</div>
+                  {selectedBins.length === 0 ? (
+                    <p style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.3)' }}>No bin rentals</p>
+                  ) : (
+                    <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
+                      {selectedBins.map((bin:any) => (
+                        <div key={bin.id} style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', padding:'0.65rem 0.85rem' }}>
+                          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                              <span style={{ fontSize:'0.88rem' }}>{bin.bin_type==='trash' ? '🗑️ Trash Bin' : '♻️ Recycling Bin'}</span>
+                              <span style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.4)' }}>${bin.monthly_fee}/mo</span>
+                            </div>
+                            {bin.bin_type === 'trash' && (
+                              <button
+                                onClick={() => toggleDepositPaid(bin.id, bin.deposit_paid)}
+                                style={{
+                                  background: bin.deposit_paid ? 'rgba(46,125,50,0.15)' : 'rgba(220,38,38,0.12)',
+                                  border: `1px solid ${bin.deposit_paid ? 'rgba(46,125,50,0.4)' : 'rgba(220,38,38,0.35)'}`,
+                                  color: bin.deposit_paid ? '#4caf50' : '#f87171',
+                                  borderRadius:'5px', padding:'0.25rem 0.6rem', cursor:'pointer', fontSize:'0.72rem', fontWeight:700, fontFamily:'inherit'
+                                }}
+                              >
+                                {bin.deposit_paid ? '✅ Deposit Paid' : '❌ Deposit Unpaid ($25)'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -592,6 +652,32 @@ export default function Admin() {
                 </div>
               </div>
             </div>
+            {/* ── BIN RENTALS ── */}
+            <div style={{ marginTop:'1.25rem', paddingTop:'1.25rem', borderTop:'1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.1rem', letterSpacing:'0.05em', marginBottom:'0.75rem', color:'#2e7d32' }}>Bin Rentals</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:'0.6rem' }}>
+                <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', padding:'0.65rem 0.85rem' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'0.6rem' }}>
+                    <input type='checkbox' checked={addTrashBin} onChange={e=>setAddTrashBin(e.target.checked)} style={{ accentColor:'#2e7d32', width:'15px', height:'15px' }} />
+                    <span style={{ fontSize:'0.88rem' }}>🗑️ Trash Bin Rental</span>
+                  </div>
+                  <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.5)' }}>$7.99/mo · $25 deposit</div>
+                </label>
+                {addTrashBin && (
+                  <div style={{ marginLeft:'1.5rem', fontSize:'0.8rem', color:'#f59e0b', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.2)', borderRadius:'5px', padding:'0.4rem 0.7rem' }}>
+                    ⚠️ $25 deposit will be marked as <strong>unpaid</strong> — collect before first pickup
+                  </div>
+                )}
+                <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', padding:'0.65rem 0.85rem' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'0.6rem' }}>
+                    <input type='checkbox' checked={addRecyclingBin} onChange={e=>setAddRecyclingBin(e.target.checked)} style={{ accentColor:'#2e7d32', width:'15px', height:'15px' }} />
+                    <span style={{ fontSize:'0.88rem' }}>♻️ Recycling Bin Rental</span>
+                  </div>
+                  <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.5)' }}>$3.99/mo · no deposit</div>
+                </label>
+              </div>
+            </div>
+
             <div style={{ display:'flex', gap:'0.75rem', marginTop:'1.5rem', paddingTop:'1.25rem', borderTop:'1px solid rgba(255,255,255,0.07)', justifyContent:'flex-end' }}>
               <Btn color='transparent' textColor='#6b7280' onClick={()=>setShowAddModal(false)}>Cancel</Btn>
               <Btn onClick={addCustomer}>Save Customer</Btn>
