@@ -90,6 +90,10 @@ export default function Admin() {
   const [noticeDate, setNoticeDate] = useState('')
   const [noticeType, setNoticeType] = useState('info')
   const [replacementDate, setReplacementDate] = useState('')
+  const [onboardCustomer, setOnboardCustomer] = useState<any>(null)
+  const [onboardData, setOnboardData] = useState({ pickup_day:'', start_date:'', notes:'' })
+  const [onboardServiceId, setOnboardServiceId] = useState('')
+  const [onboardBillingCycle, setOnboardBillingCycle] = useState('monthly')
   const [addTrashBin, setAddTrashBin] = useState(false)
   const [addRecyclingBin, setAddRecyclingBin] = useState(false)
   const [selectedBins, setSelectedBins] = useState<any[]>([])
@@ -214,6 +218,44 @@ export default function Admin() {
     loadAll()
   }
 
+  async function completeOnboarding() {
+    if (!onboardCustomer) return
+    if (!onboardData.pickup_day) { showToast('Please assign a pickup day', 'error'); return }
+    try {
+      // Update customer — activate and set start date + notes
+      await sb(`customers?id=eq.${onboardCustomer.id}`, {
+        method: 'PATCH',
+        body: {
+          status: 'active',
+          start_date: onboardData.start_date || new Date().toISOString().split('T')[0],
+          notes: onboardData.notes || onboardCustomer.notes,
+        },
+        prefer: 'return=minimal',
+      })
+      // Create subscription if one was chosen and doesn't already exist
+      if (onboardServiceId) {
+        const existing = await sb(`subscriptions?customer_id=eq.${onboardCustomer.id}&status=eq.active&select=id`)
+        if (!existing || existing.length === 0) {
+          const svc = servicesList.find((s:any) => s.id === onboardServiceId)
+          await sb('subscriptions', { method: 'POST', body: {
+            customer_id: onboardCustomer.id,
+            service_id: onboardServiceId,
+            rate: svc?.base_price_monthly || 0,
+            billing_cycle: onboardBillingCycle,
+            status: 'active',
+            start_date: onboardData.start_date || new Date().toISOString().split('T')[0],
+          }})
+        }
+      }
+      showToast(`${onboardCustomer.first_name} is now active! ✅`)
+      setOnboardCustomer(null)
+      setOnboardData({ pickup_day:'', start_date:'', notes:'' })
+      setOnboardServiceId('')
+      setOnboardBillingCycle('monthly')
+      loadAll()
+    } catch (e: any) { showToast('Error: ' + e.message, 'error') }
+  }
+
   async function loadSelectedBins(customerId: string) {
     try {
       const bins = await sb(`bins?customer_id=eq.${customerId}&select=*`)
@@ -319,7 +361,7 @@ export default function Admin() {
         {/* Sidebar */}
         <nav style={{ width:'180px', background:'#141414', borderRight:'1px solid rgba(255,255,255,0.07)', padding:'1rem 0', flexShrink:0, overflowY:'auto' }}>
           {navItems.map(([id,icon,label]) => {
-            const pendingCount = id === 'requests' ? serviceRequests.length + skipRequests.length : id === 'jobs' ? jobRequests.filter((j:any)=>j.status==='new').length + pickupAddons.filter((a:any)=>a.status==='pending_quote').length : 0
+            const pendingCount = id === 'requests' ? serviceRequests.length + skipRequests.length : id === 'jobs' ? jobRequests.filter((j:any)=>j.status==='new').length + pickupAddons.filter((a:any)=>a.status==='pending_quote').length : id === 'dashboard' ? customers.filter(c=>c.status==='pending').length : 0
             return (
               <div key={id} onClick={() => setView(id)} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.7rem 1.25rem', fontSize:'0.82rem', fontWeight:500, color:view===id?'#fff':'#6b7280', cursor:'pointer', borderLeft:`2px solid ${view===id?'#4caf50':'transparent'}`, background:view===id?'rgba(61,158,64,0.08)':'transparent', transition:'all 0.15s' }}>
                 <span>{icon}</span><span>{label}</span>
@@ -347,6 +389,33 @@ export default function Admin() {
                   </div>
                 ))}
               </div>
+              {/* Pending onboarding alert */}
+              {customers.filter(c => c.status === 'pending').length > 0 && (
+                <div style={{ background:'rgba(245,158,11,0.07)', border:'1px solid rgba(245,158,11,0.3)', borderRadius:'8px', padding:'1.25rem', marginBottom:'1.25rem' }}>
+                  <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.1rem', letterSpacing:'0.04em', color:'#fbbf24', marginBottom:'0.75rem' }}>
+                    🕐 {customers.filter(c => c.status === 'pending').length} Customer{customers.filter(c => c.status === 'pending').length > 1 ? 's' : ''} Awaiting Onboarding
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
+                    {customers.filter(c => c.status === 'pending').map(c => (
+                      <div key={c.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(0,0,0,0.2)', borderRadius:'6px', padding:'0.65rem 0.9rem' }}>
+                        <div>
+                          <span style={{ fontWeight:600 }}>{c.first_name} {c.last_name}</span>
+                          <span style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.45)', marginLeft:'0.6rem' }}>{c.email}</span>
+                          <span style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.35)', marginLeft:'0.6rem' }}>Signed up {fmt(c.created_at)}</span>
+                        </div>
+                        <Btn small onClick={() => {
+                          setOnboardCustomer(c)
+                          setOnboardData({ pickup_day:'', start_date:'', notes: c.notes || '' })
+                          // Pre-select service if they already have a subscription
+                          const sub = (c as any).subscriptions?.find((s:any) => s.status === 'active')
+                          if (sub) setOnboardServiceId(sub.service_id || '')
+                        }}>Onboard →</Btn>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
                 <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid rgba(255,255,255,0.07)', fontFamily:'Bebas Neue,sans-serif', fontSize:'1.1rem', letterSpacing:'0.04em' }}>Recent Signups</div>
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.84rem' }}>
@@ -813,6 +882,99 @@ export default function Admin() {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ONBOARD CUSTOMER MODAL ── */}
+      {onboardCustomer && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={e=>{if(e.target===e.currentTarget)setOnboardCustomer(null)}}>
+          <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', width:'560px', maxWidth:'95vw', maxHeight:'90vh', overflowY:'auto', padding:'2rem' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.5rem' }}>
+              <div>
+                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.8rem' }}>Onboard Customer</div>
+                <div style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.5)', marginTop:'0.15rem' }}>{onboardCustomer.first_name} {onboardCustomer.last_name} · {onboardCustomer.email}</div>
+              </div>
+              <button onClick={()=>setOnboardCustomer(null)} style={{ background:'none', border:'none', color:'#6b7280', fontSize:'1.4rem', cursor:'pointer' }}>✕</button>
+            </div>
+
+            {/* Customer summary */}
+            <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'6px', padding:'1rem', marginBottom:'1.25rem', fontSize:'0.84rem' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.4rem' }}>
+                {[
+                  ['Address', onboardCustomer.service_address],
+                  ['Town', cap(onboardCustomer.town)],
+                  ['Phone', onboardCustomer.phone || '—'],
+                  ['Payment', cap(onboardCustomer.payment_method)],
+                  ['Bin Situation', cap(onboardCustomer.bin_situation)],
+                  ['Garage Pickup', onboardCustomer.garage_side_pickup ? '✅ Yes' : 'No'],
+                ].map(([label, val]) => (
+                  <div key={label}>
+                    <span style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.72rem' }}>{label}: </span>
+                    <span style={{ color:'#fff' }}>{val}</span>
+                  </div>
+                ))}
+              </div>
+              {onboardCustomer.notes && (
+                <div style={{ marginTop:'0.6rem', color:'rgba(255,255,255,0.6)', fontSize:'0.8rem', borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:'0.6rem' }}>
+                  Notes: {onboardCustomer.notes}
+                </div>
+              )}
+            </div>
+
+            {/* Step 1: Assign pickup day */}
+            <div style={{ marginBottom:'1.1rem' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.4rem' }}>Pickup Day *</label>
+              <select value={onboardData.pickup_day} onChange={e=>setOnboardData(p=>({...p, pickup_day:e.target.value}))}
+                style={{ width:'100%', background:'#111', border:`1px solid ${onboardData.pickup_day ? 'rgba(46,125,50,0.5)' : 'rgba(255,255,255,0.15)'}`, borderRadius:'6px', padding:'0.65rem 0.85rem', color:'#fff', fontSize:'0.9rem', fontFamily:'inherit' }}>
+                <option value=''>— Select pickup day —</option>
+                {['monday','tuesday','wednesday','thursday','friday'].map(d => (
+                  <option key={d} value={d}>{d.charAt(0).toUpperCase()+d.slice(1)}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Step 2: Confirm or assign plan */}
+            <div style={{ marginBottom:'1.1rem' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.4rem' }}>Service Plan</label>
+              <select value={onboardServiceId} onChange={e=>setOnboardServiceId(e.target.value)}
+                style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'6px', padding:'0.65rem 0.85rem', color:'#fff', fontSize:'0.9rem', fontFamily:'inherit' }}>
+                <option value=''>— None / add later —</option>
+                {servicesList.map((s:any) => (
+                  <option key={s.id} value={s.id}>{s.name} (${s.base_price_monthly}/mo)</option>
+                ))}
+              </select>
+              {onboardServiceId && (
+                <div style={{ marginTop:'0.5rem', display:'flex', gap:'1rem' }}>
+                  {['monthly','quarterly'].map(cycle => (
+                    <label key={cycle} style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.7)' }}>
+                      <input type='radio' value={cycle} checked={onboardBillingCycle===cycle} onChange={()=>setOnboardBillingCycle(cycle)} style={{ accentColor:'#2e7d32' }} />
+                      {cycle.charAt(0).toUpperCase()+cycle.slice(1)}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Step 3: Start date */}
+            <div style={{ marginBottom:'1.1rem' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.4rem' }}>Start Date</label>
+              <input type='date' value={onboardData.start_date} onChange={e=>setOnboardData(p=>({...p,start_date:e.target.value}))}
+                style={{ background:'#111', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'6px', padding:'0.65rem 0.85rem', color:'#fff', fontSize:'0.9rem', fontFamily:'inherit' }} />
+            </div>
+
+            {/* Notes */}
+            <div style={{ marginBottom:'1.5rem' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.4rem' }}>Internal Notes</label>
+              <textarea value={onboardData.notes} onChange={e=>setOnboardData(p=>({...p,notes:e.target.value}))} rows={2}
+                placeholder='Any notes about this customer...'
+                style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'6px', padding:'0.65rem 0.85rem', color:'#fff', fontSize:'0.88rem', resize:'vertical', fontFamily:'inherit', boxSizing:'border-box' }} />
+            </div>
+
+            <div style={{ display:'flex', gap:'0.75rem', justifyContent:'flex-end', paddingTop:'1.25rem', borderTop:'1px solid rgba(255,255,255,0.07)' }}>
+              <Btn color='transparent' textColor='#6b7280' onClick={()=>setOnboardCustomer(null)}>Cancel</Btn>
+              <Btn onClick={completeOnboarding}>✅ Activate Customer</Btn>
             </div>
           </div>
         </div>
