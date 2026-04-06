@@ -139,6 +139,7 @@ export default function Portal() {
   const [invoices, setInvoices] = useState<any[]>([])
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() } })
   const [cardSaving, setCardSaving] = useState(false)
+  const [payingNow, setPayingNow] = useState(false)
   const [cardSaved, setCardSaved] = useState(false)
   const [selectedItems, setSelectedItems] = useState<{id:string, qty:number}[]>([])
   const [customItem, setCustomItem] = useState('')
@@ -163,6 +164,17 @@ export default function Portal() {
     setCustomer(parsed)
     setScreen('dashboard')
     loadPortalData(parsed)
+    // Handle Stripe payment success redirect
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('payment') === 'success') {
+      const invoiceId = params.get('invoice')
+      if (invoiceId) {
+        sb(`invoices?id=eq.${invoiceId}`, { method:'PATCH', body:{ status:'paid', paid_at: new Date().toISOString() }, prefer:'return=minimal' }).catch(()=>{})
+        sb('payment_logs', { method:'POST', body:{ customer_id: parsed.id, payment_method:'card', amount: 0, reference_number:'stripe-checkout', logged_by:'customer' }}).catch(()=>{})
+      }
+      showToast('Payment successful! Thank you 🎉')
+      window.history.replaceState({}, '', '/portal')
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadPortalData(cust: Customer) {
@@ -1090,8 +1102,39 @@ export default function Portal() {
             {skipsLeft > 0 && (
               <div style={card}>
                 <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem' }}>Request a Skip</div>
-                <label style={{ display:'block', fontSize:'0.78rem', color:'rgba(255,255,255,0.5)', marginBottom:'0.4rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Which pickup date to skip?</label>
-                <input type="date" value={skipDate} onChange={e => setSkipDate(e.target.value)} style={{ ...inputStyle, marginBottom:'1rem', width:'auto' }} />
+                <label style={{ display:'block', fontSize:'0.78rem', color:'rgba(255,255,255,0.5)', marginBottom:'0.6rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Which pickup date to skip?</label>
+                {(() => {
+                  if (!pickupDay) return <p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.4)' }}>Pickup day not set yet.</p>
+                  const WDAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+                  const weekday = WDAYS.indexOf(pickupDay.toLowerCase())
+                  const dates: string[] = []
+                  const start = (activeSub as any)?.billing_start
+                    ? new Date(Math.max(new Date((activeSub as any).billing_start+'T12:00:00').getTime(), Date.now()))
+                    : new Date()
+                  const d = new Date(start)
+                  // Find next pickup day
+                  const diff = (weekday - d.getDay() + 7) % 7 || 7
+                  d.setDate(d.getDate() + diff)
+                  while (dates.length < 8) {
+                    dates.push(d.toISOString().split('T')[0])
+                    d.setDate(d.getDate() + 7)
+                  }
+                  return (
+                    <div style={{ display:'flex', flexDirection:'column', gap:'0.4rem', marginBottom:'1rem' }}>
+                      {dates.map(ds => {
+                        const label = new Date(ds+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})
+                        const selected = skipDate === ds
+                        return (
+                          <button key={ds} onClick={() => setSkipDate(ds)}
+                            style={{ background: selected ? 'rgba(46,125,50,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${selected ? 'rgba(46,125,50,0.5)' : 'rgba(255,255,255,0.1)'}`, borderRadius:'7px', padding:'0.65rem 1rem', color: selected ? '#4caf50' : '#fff', fontSize:'0.88rem', fontWeight: selected ? 700 : 400, cursor:'pointer', textAlign:'left', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                            <span>{label}</span>
+                            {selected && <span style={{ fontSize:'0.8rem' }}>✓ Selected</span>}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
                 <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.6)', marginBottom:'1.25rem' }}>
                   Estimated credit: <strong style={{ color:'#4caf50' }}>${activeSub ? (() => {
                     const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
@@ -1143,7 +1186,18 @@ export default function Portal() {
                     {(customer as any).auto_pay && (customer as any).stripe_payment_method_id ? (
                       <div style={{ background:'rgba(46,125,50,0.1)', border:'1px solid rgba(46,125,50,0.3)', borderRadius:'6px', padding:'0.4rem 0.8rem', fontSize:'0.75rem', color:'#4caf50', fontWeight:700 }}>✅ Auto-pay on</div>
                     ) : (
-                      <a href="mailto:patilwasteremoval@gmail.com" style={{ background:'#2e7d32', color:'#fff', borderRadius:'6px', padding:'0.55rem 1.1rem', fontSize:'0.82rem', fontWeight:700, textDecoration:'none' }}>Pay Now →</a>
+                      <button onClick={async () => {
+                        setPayingNow(true)
+                        try {
+                          const res = await fetch('/api/stripe/checkout-session', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ invoiceId: current.id, customerId: customer.id }) })
+                          const data = await res.json()
+                          if (data.url) window.location.href = data.url
+                          else showToast('Could not start payment. Call us at (802) 416-9484', 'error')
+                        } catch { showToast('Payment error. Call us at (802) 416-9484', 'error') }
+                        setPayingNow(false)
+                      }} disabled={payingNow} style={{ background:'#2e7d32', color:'#fff', borderRadius:'6px', padding:'0.55rem 1.1rem', fontSize:'0.82rem', fontWeight:700, border:'none', cursor:'pointer', fontFamily:'inherit', opacity: payingNow ? 0.7 : 1 }}>
+                        {payingNow ? 'Loading…' : 'Pay Now →'}
+                      </button>
                     )}
                   </div>
                   {current.notes && (
