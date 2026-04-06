@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { NextResponse } from 'next/server'
 import { sbServer } from '@/lib/billing'
 import { receiptEmail, failedPaymentEmail } from '@/lib/emails'

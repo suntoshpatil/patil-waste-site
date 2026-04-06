@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   try {
     // Load all active customers with their subscriptions, bins, and approved skips
     const customers = await sbServer(
-      `customers?status=eq.active&select=*,subscriptions(id,rate,billing_cycle,status,services(name)),bins(id,bin_type,monthly_rental_fee,ownership)`
+      `customers?status=eq.active&select=*,subscriptions(id,rate,billing_cycle,status,pickup_day,billing_start,services(name)),bins(id,bin_type,monthly_rental_fee,ownership)`
     )
 
     for (const customer of customers || []) {

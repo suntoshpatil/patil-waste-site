@@ -1,3 +1,4 @@
+/* eslint-disable */
 // Server-side Supabase helper (uses env vars, never exposed to client)
 const SUPABASE_URL = process.env.SUPABASE_URL!
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY!

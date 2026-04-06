@@ -351,6 +351,7 @@ export default function Portal() {
       const updated = { ...customer, contract_accepted: true, status: 'active' } as any
       setCustomer(updated)
       sessionStorage.setItem('portal_customer', JSON.stringify(updated))
+      loadPortalData(updated)
       showToast('Contract accepted! Your first invoice has been generated. Welcome aboard 🎉')
     } catch (e: any) { showToast('Failed to accept. Please contact us directly.', 'error') }
     setContractAccepting(false)
@@ -427,9 +428,9 @@ export default function Portal() {
         refund_amount: customer.subscriptions?.[0]
           ? (() => {
               const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
-              const now = new Date()
+              const skipDateObj = skipDate ? new Date(skipDate + 'T12:00:00') : new Date()
               const weekday = pickupDay ? DAYS.indexOf(pickupDay.toLowerCase()) : -1
-              const pickupsInMonth = weekday !== -1 ? countWeekdayInMonth(now.getFullYear(), now.getMonth(), weekday) : 4
+              const pickupsInMonth = weekday !== -1 ? countWeekdayInMonth(skipDateObj.getFullYear(), skipDateObj.getMonth(), weekday) : 4
               return parseFloat((customer.subscriptions![0].rate / (pickupsInMonth || 4)).toFixed(2))
             })()
           : null,

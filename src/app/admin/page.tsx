@@ -109,7 +109,7 @@ export default function Admin() {
 
   const loadAll = useCallback(async () => {
     const [custs, subs, invs, pays, svcs, svcReqs, skipReqs, jobReqs, addons] = await Promise.all([
-      sb('customers?select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,services(name))&order=created_at.desc'),
+      sb('customers?select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,services(name))&order=created_at.desc'),
       sb('subscriptions?select=rate,billing_cycle,status&status=eq.active'),
       sb('invoices?select=*,customers(first_name,last_name)&order=due_date.desc&limit=100'),
       sb('payment_logs?select=*,customers(first_name,last_name)&order=paid_at.desc&limit=20'),
@@ -322,7 +322,7 @@ export default function Admin() {
     showToast('Customer updated')
     setEditMode(false)
     // Re-fetch this customer so the panel updates immediately without closing
-    const updated = await sb(`customers?id=eq.${selected.id}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,services(name))`)
+    const updated = await sb(`customers?id=eq.${selected.id}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,services(name))`)
     if (updated?.[0]) setSelected(updated[0])
     loadAll()
   }

@@ -26,8 +26,8 @@ export default function Contact() {
           email: data.email,
           phone: data.phone || null,
           address: "",
-          job_type: "inquiry",
-          description: data.message,
+          job_type: "junk_removal",
+          description: `[CONTACT FORM] ${data.message}`,
           status: "new",
         }),
       })
