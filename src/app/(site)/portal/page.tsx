@@ -350,8 +350,17 @@ export default function Portal() {
   const skipsLeft = Math.max(0, 2 - skipsUsed)
 
   // Filter out services already subscribed to
-  const subscribedIds = (customer.subscriptions || []).map((s: any) => s.service_id || s.services?.id)
-  const availableServices = services.filter(s => !subscribedIds.includes(s.id))
+  const subscribedIds = (customer.subscriptions || [])
+    .filter((s:any) => s.status === 'active')
+    .map((s: any) => s.service_id || s.services?.id)
+  const availableServices = (() => {
+    const seenNames = new Set<string>()
+    return services.filter((s:any) => {
+      if (subscribedIds.includes(s.id)) return false
+      if (seenNames.has(s.name)) return false
+      seenNames.add(s.name); return true
+    })
+  })()
 
   return (
     <main style={{ minHeight:'100vh', background:'#0a0a0a', paddingTop:'5rem' }}>
