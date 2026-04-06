@@ -10,7 +10,7 @@ export default function Home() {
         <div style={{ maxWidth:'1100px', margin:'0 auto', width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'3rem' }}>
           <div className="fade-up" style={{ flex:1 }}>
             <span style={{ display:'inline-block', background:'var(--green)', color:'#fff', fontSize:'0.72rem', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', padding:'0.35rem 0.85rem', borderRadius:'2px', marginBottom:'1.4rem' }}>
-              📍 Bedford · Merrimack · Amherst · Milford · and more, NH
+              📍 Bedford · Merrimack · Amherst · Milford · and more
             </span>
             <h1 className="d1" style={{ color:'var(--white)' }}>
               Reliability<br />at an <span style={{ color:'var(--green-light)' }}>Affordable</span><br />Price
@@ -31,7 +31,7 @@ export default function Home() {
           </div>
         </div>
         <div style={{ position:'absolute', bottom:'2.5rem', left:'50%', transform:'translateX(-50%)', display:'flex', gap:'3rem' }}>
-          {[['500+','Happy Customers'],['4','Towns Served'],['100%','Local & Trusted']].map(([val, label]) => (
+          {[['50+','Happy Customers'],['10+','Towns & Areas'],['100%','Local & Trusted']].map(([val, label]) => (
             <div key={label} style={{ textAlign:'center' }}>
               <div style={{ fontFamily:'var(--font-display)', fontSize:'2.4rem', color:'var(--green-light)', lineHeight:1 }}>{val}</div>
               <div style={{ fontSize:'0.65rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.35)', marginTop:'0.3rem' }}>{label}</div>

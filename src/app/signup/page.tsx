@@ -8,7 +8,7 @@ export default function Signup() {
     e.preventDefault()
     const f = e.currentTarget
     const g = (n: string) => (f.elements.namedItem(n) as HTMLInputElement)?.value || ""
-    const data = { firstName:g("fn"), lastName:g("ln"), email:g("em"), phone:g("ph"), address:g("addr"), town:g("town"), plan:g("plan"), billingCycle:g("billing_cycle"), pickupDay:g("pickup_day"), binSituation:g("bin_situation"), paymentMethod:g("payment_method"), startDate:g("startDate"), referral:g("referral"), gateNotes:g("gate_notes"), notes:g("notes"), garagePickup:(f.elements.namedItem("addon_garageside") as HTMLInputElement)?.checked || false }
+    const data = { firstName:g("fn"), lastName:g("ln"), email:g("em"), phone:g("ph"), address:g("addr"), town:g("town"), plan:g("plan"), billingCycle:g("billing_cycle"), binSituation:g("bin_situation"), paymentMethod:g("payment_method"), startDate:g("startDate"), referral:g("referral"), gateNotes:g("gate_notes"), notes:g("notes"), garagePickup:(f.elements.namedItem("addon_garageside") as HTMLInputElement)?.checked || false }
     if (!data.firstName || !data.email || !data.address || !data.town || !data.plan) { setErr("Please fill in all required fields."); return }
     setErr("")
     try {
@@ -53,30 +53,3 @@ export default function Signup() {
                 <div className="f-grp"><label>Billing Cycle</label><select name="billing_cycle" {...sel}><option value="monthly">Monthly</option><option value="quarterly">Quarterly (3 months)</option></select></div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
-                <div className="f-grp"><label>Preferred Pickup Day</label><select name="pickup_day" {...sel}><option value="">No preference</option>{["monday","tuesday","wednesday","thursday","friday"].map(d=><option key={d} value={d}>{d.charAt(0).toUpperCase()+d.slice(1)}</option>)}</select></div>
-                <div className="f-grp"><label>Requested Start Date</label><input name="startDate" type="date" {...inp} /></div>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
-                <div className="f-grp"><label>Bin Situation</label><select name="bin_situation" {...sel}><option value="own">I have my own bins</option><option value="rental">I need to rent bins</option><option value="unsure">Not sure</option></select></div>
-                <div className="f-grp"><label>Preferred Payment</label><select name="payment_method" {...sel}><option value="card">Credit / Debit Card</option><option value="venmo">Venmo</option><option value="zelle">Zelle</option><option value="cash">Cash</option></select></div>
-              </div>
-              <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:"4px",padding:"1.1rem",marginBottom:"0.85rem"}}>
-                <p style={{fontSize:"0.7rem",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"rgba(255,255,255,0.4)",marginBottom:"0.75rem"}}>Add-Ons</p>
-                <label style={{display:"flex",alignItems:"flex-start",gap:"0.65rem",cursor:"pointer",fontSize:"0.88rem",color:"rgba(255,255,255,0.75)"}}>
-                  <input type="checkbox" name="addon_garageside" style={{marginTop:"0.15rem",accentColor:"var(--green-light)"}} />
-                  <span>Garage-Side Pickup — <strong style={{color:"var(--green-light)"}}>$10/mo</strong> | Seniors 65+ <strong style={{color:"var(--accent)"}}>$5/mo</strong><br /><span style={{fontSize:"0.75rem",color:"rgba(255,255,255,0.4)"}}>We pick up from your garage — no dragging the bin to the curb.</span></span>
-                </label>
-              </div>
-              <div className="f-grp"><label>Referral — Who referred you?</label><input name="referral" placeholder="Enter their name" {...inp} /></div>
-              <div className="f-grp"><label>Gate Code / Property Notes</label><textarea name="gate_notes" placeholder="e.g. gate code #1234, dogs in yard..." {...inp} /></div>
-              <div className="f-grp"><label>Additional Notes</label><textarea name="notes" placeholder="Questions about billing, bin rental, etc..." {...inp} /></div>
-              {err && <p style={{color:"#f87171",fontSize:"0.82rem",marginBottom:"0.75rem"}}>{err}</p>}
-              <button type="submit" className="btn btn-green" style={{width:"100%",fontSize:"0.9rem",padding:"1rem"}}>Submit Request</button>
-              <p style={{marginTop:"0.75rem",fontSize:"0.75rem",color:"rgba(255,255,255,0.28)",textAlign:"center"}}>We will follow up within one business day to confirm your details.</p>
-            </form>
-          )}
-        </div>
-      </section>
-    </>
-  )
-}
