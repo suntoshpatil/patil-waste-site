@@ -46,9 +46,46 @@ function quarterSkipsUsed(skips: any[]): number {
   }).length
 }
 
-function prorateDays(rate: number): number {
+// Count how many times a given weekday (0=Sun..6=Sat) falls in a month
+function countWeekdayInMonth(year: number, month: number, weekday: number): number {
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  let count = 0
+  for (let d = 1; d <= daysInMonth; d++) {
+    if (new Date(year, month, d).getDay() === weekday) count++
+  }
+  return count
+}
+
+// Count remaining occurrences of a weekday from a given date (inclusive) to end of month
+function countRemainingWeekdays(from: Date, weekday: number): number {
+  const year = from.getFullYear()
+  const month = from.getMonth()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  let count = 0
+  for (let d = from.getDate(); d <= daysInMonth; d++) {
+    if (new Date(year, month, d).getDay() === weekday) count++
+  }
+  return count
+}
+
+// Prorate based on pickup occurrences remaining vs total in the month
+function prorateDays(rate: number, pickupDay?: string): number {
+  const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
   const now = new Date()
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const year = now.getFullYear()
+  const month = now.getMonth()
+
+  if (pickupDay) {
+    const weekday = DAYS.indexOf(pickupDay.toLowerCase())
+    if (weekday !== -1) {
+      const total = countWeekdayInMonth(year, month, weekday)
+      const remaining = countRemainingWeekdays(now, weekday)
+      if (total > 0) return parseFloat(((rate / total) * remaining).toFixed(2))
+    }
+  }
+
+  // Fallback: day-based proration if no pickup day set
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
   const remaining = daysInMonth - now.getDate() + 1
   return parseFloat(((rate / daysInMonth) * remaining).toFixed(2))
 }
@@ -250,7 +287,7 @@ export default function Portal() {
     if (!selectedService || !customer) return
     const svc = services.find(s => s.id === selectedService)
     if (!svc) return
-    const prorated = addTiming === 'immediate' ? prorateDays(svc.base_price_monthly) : null
+    const prorated = addTiming === 'immediate' ? prorateDays(svc.base_price_monthly, pickupDay) : null
     try {
       await sb('service_requests', { method:'POST', body:{
         customer_id: customer.id,
@@ -276,7 +313,13 @@ export default function Portal() {
         skip_date: skipDate,
         status: 'pending',
         refund_amount: customer.subscriptions?.[0]
-          ? parseFloat(((customer.subscriptions[0].rate / 4.33)).toFixed(2))
+          ? (() => {
+              const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+              const now = new Date()
+              const weekday = pickupDay ? DAYS.indexOf(pickupDay.toLowerCase()) : -1
+              const pickupsInMonth = weekday !== -1 ? countWeekdayInMonth(now.getFullYear(), now.getMonth(), weekday) : 4
+              return parseFloat((customer.subscriptions![0].rate / (pickupsInMonth || 4)).toFixed(2))
+            })()
           : null,
       }})
       showToast('Skip request submitted! Credit will appear on your next bill.')
@@ -970,7 +1013,13 @@ export default function Portal() {
                 <label style={{ display:'block', fontSize:'0.78rem', color:'rgba(255,255,255,0.5)', marginBottom:'0.4rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Which pickup date to skip?</label>
                 <input type="date" value={skipDate} onChange={e => setSkipDate(e.target.value)} style={{ ...inputStyle, marginBottom:'1rem', width:'auto' }} />
                 <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.6)', marginBottom:'1.25rem' }}>
-                  Estimated credit: <strong style={{ color:'#4caf50' }}>${activeSub ? ((activeSub.rate / 4.33)).toFixed(2) : '—'}</strong> on your next bill
+                  Estimated credit: <strong style={{ color:'#4caf50' }}>${activeSub ? (() => {
+                    const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+                    const now = new Date()
+                    const weekday = pickupDay ? DAYS.indexOf(pickupDay.toLowerCase()) : -1
+                    const pickupsInMonth = weekday !== -1 ? countWeekdayInMonth(now.getFullYear(), now.getMonth(), weekday) : 4
+                    return (activeSub.rate / (pickupsInMonth || 4)).toFixed(2)
+                  })() : '—'}</strong> on your next bill
                 </div>
                 <button onClick={handleSkipPickup} style={{ ...btnGreen, width:'auto', padding:'0.65rem 1.5rem' }}>Submit Skip Request</button>
               </div>
@@ -1137,7 +1186,7 @@ export default function Portal() {
                         <input type="radio" value="immediate" checked={addTiming==='immediate'} onChange={() => setAddTiming('immediate')} style={{ accentColor:'#2e7d32', marginTop:'2px' }} />
                         <div>
                           <div style={{ fontWeight:600, fontSize:'0.88rem' }}>Start immediately</div>
-                          <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.6)' }}>Prorated charge of <strong style={{ color:'#fff' }}>${prorateDays(svc.base_price_monthly)}</strong> added to next bill</div>
+                          <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.6)' }}>Prorated charge of <strong style={{ color:'#fff' }}>${prorateDays(svc.base_price_monthly, pickupDay)}</strong> added to next bill</div>
                         </div>
                       </label>
                     </div>
