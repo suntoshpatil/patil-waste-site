@@ -736,6 +736,7 @@ export default function Portal() {
           const firstDay = new Date(year, month, 1).getDay()
           const daysInMonth = new Date(year, month + 1, 0).getDate()
           const pickupDayIndex = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].indexOf((pickupDay || '').toLowerCase())
+          const calBillingStart = (activeSub as any)?.billing_start || null
 
           // Build a set of notice dates for quick lookup
           const noticeMap: Record<string, any> = {}
@@ -795,6 +796,7 @@ export default function Portal() {
                       const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
                       const dayOfWeek = new Date(year, month, day).getDay()
                       const isPickupDay = pickupDayIndex !== -1 && dayOfWeek === pickupDayIndex
+                        && (!calBillingStart || dateStr >= calBillingStart)
                       const notice = noticeMap[dateStr]
                       const isCancelled = notice?.notice_type === 'cancellation'
                       const isRescheduled = notice?.notice_type === 'reschedule'
