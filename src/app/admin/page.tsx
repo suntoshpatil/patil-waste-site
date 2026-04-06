@@ -101,7 +101,7 @@ export default function Admin() {
     const [custs, subs, invs, pays, svcs, svcReqs, skipReqs, jobReqs, addons] = await Promise.all([
       sb('customers?select=*,subscriptions(rate,billing_cycle,services(name))&order=created_at.desc'),
       sb('subscriptions?select=rate,billing_cycle,status&status=eq.active'),
-      sb('invoices?select=*,customers(first_name,last_name)&order=created_at.desc&limit=50'),
+      sb('invoices?select=*,customers(first_name,last_name)&order=due_date.desc&limit=100'),
       sb('payment_logs?select=*,customers(first_name,last_name)&order=paid_at.desc&limit=20'),
       sb('services?select=id,name,base_price_monthly&is_active=eq.true&type=in.(recurring,addon)&order=base_price_monthly.asc'),
       sb('service_requests?select=*,customers(first_name,last_name),services(name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
@@ -437,16 +437,43 @@ export default function Admin() {
 
           {/* ── INVOICES ── */}
           {view==='invoices' && (
-            <div>
-              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'2rem', letterSpacing:'0.02em', marginBottom:'1.5rem' }}>Invoices</div>
+            <div style={{ maxWidth:'860px' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.5rem' }}>
+                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'2rem', letterSpacing:'0.02em' }}>Invoices</div>
+                <Btn small onClick={async () => {
+                  showToast('Generating invoices…')
+                  try {
+                    const res = await fetch('/api/cron/generate-invoices', { headers:{ Authorization:`Bearer patilwaste_cron_2024` }})
+                    const data = await res.json()
+                    showToast(`Done — ${data.generated} generated, ${data.skipped} skipped`)
+                    loadAll()
+                  } catch { showToast('Failed to generate invoices','error') }
+                }}>⚡ Generate Now</Btn>
+              </div>
+
+              {/* Failed / overdue alerts */}
+              {invoices.filter((i:any)=>i.status==='overdue').length > 0 && (
+                <div style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.3)', borderRadius:'8px', padding:'1rem 1.25rem', marginBottom:'1.25rem' }}>
+                  <div style={{ fontWeight:700, color:'#f87171', marginBottom:'0.5rem' }}>⚠️ {invoices.filter((i:any)=>i.status==='overdue').length} overdue invoice(s)</div>
+                  {invoices.filter((i:any)=>i.status==='overdue').map((inv:any) => (
+                    <div key={inv.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'0.84rem', padding:'0.35rem 0' }}>
+                      <span>{inv.customers?.first_name} {inv.customers?.last_name} — ${Number(inv.total).toFixed(2)} due {inv.due_date}</span>
+                      <div style={{ display:'flex', gap:'0.5rem' }}>
+                        <Btn small onClick={()=>markPaid(inv.id)}>Mark Paid</Btn>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.84rem' }}>
                   <thead><tr>{['Customer','Period','Total','Status','Due','Actions'].map(h=><th key={h} style={{ padding:'0.75rem 1rem', textAlign:'left', fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>{h}</th>)}</tr></thead>
                   <tbody>
                     {invoices.map((inv:any)=>(
-                      <tr key={inv.id} style={{ borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                      <tr key={inv.id} style={{ borderBottom:'1px solid rgba(255,255,255,0.04)', background: inv.status==='overdue'?'rgba(220,38,38,0.04)':'' }}>
                         <td style={{ padding:'0.85rem 1rem', fontWeight:600 }}>{inv.customers?`${inv.customers.first_name} ${inv.customers.last_name}`:'—'}</td>
-                        <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.5)', fontSize:'0.8rem' }}>{fmt(inv.period_start)} – {fmt(inv.period_end)}</td>
+                        <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.5)', fontSize:'0.8rem' }}>{inv.period_start} – {inv.period_end}</td>
                         <td style={{ padding:'0.85rem 1rem', fontWeight:600 }}>${Number(inv.total).toFixed(2)}</td>
                         <td style={{ padding:'0.85rem 1rem' }}><Badge status={inv.status} /></td>
                         <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.5)' }}>{fmt(inv.due_date)}</td>
@@ -455,7 +482,7 @@ export default function Admin() {
                         </td>
                       </tr>
                     ))}
-                    {invoices.length===0 && <tr><td colSpan={6} style={{ padding:'3rem', textAlign:'center', color:'#6b7280' }}>No invoices yet</td></tr>}
+                    {invoices.length===0 && <tr><td colSpan={6} style={{ padding:'3rem', textAlign:'center', color:'#6b7280' }}>No invoices yet — click Generate Now to create them</td></tr>}
                   </tbody>
                 </table>
               </div>

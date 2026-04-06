@@ -90,6 +90,9 @@ export default function Portal() {
   // Bulky items / pickup addons
   const [catalog, setCatalog] = useState<any[]>([])
   const [pickupAddons, setPickupAddons] = useState<any[]>([])
+  const [invoices, setInvoices] = useState<any[]>([])
+  const [cardSaving, setCardSaving] = useState(false)
+  const [cardSaved, setCardSaved] = useState(false)
   const [selectedItems, setSelectedItems] = useState<{id:string, qty:number}[]>([])
   const [customItem, setCustomItem] = useState('')
   const [addonPickupDate, setAddonPickupDate] = useState('')
@@ -116,13 +119,14 @@ export default function Portal() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadPortalData(cust: Customer) {
-    const [b, sk, n, sv, cat, addons] = await Promise.all([
+    const [b, sk, n, sv, cat, addons, inv] = await Promise.all([
       sb(`bins?customer_id=eq.${cust.id}&select=*`).catch(() => []),
       sb(`skip_requests?customer_id=eq.${cust.id}&select=*&order=created_at.desc`).catch(() => []),
       sb(`schedule_notices?select=*&order=notice_date.desc&limit=5`).catch(() => []),
       sb(`services?select=id,name,base_price_monthly&is_active=eq.true&type=in.(recurring,addon)&order=base_price_monthly.asc`).catch(() => []),
       sb(`bulky_item_catalog?select=*&is_active=eq.true&order=name.asc`).catch(() => []),
       sb(`pickup_addons?customer_id=eq.${cust.id}&select=*&order=created_at.desc&limit=20`).catch(() => []),
+      sb(`invoices?customer_id=eq.${cust.id}&select=*&order=created_at.desc&limit=12`).catch(() => []),
     ])
     setBins(b || [])
     setSkips(sk || [])
@@ -130,6 +134,7 @@ export default function Portal() {
     setServices(sv || [])
     setCatalog(cat || [])
     setPickupAddons(addons || [])
+    setInvoices(inv || [])
   }
 
   const [loginStep, setLoginStep] = useState<'email'|'pin'>('email')
@@ -628,42 +633,113 @@ export default function Portal() {
         {/* ── BILLING TAB ── */}
         {tab === 'billing' && (
           <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+
+            {/* Current invoice / amount due */}
+            {(() => {
+              const current = invoices.find((inv: any) => inv.status === 'sent' || inv.status === 'overdue')
+              if (!current) return null
+              return (
+                <div style={{ ...card, borderLeft:`3px solid ${current.status==='overdue'?'#dc2626':'#f59e0b'}` }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'0.75rem' }}>
+                    <div>
+                      <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color: current.status==='overdue'?'#f87171':'#f59e0b', marginBottom:'0.3rem' }}>
+                        {current.status === 'overdue' ? '⚠️ Payment Overdue' : '📄 Invoice Due'}
+                      </div>
+                      <div style={{ fontSize:'1.8rem', fontWeight:700, color:'#fff' }}>${Number(current.total).toFixed(2)}</div>
+                      <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.4)', marginTop:'0.2rem' }}>Due {current.due_date} · Period {current.period_start} – {current.period_end}</div>
+                    </div>
+                    {(customer as any).auto_pay && (customer as any).stripe_payment_method_id ? (
+                      <div style={{ background:'rgba(46,125,50,0.1)', border:'1px solid rgba(46,125,50,0.3)', borderRadius:'6px', padding:'0.4rem 0.8rem', fontSize:'0.75rem', color:'#4caf50', fontWeight:700 }}>✅ Auto-pay on</div>
+                    ) : (
+                      <a href="mailto:patilwasteremoval@gmail.com" style={{ background:'#2e7d32', color:'#fff', borderRadius:'6px', padding:'0.55rem 1.1rem', fontSize:'0.82rem', fontWeight:700, textDecoration:'none' }}>Pay Now →</a>
+                    )}
+                  </div>
+                  {current.notes && (
+                    <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)', borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:'0.6rem', marginTop:'0.25rem' }}>{current.notes}</div>
+                  )}
+                </div>
+              )
+            })()}
+
+            {/* Auto-pay card setup */}
             <div style={card}>
-              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Payment Method</div>
-              <div style={{ fontWeight:600, fontSize:'1rem', textTransform:'capitalize' }}>{customer.payment_method}</div>
-              <p style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.35)', marginTop:'0.4rem' }}>To update your payment method, contact Suntosh at (802) 416-9484.</p>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Auto-Pay</div>
+              {(customer as any).auto_pay && (customer as any).stripe_payment_method_id ? (
+                <div>
+                  <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.5rem' }}>
+                    <span style={{ fontSize:'1.2rem' }}>💳</span>
+                    <span style={{ fontSize:'0.9rem', fontWeight:600 }}>Card saved — auto-pay enabled</span>
+                  </div>
+                  <p style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.4)' }}>Your card will be charged automatically on the 1st of each month. To update your card, contact Suntosh.</p>
+                </div>
+              ) : cardSaved ? (
+                <div style={{ color:'#4caf50', fontSize:'0.9rem', fontWeight:600 }}>✅ Card saved! Auto-pay is now enabled.</div>
+              ) : (
+                <div>
+                  <p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.6)', marginBottom:'1rem' }}>Save a card to enable automatic monthly payments — no need to log in to pay each month.</p>
+                  <button onClick={async () => {
+                    setCardSaving(true)
+                    try {
+                      const res = await fetch('/api/stripe/setup-intent', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ customerId: customer.id }) })
+                      const { clientSecret } = await res.json()
+                      // Redirect to Stripe-hosted setup page (simplest, no Stripe.js needed)
+                      window.location.href = `https://billing.stripe.com/p/login/test_${clientSecret}`
+                    } catch { showToast('Could not start card setup. Please call us.', 'error') }
+                    setCardSaving(false)
+                  }} style={{ ...btnGreen, width:'auto', padding:'0.65rem 1.5rem' }} disabled={cardSaving}>
+                    {cardSaving ? 'Loading…' : '💳 Save a Card'}
+                  </button>
+                  <p style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.3)', marginTop:'0.5rem' }}>Secured by Stripe. We never store your card details.</p>
+                </div>
+              )}
             </div>
+
+            {/* Monthly breakdown */}
             <div style={card}>
               <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Monthly Charges</div>
               {activeSub && (
                 <div style={{ display:'flex', justifyContent:'space-between', padding:'0.5rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.88rem' }}>
-                  <span>{activeSub.services?.name}</span>
-                  <span>${activeSub.rate}/mo</span>
+                  <span>{activeSub.services?.name}</span><span>${activeSub.rate}/mo</span>
                 </div>
               )}
               {bins.map((b: any) => (
                 <div key={b.id} style={{ display:'flex', justifyContent:'space-between', padding:'0.5rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.88rem' }}>
-                  <span>{b.bin_type === 'trash' ? 'Trash Bin Rental' : 'Recycling Bin Rental'}</span>
-                  <span>${b.monthly_fee}/mo</span>
+                  <span>{b.bin_type === 'trash' ? 'Trash Bin Rental' : 'Recycling Bin Rental'}</span><span>${b.monthly_fee}/mo</span>
                 </div>
               ))}
               {customer.garage_side_pickup && (
                 <div style={{ display:'flex', justifyContent:'space-between', padding:'0.5rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.88rem' }}>
-                  <span>Garage-side Pickup</span>
-                  <span>$10/mo</span>
+                  <span>Garage-Side Pickup</span><span>$10/mo</span>
                 </div>
               )}
               <div style={{ display:'flex', justifyContent:'space-between', padding:'0.75rem 0', fontWeight:700, fontSize:'1rem' }}>
-                <span>Total</span>
-                <span style={{ color:'#4caf50' }}>
-                  ${(
-                    (activeSub?.rate || 0) +
-                    bins.reduce((sum: number, b: any) => sum + b.monthly_fee, 0) +
-                    (customer.garage_side_pickup ? 10 : 0)
-                  ).toFixed(2)}/mo
-                </span>
+                <span>Monthly Total</span>
+                <span style={{ color:'#4caf50' }}>${((activeSub?.rate||0) + bins.reduce((s:number,b:any)=>s+Number(b.monthly_fee),0) + (customer.garage_side_pickup?10:0)).toFixed(2)}/mo</span>
               </div>
             </div>
+
+            {/* Invoice history */}
+            {invoices.length > 0 && (
+              <div style={card}>
+                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', marginBottom:'1rem' }}>Invoice History</div>
+                {invoices.map((inv: any) => (
+                  <div key={inv.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.6rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.85rem' }}>
+                    <div>
+                      <div style={{ fontWeight:500 }}>{inv.period_start} – {inv.period_end}</div>
+                      <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.4)' }}>Due {inv.due_date}</div>
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+                      <span style={{ fontWeight:600 }}>${Number(inv.total).toFixed(2)}</span>
+                      <span style={{ fontSize:'0.72rem', fontWeight:700, textTransform:'uppercase', padding:'0.15rem 0.5rem', borderRadius:'4px',
+                        color: inv.status==='paid'?'#4caf50': inv.status==='overdue'?'#f87171':'#f59e0b',
+                        background: inv.status==='paid'?'rgba(76,175,80,0.1)': inv.status==='overdue'?'rgba(248,113,113,0.1)':'rgba(245,158,11,0.1)'
+                      }}>{inv.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div style={{ background:'rgba(255,255,255,0.02)', borderRadius:'8px', padding:'1rem 1.25rem', fontSize:'0.82rem', color:'rgba(255,255,255,0.4)' }}>
               Questions about your bill? Call or text Suntosh at <a href="tel:8024169484" style={{ color:'#4caf50' }}>(802) 416-9484</a> or email <a href="mailto:patilwasteremoval@gmail.com" style={{ color:'#4caf50' }}>patilwasteremoval@gmail.com</a>
             </div>
