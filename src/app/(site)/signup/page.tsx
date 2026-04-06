@@ -9,6 +9,8 @@ export default function Signup() {
   const [done, setDone]       = useState(false)
   const [err, setErr]         = useState("")
   const [loading, setLoading] = useState(false)
+  const [rentTrash, setRentTrash]         = useState(false)
+  const [rentRecycling, setRentRecycling] = useState(false)
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -32,7 +34,13 @@ export default function Signup() {
     const garage_side_pickup = checked("addon_garageside")
     const referral          = g("referral")
     const extra_notes       = g("notes")
-    const notes             = [extra_notes, referral ? `Referred by: ${referral}` : "", `Plan: ${plan} · Billing: ${billing_cycle}`].filter(Boolean).join(" | ")
+    const rentTrashVal      = (f.elements.namedItem("rent_trash") as HTMLInputElement)?.checked || false
+    const rentRecyclingVal  = (f.elements.namedItem("rent_recycling") as HTMLInputElement)?.checked || false
+    const binRentalNote     = rentTrashVal && rentRecyclingVal ? "Bin rentals: Trash + Recycling"
+                            : rentTrashVal ? "Bin rental: Trash bin"
+                            : rentRecyclingVal ? "Bin rental: Recycling bin"
+                            : ""
+    const notes             = [extra_notes, referral ? `Referred by: ${referral}` : "", `Plan: ${plan} · Billing: ${billing_cycle}`, binRentalNote].filter(Boolean).join(" | ")
 
     if (!first_name || !email || !service_address || !town || !plan) {
       setErr("Please fill in all required fields."); return
@@ -168,8 +176,8 @@ export default function Signup() {
                   <label>Bin Situation</label>
                   <select name="bin_situation" {...sel}>
                     <option value="own">I have my own bins</option>
-                    <option value="rental">I need to rent bins</option>
-                    <option value="unsure">Not sure</option>
+                    <option value="rental">I need to rent bin(s)</option>
+                    <option value="unsure">Not sure yet</option>
                   </select>
                 </div>
                 <div className="f-grp">
@@ -181,6 +189,30 @@ export default function Signup() {
                     <option value="cash">Cash</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Bin rental selection */}
+              <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "4px", padding: "1.1rem", marginBottom: "0.85rem" }}>
+                <p style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", marginBottom: "0.75rem" }}>Bin Rentals</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "0.25rem" }}>
+                  <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px", padding: "0.6rem 0.85rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                      <input type="checkbox" name="rent_trash" checked={rentTrash} onChange={e => setRentTrash(e.target.checked)} style={{ accentColor: "var(--green-light)", width: "15px", height: "15px" }} />
+                      <span style={{ fontSize: "0.88rem", color: "rgba(255,255,255,0.8)" }}>🗑️ Trash Bin Rental</span>
+                    </div>
+                    <span style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.45)" }}>$7.99/mo · $25 deposit</span>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px", padding: "0.6rem 0.85rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                      <input type="checkbox" name="rent_recycling" checked={rentRecycling} onChange={e => setRentRecycling(e.target.checked)} style={{ accentColor: "var(--green-light)", width: "15px", height: "15px" }} />
+                      <span style={{ fontSize: "0.88rem", color: "rgba(255,255,255,0.8)" }}>♻️ Recycling Bin Rental</span>
+                    </div>
+                    <span style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.45)" }}>$3.99/mo · no deposit</span>
+                  </label>
+                </div>
+                {rentTrash && (
+                  <p style={{ fontSize: "0.75rem", color: "rgba(255,179,0,0.8)", marginTop: "0.4rem", marginBottom: 0 }}>⚠️ A $25 refundable deposit is required for the trash bin — collected before first pickup.</p>
+                )}
               </div>
 
               <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "4px", padding: "1.1rem", marginBottom: "0.85rem" }}>
