@@ -116,7 +116,7 @@ export default function Portal() {
       sb(`bins?customer_id=eq.${cust.id}&select=*`).catch(() => []),
       sb(`skip_requests?customer_id=eq.${cust.id}&select=*&order=created_at.desc`).catch(() => []),
       sb(`schedule_notices?select=*&order=notice_date.desc&limit=5`).catch(() => []),
-      sb(`services?select=id,name,base_price&order=base_price.asc`).catch(() => []),
+      sb(`services?select=id,name,base_price_monthly_monthly&order=base_price_monthly_monthly.asc`).catch(() => []),
     ])
     setBins(b || [])
     setSkips(sk || [])
@@ -166,7 +166,7 @@ export default function Portal() {
     if (!selectedService || !customer) return
     const svc = services.find(s => s.id === selectedService)
     if (!svc) return
-    const prorated = addTiming === 'immediate' ? prorateDays(svc.base_price) : null
+    const prorated = addTiming === 'immediate' ? prorateDays(svc.base_price_monthly) : null
     try {
       await sb('service_requests', { method:'POST', body:{
         customer_id: customer.id,
@@ -407,7 +407,7 @@ export default function Portal() {
                   <div key={s.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.75rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
                     <div>
                       <div style={{ fontWeight:600, fontSize:'0.9rem' }}>{s.name}</div>
-                      <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)' }}>${s.base_price}/mo</div>
+                      <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)' }}>${s.base_price_monthly}/mo</div>
                     </div>
                     <button onClick={() => { setSelectedService(s.id); setShowAddService(true) }} style={{ ...btnGhost, width:'auto', fontSize:'0.78rem', padding:'0.4rem 0.9rem' }}>Request →</button>
                   </div>
@@ -518,7 +518,7 @@ export default function Portal() {
                 <>
                   <div style={{ background:'rgba(46,125,50,0.08)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'7px', padding:'0.85rem 1rem', marginBottom:'1.25rem' }}>
                     <div style={{ fontWeight:700 }}>{svc.name}</div>
-                    <div style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.5)' }}>${svc.base_price}/mo</div>
+                    <div style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.5)' }}>${svc.base_price_monthly}/mo</div>
                   </div>
                   <div style={{ marginBottom:'1.25rem' }}>
                     <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.5)', marginBottom:'0.6rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>When to start?</div>
@@ -534,7 +534,7 @@ export default function Portal() {
                         <input type="radio" value="immediate" checked={addTiming==='immediate'} onChange={() => setAddTiming('immediate')} style={{ accentColor:'#2e7d32', marginTop:'2px' }} />
                         <div>
                           <div style={{ fontWeight:600, fontSize:'0.88rem' }}>Start immediately</div>
-                          <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)' }}>Prorated charge of <strong style={{ color:'#fff' }}>${prorateDays(svc.base_price)}</strong> added to next bill</div>
+                          <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)' }}>Prorated charge of <strong style={{ color:'#fff' }}>${prorateDays(svc.base_price_monthly)}</strong> added to next bill</div>
                         </div>
                       </label>
                     </div>

@@ -82,7 +82,7 @@ export default function Admin() {
   const [addServiceId, setAddServiceId] = useState('')
   const [addRate, setAddRate] = useState('')
   const [addBillingCycle, setAddBillingCycle] = useState('monthly')
-  const [servicesList, setServicesList] = useState<{id:string,name:string,base_price:number}[]>([])
+  const [servicesList, setServicesList] = useState<{id:string,name:string,base_price_monthly:number}[]>([])
   const [serviceRequests, setServiceRequests] = useState<any[]>([])
   const [skipRequests, setSkipRequests] = useState<any[]>([])
   const [noticeMsg, setNoticeMsg] = useState('')
@@ -102,7 +102,7 @@ export default function Admin() {
       sb('subscriptions?select=rate,billing_cycle,status&status=eq.active'),
       sb('invoices?select=*,customers(first_name,last_name)&order=created_at.desc&limit=50'),
       sb('payment_logs?select=*,customers(first_name,last_name)&order=paid_at.desc&limit=20'),
-      sb('services?select=id,name,base_price&order=base_price.asc'),
+      sb('services?select=id,name,base_price_monthly_monthly&order=base_price_monthly_monthly.asc'),
       sb('service_requests?select=*,customers(first_name,last_name),services(name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
       sb('skip_requests?select=*,customers(first_name,last_name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
     ])
@@ -530,7 +530,7 @@ export default function Admin() {
                     <span style={{ fontSize:'0.7rem', fontWeight:700, color:'#f59e0b', background:'rgba(245,158,11,0.1)', padding:'0.2rem 0.6rem', borderRadius:'4px' }}>PENDING</span>
                   </div>
                   <div style={{ display:'flex', gap:'0.5rem' }}>
-                    <Btn small onClick={() => approveServiceRequest(r.id, r.customer_id, r.service_id, r.timing, servicesList.find(s=>s.id===r.service_id)?.base_price||0)}>✅ Approve</Btn>
+                    <Btn small onClick={() => approveServiceRequest(r.id, r.customer_id, r.service_id, r.timing, servicesList.find(s=>s.id===r.service_id)?.base_price_monthly||0)}>✅ Approve</Btn>
                     <Btn small color='#7f1d1d' onClick={() => denyRequest('service_requests', r.id)}>❌ Deny</Btn>
                   </div>
                 </div>
@@ -730,13 +730,13 @@ export default function Admin() {
                     onChange={e => {
                       const svc = servicesList.find(s => s.id === e.target.value)
                       setAddServiceId(e.target.value)
-                      if (svc) setAddRate(String(svc.base_price))
+                      if (svc) setAddRate(String(svc.base_price_monthly))
                     }}
                     style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'6px', padding:'0.55rem 0.75rem', color:'#fff', fontSize:'0.88rem' }}
                   >
                     <option value=''>— None / Add later —</option>
                     {servicesList.map(s => (
-                      <option key={s.id} value={s.id}>{s.name} (${s.base_price}/mo)</option>
+                      <option key={s.id} value={s.id}>{s.name} (${s.base_price_monthly}/mo)</option>
                     ))}
                   </select>
                 </div>
