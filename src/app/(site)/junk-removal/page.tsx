@@ -65,7 +65,7 @@ export default function JunkRemoval() {
       {/* Hero */}
       <section style={{ background:'linear-gradient(180deg, #0f1f0f 0%, #0a0a0a 100%)', padding:'4rem 2rem 3rem', textAlign:'center' }}>
         <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'clamp(2.5rem, 6vw, 4.5rem)', letterSpacing:'0.04em', lineHeight:1, marginBottom:'1rem' }}>
-          <span style={{ color:'#fff' }}>Junk Removal</span> &amp; <span style={{ color:'#4caf50' }}>Yard Cleanup</span>
+          <span style={{ color:'#fff' }}>Junk Removal</span> <span style={{ color:'#fff' }}>&amp;</span> <span style={{ color:'#4caf50' }}>Yard Cleanup</span>
         </div>
         <p style={{ color:'rgba(255,255,255,0.55)', fontSize:'1.05rem', maxWidth:'520px', margin:'0 auto 2rem' }}>
           No subscription needed. Fill out the form and we'll get back to you with a quote — usually within one business day.
