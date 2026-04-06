@@ -595,7 +595,7 @@ export default function Portal() {
     const section = { marginBottom:'1.25rem', paddingBottom:'1.25rem', borderBottom:'1px solid #e5e5e5' }
 
     return (
-      <main style={{ minHeight:'100vh', background:'#f5f5f5', paddingTop:'3rem', paddingBottom:'4rem' }}>
+      <main style={{ minHeight:'100vh', background:'#f5f5f5', paddingTop:'7rem', paddingBottom:'4rem' }}>
         <div style={{ maxWidth:'780px', margin:'0 auto', padding:'0 1.5rem' }}>
 
           {/* Header */}
