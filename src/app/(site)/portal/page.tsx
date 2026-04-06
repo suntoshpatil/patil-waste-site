@@ -140,6 +140,7 @@ export default function Portal() {
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() } })
   const [cardSaving, setCardSaving] = useState(false)
   const [payingNow, setPayingNow] = useState(false)
+  const [portalMenuOpen, setPortalMenuOpen] = useState(false)
   const [cardSaved, setCardSaved] = useState(false)
   const [selectedItems, setSelectedItems] = useState<{id:string, qty:number}[]>([])
   const [customItem, setCustomItem] = useState('')
@@ -671,27 +672,50 @@ export default function Portal() {
 
   return (
     <main style={{ minHeight:'100vh', background:'#0a0a0a', paddingTop:'5rem' }}>
-      {/* Header bar */}
-      <div style={{ background:'rgba(255,255,255,0.02)', borderBottom:'1px solid rgba(255,255,255,0.06)', padding:'1rem 2rem', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <div>
-          <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.5rem', letterSpacing:'0.05em' }}>
-            Hey, {customer.first_name} 👋
+      {/* ── COMPACT PORTAL NAV ── */}
+      <div style={{ position:'sticky', top:'57px', zIndex:100, background:'rgba(10,10,10,0.97)', backdropFilter:'blur(10px)', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
+        {/* Top bar */}
+        <div style={{ padding:'0.6rem 1.25rem', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+            <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.1rem', letterSpacing:'0.05em', color:'#fff' }}>
+              {customer.first_name} {customer.last_name}
+            </div>
+            <span style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.4)', borderLeft:'1px solid rgba(255,255,255,0.12)', paddingLeft:'0.75rem' }}>{customer.service_address}</span>
           </div>
-          <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.6)' }}>{customer.service_address}</div>
+          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+            {/* Hamburger toggle */}
+            <button onClick={() => setPortalMenuOpen((p:boolean) => !p)} style={{ background:'none', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'6px', padding:'0.35rem 0.6rem', cursor:'pointer', display:'flex', flexDirection:'column', gap:'4px' }}>
+              {portalMenuOpen
+                ? <span style={{ color:'rgba(255,255,255,0.7)', fontSize:'1rem', lineHeight:1 }}>✕</span>
+                : [0,1,2].map(i => <span key={i} style={{ display:'block', width:'18px', height:'2px', background:'rgba(255,255,255,0.7)', borderRadius:'2px' }} />)
+              }
+            </button>
+            <button onClick={logout} style={{ background:'none', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'6px', padding:'0.35rem 0.75rem', color:'rgba(255,255,255,0.55)', fontSize:'0.75rem', cursor:'pointer', fontFamily:'inherit' }}>Out</button>
+          </div>
         </div>
-        <button style={btnGhost} onClick={logout}>Sign Out</button>
+
+        {/* Current tab indicator - one line */}
+        <div style={{ padding:'0 1.25rem 0.5rem', display:'flex', gap:'0.5rem', overflowX:'auto', scrollbarWidth:'none' }}>
+          {([['home','🏠'],['calendar','📅'],['pickup','📦'],['services','➕'],['skips','⏸️'],['billing','💳']] as [typeof tab, string][]).map(([id, icon]) => (
+            <button key={id} onClick={() => setTab(id)} style={{ background: tab===id ? 'rgba(46,125,50,0.2)' : 'none', border: tab===id ? '1px solid rgba(46,125,50,0.4)' : '1px solid transparent', borderRadius:'20px', color: tab===id ? '#4caf50' : 'rgba(255,255,255,0.4)', padding:'0.25rem 0.75rem', cursor:'pointer', fontSize:'0.78rem', fontWeight: tab===id ? 700 : 400, fontFamily:'inherit', whiteSpace:'nowrap', transition:'all 0.15s' }}>
+              {icon}
+            </button>
+          ))}
+        </div>
+
+        {/* Hamburger dropdown menu */}
+        {portalMenuOpen && (
+          <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)', background:'rgba(15,15,15,0.98)' }}>
+            {([['home','🏠 Overview'],['calendar','📅 Schedule'],['pickup','📦 Add to Pickup'],['services','➕ Services'],['skips','⏸️ Skip Pickup'],['billing','💳 Billing']] as [typeof tab, string][]).map(([id, label]) => (
+              <button key={id} onClick={() => { setTab(id); setPortalMenuOpen(false) }} style={{ display:'block', width:'100%', background: tab===id ? 'rgba(46,125,50,0.1)' : 'none', border:'none', borderBottom:'1px solid rgba(255,255,255,0.05)', color: tab===id ? '#4caf50' : '#fff', padding:'0.9rem 1.25rem', cursor:'pointer', fontSize:'0.9rem', fontWeight: tab===id ? 700 : 400, fontFamily:'inherit', textAlign:'left' }}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Tabs */}
-      <div style={{ display:'flex', borderBottom:'1px solid rgba(255,255,255,0.07)', padding:'0 2rem', gap:'0.25rem', overflowX:'auto' }}>
-        {([['home','🏠 Overview'],['calendar','📅 Schedule'],['pickup','📦 Add to Pickup'],['services','➕ Services'],['skips','⏸️ Skip Pickup'],['billing','💳 Billing']] as [typeof tab, string][]).map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)} style={{ background:'none', border:'none', color: tab===id ? '#4caf50' : 'rgba(255,255,255,0.4)', borderBottom: tab===id ? '2px solid #4caf50' : '2px solid transparent', padding:'0.85rem 1.25rem', cursor:'pointer', fontSize:'0.82rem', fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', transition:'color 0.15s' }}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ maxWidth:'860px', margin:'0 auto', padding:'2rem' }}>
+      <div style={{ maxWidth:'860px', margin:'0 auto', padding:'1.5rem' }}>
 
         {/* ── OVERVIEW TAB ── */}
         {tab === 'home' && (
