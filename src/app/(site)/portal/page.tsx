@@ -116,7 +116,7 @@ export default function Portal() {
       sb(`bins?customer_id=eq.${cust.id}&select=*`).catch(() => []),
       sb(`skip_requests?customer_id=eq.${cust.id}&select=*&order=created_at.desc`).catch(() => []),
       sb(`schedule_notices?select=*&order=notice_date.desc&limit=5`).catch(() => []),
-      sb(`services?select=id,name,base_price_monthly_monthly&order=base_price_monthly_monthly.asc`).catch(() => []),
+      sb(`services?select=id,name,base_price_monthly&order=base_price_monthly.asc`).catch(() => []),
     ])
     setBins(b || [])
     setSkips(sk || [])

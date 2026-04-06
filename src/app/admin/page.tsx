@@ -102,7 +102,7 @@ export default function Admin() {
       sb('subscriptions?select=rate,billing_cycle,status&status=eq.active'),
       sb('invoices?select=*,customers(first_name,last_name)&order=created_at.desc&limit=50'),
       sb('payment_logs?select=*,customers(first_name,last_name)&order=paid_at.desc&limit=20'),
-      sb('services?select=id,name,base_price_monthly_monthly&order=base_price_monthly_monthly.asc'),
+      sb('services?select=id,name,base_price_monthly&order=base_price_monthly.asc'),
       sb('service_requests?select=*,customers(first_name,last_name),services(name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
       sb('skip_requests?select=*,customers(first_name,last_name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
     ])
