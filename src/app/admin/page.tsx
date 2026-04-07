@@ -1107,7 +1107,6 @@ export default function Admin() {
                             <div style={{ display:'flex', gap:'0.4rem', flexWrap:'wrap' }}>
                               {inv.status!=='paid' && <Btn small onClick={()=>markPaid(inv.id)}>Mark Paid</Btn>}
                               {inv.status!=='paid' && <Btn small color='#4a1d96' onClick={()=>{ setDiscountInvoice(inv); setDiscountAmount(''); setDiscountNote('') }}>🏷️ Discount</Btn>}
-                              <Btn small color='#1e3a5f' onClick={()=>recalcInvoice(inv)}>↻ Recalc</Btn>
                             </div>
                           </td>
                         </tr>
