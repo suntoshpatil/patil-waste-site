@@ -140,6 +140,8 @@ export default function Admin() {
   const [upcomingInvoices, setUpcomingInvoices] = useState<any[]>([])
   const [editingUpcoming, setEditingUpcoming] = useState<string|null>(null)
   const [upcomingEdits, setUpcomingEdits] = useState<any>({})
+  const [selectedUpcoming, setSelectedUpcoming] = useState<string|null>(null)
+  const [upcomingDiscountInputs, setUpcomingDiscountInputs] = useState<Record<string,string>>({})
   // Revenue chart
   const [revenueHistory, setRevenueHistory] = useState<any[]>([])
   // Overdue reminder sending
@@ -590,16 +592,20 @@ export default function Admin() {
       // Send date = 25th of month before period starts
       const ps2 = new Date(periodStart + 'T12:00:00')
       sendDate = new Date(ps2.getFullYear(), ps2.getMonth() - 1, 25).toISOString().split('T')[0]
-      // Calculate amount
-      let total = isQ ? activeSub.rate * 3 : activeSub.rate
-      ;(c.bins||[]).forEach((b:any) => { if (b.ownership==='rental') total += Number(b.monthly_rental_fee||0) })
-      if (c.garage_side_pickup) total += Number(c.garage_side_rate || 10)
-      // Add confirmed extra bag charges not yet invoiced
+      // Calculate amount with line items
+      const lines: {label:string, amount:number}[] = []
+      const baseAmt = isQ ? activeSub.rate * 3 : activeSub.rate
+      lines.push({ label: `${activeSub.services?.name || 'Service'}${isQ ? ' (Quarterly)' : ''}`, amount: parseFloat(baseAmt.toFixed(2)) })
+      ;(c.bins||[]).forEach((b:any) => {
+        if (b.ownership==='rental') lines.push({ label: b.bin_type==='trash' ? 'Trash Bin Rental' : 'Recycling Bin Rental', amount: Number(b.monthly_rental_fee||0) })
+      })
+      if (c.garage_side_pickup) lines.push({ label: 'Garage-Side Pickup', amount: Number(c.garage_side_rate||10) })
       const addons = await sb(`pickup_addons?customer_id=eq.${c.id}&status=eq.confirmed&select=final_price,custom_description`).catch(()=>[])
       const addonTotal = (addons||[]).reduce((s:number,a:any) => s + Number(a.final_price||0), 0)
       const addonLabels = (addons||[]).map((a:any) => a.custom_description).join(', ')
-      total = parseFloat((total + addonTotal).toFixed(2))
-      upcoming.push({ customerId: c.id, name: `${c.first_name} ${c.last_name}`, plan: activeSub.services?.name, billing: activeSub.billing_cycle, paidThrough, periodStart, periodEnd, sendDate, total, addonTotal, addonLabels })
+      ;(addons||[]).forEach((a:any) => lines.push({ label: a.custom_description||'Extra Item', amount: Number(a.final_price||0) }))
+      const total = parseFloat(lines.reduce((s,l) => s + l.amount, 0).toFixed(2))
+      upcoming.push({ customerId: c.id, name: `${c.first_name} ${c.last_name}`, plan: activeSub.services?.name, billing: activeSub.billing_cycle, paidThrough, periodStart, periodEnd, sendDate, total, addonTotal, addonLabels, lines })
     }
     upcoming.sort((a:any,b:any) => a.sendDate.localeCompare(b.sendDate))
     setUpcomingInvoices(upcoming)
@@ -1132,9 +1138,15 @@ export default function Admin() {
                       {upcomingInvoices.map((inv:any) => {
                         const isEditing = editingUpcoming === inv.customerId
                         const edits = upcomingEdits[inv.customerId] || {}
+                        const isExpanded = selectedUpcoming === inv.customerId
+                        const discountVal = parseFloat(upcomingDiscountInputs[inv.customerId]||'0') || 0
+                        const discountedTotal = Math.max(0, inv.total - discountVal)
                         return (
-                          <tr key={inv.customerId} style={{ borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
-                            <td style={{ padding:'0.85rem 1rem', fontWeight:600 }}>{inv.name}</td>
+                          <>
+                          <tr key={inv.customerId} style={{ borderBottom: isExpanded ? 'none' : '1px solid rgba(255,255,255,0.04)', background: isExpanded ? 'rgba(255,255,255,0.03)' : '' }}>
+                            <td style={{ padding:'0.85rem 1rem', fontWeight:600, cursor:'pointer', userSelect:'none' }} onClick={() => setSelectedUpcoming(isExpanded ? null : inv.customerId)}>
+                              {inv.name} <span style={{ color:'rgba(255,255,255,0.3)', fontSize:'0.7rem' }}>{isExpanded ? '▲' : '▼'}</span>
+                            </td>
                             <td style={{ padding:'0.85rem 1rem', fontSize:'0.78rem', color:'rgba(255,255,255,0.55)' }}>{inv.plan}<br/><span style={{ color:'rgba(255,255,255,0.3)' }}>{inv.billing}</span></td>
                             <td style={{ padding:'0.85rem 1rem', fontSize:'0.78rem', color:'rgba(255,255,255,0.45)' }}>{inv.periodStart}<br/>– {inv.periodEnd}</td>
                             <td style={{ padding:'0.85rem 1rem', fontWeight:700, color:'#4caf50' }}>
@@ -1191,6 +1203,51 @@ export default function Admin() {
                               )}
                             </td>
                           </tr>
+                          {isExpanded && (
+                            <tr style={{ borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                              <td colSpan={7} style={{ padding:0 }}>
+                                <div style={{ background:'rgba(255,255,255,0.02)', borderTop:'1px solid rgba(255,255,255,0.06)', padding:'1.25rem 1.5rem' }}>
+                                  <div style={{ marginBottom:'1rem', maxWidth:'360px' }}>
+                                    <div style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.35)', marginBottom:'0.6rem' }}>Charge Breakdown</div>
+                                    {(inv.lines||[]).map((line:any, i:number) => (
+                                      <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'0.3rem 0', borderBottom:'1px solid rgba(255,255,255,0.04)', fontSize:'0.85rem' }}>
+                                        <span style={{ color:'rgba(255,255,255,0.65)' }}>{line.label}</span>
+                                        <span style={{ fontWeight:600 }}>${line.amount.toFixed(2)}</span>
+                                      </div>
+                                    ))}
+                                    {discountVal > 0 && (
+                                      <div style={{ display:'flex', justifyContent:'space-between', padding:'0.3rem 0', borderBottom:'1px solid rgba(255,255,255,0.04)', fontSize:'0.85rem' }}>
+                                        <span style={{ color:'#f59e0b' }}>Discount</span>
+                                        <span style={{ fontWeight:600, color:'#f59e0b' }}>-${discountVal.toFixed(2)}</span>
+                                      </div>
+                                    )}
+                                    <div style={{ display:'flex', justifyContent:'space-between', padding:'0.5rem 0 0', fontSize:'0.9rem' }}>
+                                      <span style={{ fontWeight:700 }}>Total</span>
+                                      <span style={{ fontWeight:700, color:'#4caf50' }}>${discountedTotal.toFixed(2)}</span>
+                                    </div>
+                                  </div>
+                                  <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', flexWrap:'wrap' }}>
+                                    <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                                      <label style={{ fontSize:'0.72rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)' }}>Discount $</label>
+                                      <input type='number' step='0.01' min='0' placeholder='0.00'
+                                        value={upcomingDiscountInputs[inv.customerId]||''}
+                                        onChange={e => setUpcomingDiscountInputs((p:any) => ({...p, [inv.customerId]: e.target.value}))}
+                                        style={{ width:'80px', background:'#111', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'4px', padding:'0.35rem 0.5rem', color:'#fff', fontSize:'0.85rem', fontFamily:'inherit', outline:'none' }} />
+                                    </div>
+                                    {discountVal > 0 && (
+                                      <Btn small color='#4a1d96' onClick={() => {
+                                        setUpcomingEdits((p:any) => ({...p, [inv.customerId]: {...(p[inv.customerId]||{}), total: discountedTotal.toFixed(2)}}))
+                                        setEditingUpcoming(inv.customerId)
+                                        setSelectedUpcoming(null)
+                                      }}>🏷️ Apply Discount</Btn>
+                                    )}
+                                    <Btn small color='#1e3a2a' onClick={() => { setEditingUpcoming(inv.customerId); setSelectedUpcoming(null) }}>✏️ Edit Total</Btn>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          </>
                         )
                       })}
                     </tbody>
