@@ -34,11 +34,12 @@ const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month:'
 
 function isBiweeklyPickupWeek(billingStart: string | null | undefined): boolean {
   if (!billingStart) return true // default to yes if unknown
-  const start = new Date(billingStart + 'T12:00:00')
+  const start = new Date(billingStart + 'T00:00:00')
+  start.setHours(0, 0, 0, 0)
   const today = new Date()
-  // Number of weeks since billing start
+  today.setHours(0, 0, 0, 0)
   const msPerWeek = 7 * 24 * 60 * 60 * 1000
-  const weeksSinceStart = Math.floor((today.getTime() - start.getTime()) / msPerWeek)
+  const weeksSinceStart = Math.round((today.getTime() - start.getTime()) / msPerWeek)
   return weeksSinceStart % 2 === 0
 }
 const cap = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '—'
