@@ -483,11 +483,11 @@ export default function Admin() {
   async function loadRevenueHistory() {
     const sixMonthsAgo = new Date()
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
-    const data = await sb(`invoices?status=in.(paid,sent)&period_start=gte.${sixMonthsAgo.toISOString().split('T')[0]}&select=total,period_start,status&order=period_start.asc`).catch(() => [])
-    // Group by month
+    const data = await sb(`invoices?status=in.(paid,sent)&created_at=gte.${sixMonthsAgo.toISOString()}&select=total,created_at,status&order=created_at.asc`).catch(() => [])
+    // Group by month invoice was issued (not the service period)
     const byMonth: Record<string, number> = {}
     for (const inv of data || []) {
-      const month = inv.period_start?.slice(0, 7)
+      const month = inv.created_at?.slice(0, 7)
       if (month) byMonth[month] = (byMonth[month] || 0) + Number(inv.total || 0)
     }
     setRevenueHistory(Object.entries(byMonth).map(([month, total]) => ({ month, total })))
