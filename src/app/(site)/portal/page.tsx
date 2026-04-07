@@ -294,7 +294,7 @@ export default function Portal() {
     const stored = (foundCustomer.phone || '').replace(/\D/g, '').slice(-4)
     const entered = resetPhone.replace(/\D/g, '').slice(-4)
     if (stored !== entered || stored.length < 4) {
-      setError('Phone number does not match our records. Contact Suntosh at (802) 416-9484.'); return
+      setError('Phone number does not match our records. Contact Patil Waste Removal at (802) 416-9484.'); return
     }
     if (!resetNewPin || resetNewPin.length !== 4) { setError('Please enter a valid 4-digit PIN.'); return }
     if (resetNewPin !== resetConfirmPin) { setError('PINs do not match.'); return }
@@ -731,7 +731,7 @@ export default function Portal() {
                 </div>
                 <div style={section}>
                   <h3 style={h3}>Auto-Pay</h3>
-                  <p style={p}>You may optionally save a credit or debit card through your customer portal to enable automatic monthly payments. If auto-pay is enabled, your card on file will be charged on the <strong>1st of each month</strong> for the outstanding invoice amount. Your first invoice will be charged immediately upon saving your card. You may disable auto-pay at any time by contacting Suntosh. Patil Waste Removal uses <strong>Stripe</strong> to process card payments — your card details are never stored on our servers.</p>
+                  <p style={p}>You may optionally save a credit or debit card through your customer portal to enable automatic monthly payments. If auto-pay is enabled, your card on file will be charged on the <strong>1st of each month</strong> for the outstanding invoice amount. Your first invoice will be charged immediately upon saving your card. You may disable auto-pay at any time by contacting Patil Waste Removal. Patil Waste Removal uses <strong>Stripe</strong> to process card payments — your card details are never stored on our servers.</p>
                 </div>
                 <div style={section}>
                   <h3 style={h3}>Payment Refund</h3>
@@ -1531,7 +1531,7 @@ export default function Portal() {
 
             {/* Auto-pay card setup */}
             <div style={card}>
-              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem', display:'flex', alignItems:'center' }}>Auto-Pay<Tooltip text="When enabled, your saved card is charged automatically on the 1st of each month. Your first invoice is charged immediately when you save a card. You can disable it anytime by contacting Suntosh." /></div>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem', display:'flex', alignItems:'center' }}>Auto-Pay<Tooltip text="When enabled, your saved card is charged automatically on the 1st of each month. Your first invoice is charged immediately when you save a card. You can disable it anytime by contacting Patil Waste Removal." /></div>
               {(customer as any).auto_pay && (customer as any).stripe_payment_method_id ? (
                 <div>
                   <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.5rem' }}>
