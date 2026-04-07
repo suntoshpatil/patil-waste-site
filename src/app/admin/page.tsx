@@ -534,39 +534,52 @@ export default function Admin() {
     const activeSub = cust.subscriptions?.find((s:any) => s.status === 'active')
     const bins = await sb(`bins?customer_id=eq.${cust.id}&ownership=eq.rental&select=*`).catch(()=>[])
     const addons = await sb(`pickup_addons?customer_id=eq.${cust.id}&status=eq.confirmed&select=*`).catch(()=>[])
-    const lines: {label:string, amount:number, note?:string}[] = []
 
-    // Service plan
+    // Check last paid invoice to determine actual next due date
+    const lastPaid = await sb(`invoices?customer_id=eq.${cust.id}&status=in.(paid)&order=period_end.desc&limit=1&select=period_end`).catch(()=>[])
+    const paidThrough = lastPaid?.[0]?.period_end || null
+
+    const now = new Date()
+    const isQ = activeSub?.billing_cycle === 'quarterly'
+
+    // Calculate actual next period start — day after paid-through ends (or next month if no paid invoice)
+    let periodStart: string
+    let periodEnd: string
+    let dueDate: string
+
+    if (paidThrough) {
+      const afterPaid = new Date(paidThrough + 'T12:00:00')
+      afterPaid.setDate(afterPaid.getDate() + 1)
+      periodStart = afterPaid.toISOString().split('T')[0]
+      // period end: 3 months for quarterly, 1 month for monthly
+      const ps = new Date(periodStart + 'T12:00:00')
+      periodEnd = isQ
+        ? new Date(ps.getFullYear(), ps.getMonth() + 3, 0).toISOString().split('T')[0]
+        : new Date(ps.getFullYear(), ps.getMonth() + 1, 0).toISOString().split('T')[0]
+      dueDate = periodStart
+    } else {
+      periodStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().split('T')[0]
+      periodEnd = isQ
+        ? new Date(now.getFullYear(), now.getMonth() + 4, 0).toISOString().split('T')[0]
+        : new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString().split('T')[0]
+      dueDate = periodStart
+    }
+
+    const lines: {label:string, amount:number, note?:string}[] = []
     if (activeSub) {
-      const isQ = activeSub.billing_cycle === 'quarterly'
       const amt = isQ ? activeSub.rate * 3 : activeSub.rate
       lines.push({ label: `${activeSub.services?.name || 'Service'}${isQ ? ' (Quarterly)' : ''}`, amount: amt })
     }
-
-    // Bin rentals
     for (const b of bins || []) {
       lines.push({ label: b.bin_type === 'trash' ? 'Trash Bin Rental' : 'Recycling Bin Rental', amount: Number(b.monthly_rental_fee || 0) })
     }
-
-    // Garage pickup
     if (cust.garage_side_pickup) lines.push({ label: 'Garage-Side Pickup', amount: Number(cust.garage_side_rate || 10) })
-
-    // Extra bags and other confirmed add-on charges
     for (const a of addons || []) {
       lines.push({ label: a.custom_description || 'Extra item', amount: Number(a.final_price || 0), note: a.requested_pickup_date ? `Pickup: ${a.requested_pickup_date}` : undefined })
     }
 
     const total = parseFloat(lines.reduce((s,l) => s + l.amount, 0).toFixed(2))
-
-    // Next period dates
-    const now = new Date()
-    const periodStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().split('T')[0]
-    const isQ = activeSub?.billing_cycle === 'quarterly'
-    const periodEnd = isQ
-      ? new Date(now.getFullYear(), now.getMonth() + 4, 0).toISOString().split('T')[0]
-      : new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString().split('T')[0]
-
-    setInvoicePreview({ lines, total, periodStart, periodEnd, customer: cust, hasAddons: (addons||[]).length > 0 })
+    setInvoicePreview({ lines, total, periodStart, periodEnd, dueDate, paidThrough, customer: cust, hasAddons: (addons||[]).length > 0 })
   }
 
   async function recalcInvoice(inv: any) {
@@ -1248,8 +1261,13 @@ export default function Admin() {
                       <button onClick={()=>setInvoicePreview(null)} style={{ background:'none', border:'none', color:'#6b7280', cursor:'pointer', fontSize:'0.85rem' }}>✕</button>
                     </div>
                     <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'6px', padding:'0.85rem 1rem' }}>
+                      {invoicePreview.paidThrough && (
+                        <div style={{ background:'rgba(46,125,50,0.1)', border:'1px solid rgba(46,125,50,0.25)', borderRadius:'5px', padding:'0.5rem 0.75rem', marginBottom:'0.75rem', fontSize:'0.78rem', color:'#4caf50', fontWeight:600 }}>
+                          ✅ Paid through {new Date(invoicePreview.paidThrough+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}
+                        </div>
+                      )}
                       <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.5rem' }}>
-                        {invoicePreview.periodStart} – {invoicePreview.periodEnd} · Due {invoicePreview.periodStart}
+                        Next invoice: {invoicePreview.periodStart} – {invoicePreview.periodEnd} · Due {invoicePreview.dueDate || invoicePreview.periodStart}
                       </div>
                       {invoicePreview.lines.map((l:any, i:number) => (
                         <div key={i} style={{ padding:'0.3rem 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
