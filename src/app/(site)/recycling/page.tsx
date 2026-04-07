@@ -7,12 +7,12 @@ export default function Recycling() {
     { item: 'Newspapers & magazines', tip: 'No need to remove staples' },
     { item: 'Office paper & junk mail', tip: 'Shredded paper is OK' },
     { item: 'Plastic bottles & jugs (1–7)', tip: 'Rinse before placing' },
-    { item: 'Glass bottles & jars', tip: 'Keep separate from other recyclables' },
+    { item: 'Glass bottles & jars', tip: 'Place in a box next to your bin or on top — must be easy for driver to separate' },
     { item: 'Aluminum & steel cans', tip: 'Rinse, no need to crush' },
     { item: 'Cartons (milk, juice)', tip: 'Empty and rinse' },
   ]
   const notAccepted = [
-    'Plastic bags — recycle at grocery store',
+    'Plastic bags in the bin — must be separated (see note below)',
     'Styrofoam of any kind',
     'Food waste or soiled containers',
     'Electronics or batteries',
@@ -40,7 +40,7 @@ export default function Recycling() {
       {/* Important notice */}
       <div style={{ background: '#1a1200', borderBottom: '1px solid rgba(255,179,0,0.2)', padding: '1rem 2rem', textAlign: 'center' }}>
         <p style={{ margin: 0, fontSize: '0.88rem', color: '#fbbf24', maxWidth: '700px', marginInline: 'auto' }}>
-          ⚠️ <strong>Do NOT bag your recycling.</strong> Loose materials only — plastic bags contaminate single-stream bins and must be recycled separately at your grocery store. Glass must be kept separate from other recyclables.
+          ⚠️ <strong>Do NOT bag your recycling.</strong> Loose materials only. <strong>Plastic bags</strong> will jam recycling machines — keep them separated from your bin or place them loose in your trash. <strong>Glass</strong> is accepted but must be easy for the driver to separate: place it in a box next to your bin, or set it on top of the bin so it can be quickly sorted.
         </p>
       </div>
 
