@@ -143,6 +143,54 @@ export function signupConfirmationEmail(customer: any, planName: string, startDa
   }
 }
 
+export function contractReadyEmail(customer: any, planName: string, pickupDay: string, startDate: string) {
+  const portalUrl = `${SITE_URL}/portal`
+  const dayLabel = pickupDay ? pickupDay.charAt(0).toUpperCase() + pickupDay.slice(1) : 'your scheduled day'
+  return {
+    from: 'Patil Waste Removal <hello@patilwasteremoval.com>',
+    reply_to: REPLY_TO,
+    to: customer.email,
+    subject: `Your Patil Waste Removal contract is ready to sign`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff">
+        <div style="background:#1a1a1a;padding:28px 32px">
+          <h1 style="color:#fff;margin:0;font-size:22px;letter-spacing:1px">PATIL WASTE REMOVAL</h1>
+          <p style="color:#4caf50;margin:4px 0 0;font-size:13px">Bedford, NH · (802) 416-9484</p>
+        </div>
+        <div style="padding:32px">
+          <p style="color:#333;font-size:16px">Hi ${customer.first_name},</p>
+          <p style="color:#555;font-size:15px">Great news — your account has been set up and your service agreement is ready to review and sign. Here are your details:</p>
+
+          <div style="background:#f9f9f9;border:1px solid #e5e5e5;border-radius:8px;padding:20px 24px;margin:24px 0">
+            <table style="width:100%;border-collapse:collapse">
+              <tr><td style="padding:6px 0;color:#555;font-size:14px">Plan</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#111;font-size:14px">${planName}</td></tr>
+              <tr><td style="padding:6px 0;color:#555;font-size:14px">Pickup day</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#2e7d32;font-size:14px">${dayLabel}s</td></tr>
+              ${startDate ? `<tr><td style="padding:6px 0;color:#555;font-size:14px">First pickup</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#111;font-size:14px">${startDate}</td></tr>` : ''}
+            </table>
+          </div>
+
+          <p style="color:#333;font-size:15px;font-weight:600;margin-bottom:6px">How to sign your contract:</p>
+          <ol style="color:#555;font-size:14px;line-height:2;padding-left:20px;margin:0 0 24px">
+            <li>Go to <a href="${portalUrl}" style="color:#2e7d32">${portalUrl}</a></li>
+            <li>Enter the email address this was sent to</li>
+            <li>Create a 4-digit PIN — you'll use this to log in each time</li>
+            <li>Review and accept your service agreement</li>
+          </ol>
+
+          <div style="text-align:center;margin:28px 0">
+            <a href="${portalUrl}" style="background:#2e7d32;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-size:16px;font-weight:700;display:inline-block">Sign My Contract →</a>
+          </div>
+
+          <p style="color:#999;font-size:13px">Questions? Reply to this email or call/text <a href="tel:8024169484" style="color:#2e7d32">(802) 416-9484</a>.</p>
+        </div>
+        <div style="background:#f5f5f5;padding:20px 32px;border-top:1px solid #e5e5e5">
+          <p style="color:#999;font-size:12px;margin:0">Patil Waste Removal · 80 Palomino Ln, Bedford NH 03110 · <a href="tel:8024169484" style="color:#999">(802) 416-9484</a></p>
+        </div>
+      </div>
+    `
+  }
+}
+
 export function contractAcceptedEmail(customer: any, planName: string, firstPickup: string, firstInvoiceTotal: number) {
   return {
     from: 'Patil Waste Removal <hello@patilwasteremoval.com>',
