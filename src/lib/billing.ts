@@ -32,7 +32,10 @@ export function calcInvoiceTotal(customer: any): {
   // Subscription plan
   const sub = customer.subscriptions?.find((s: any) => s.status === 'active')
   if (sub) {
-    lines.push({ description: sub.services?.name || 'Service Plan', amount: Number(sub.rate) })
+    const isQuarterly = sub.billing_cycle === 'quarterly'
+    const amount = isQuarterly ? Number(sub.rate) * 3 : Number(sub.rate)
+    const label = isQuarterly ? `${sub.services?.name || 'Service Plan'} (Quarterly)` : (sub.services?.name || 'Service Plan')
+    lines.push({ description: label, amount })
   }
 
   // Bin rentals — always full monthly fee, never prorated after first month
@@ -47,10 +50,11 @@ export function calcInvoiceTotal(customer: any): {
     }
   }
 
-  // Garage-side pickup — also not affected by skip credits
+  // Garage-side pickup — use stored rate if available (senior = $5, standard = $10)
   const garageLines: { description: string; amount: number }[] = []
   if (customer.garage_side_pickup) {
-    garageLines.push({ description: 'Garage-Side Pickup', amount: 10.00 })
+    const garageRate = Number(customer.garage_side_rate || 10)
+    garageLines.push({ description: 'Garage-Side Pickup', amount: garageRate })
   }
 
   const serviceSubtotal = lines.reduce((sum, l) => sum + l.amount, 0)

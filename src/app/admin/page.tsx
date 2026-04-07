@@ -258,6 +258,7 @@ export default function Admin() {
         body: {
           status: 'contract_pending',
           garage_side_pickup: onboardGarage || onboardGarageSenior,
+          garage_side_rate: onboardGarageSenior ? 5 : (onboardGarage ? 10 : null),
           notes: onboardData.notes || onboardCustomer.notes || null,
         },
         prefer: 'return=minimal',

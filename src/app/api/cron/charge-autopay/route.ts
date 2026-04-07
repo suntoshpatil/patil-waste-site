@@ -34,6 +34,9 @@ export async function GET(req: Request) {
       }
 
       try {
+        // Safety: skip if invoice already has a stripe payment reference (already charged)
+        if (invoice.stripe_invoice_id) { skipped++; continue }
+
         // Charge via Stripe
         const paymentIntent = await stripe.paymentIntents.create({
           amount: Math.round(invoice.total * 100), // cents

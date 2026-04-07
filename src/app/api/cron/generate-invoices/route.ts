@@ -29,6 +29,17 @@ export async function GET(req: Request) {
         )
         if (existing?.length > 0) { skipped++; continue }
 
+        // For quarterly customers: skip if they had an invoice in the last 3 months
+        const activeSub = customer.subscriptions?.find((s: any) => s.status === 'active')
+        if (activeSub?.billing_cycle === 'quarterly') {
+          const threeMonthsAgo = new Date()
+          threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+          const recentInvoices = await sbServer(
+            `invoices?customer_id=eq.${customer.id}&status=in.(sent,paid)&period_start=gte.${threeMonthsAgo.toISOString().split('T')[0]}&select=id`
+          ).catch(() => [])
+          if (recentInvoices?.length > 0) { skipped++; continue }
+        }
+
         // Count approved skip credits for this billing period
         const skips = await sbServer(
           `skip_requests?customer_id=eq.${customer.id}&status=eq.approved&skip_date=gte.${periodStart}&skip_date=lte.${periodEnd}&select=refund_amount`
