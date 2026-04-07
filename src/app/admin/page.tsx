@@ -1092,7 +1092,7 @@ export default function Admin() {
                     <Sel label="Status" name="status" value={editData.status||''} onChange={onEdit} options={[['active','Active'],['pending','Pending'],['paused','Paused'],['cancelled','Cancelled'],['overdue','Overdue']]} />
                     <Sel label="Payment Method" name="payment_method" value={editData.payment_method||''} onChange={onEdit} options={[['cash','Cash'],['venmo','Venmo'],['zelle','Zelle'],['card','Card']]} />
                     <Sel label="Pickup Day" name="pickup_day" value={editData.pickup_day||''} onChange={onEdit} options={[['','TBD'],['monday','Monday'],['tuesday','Tuesday'],['wednesday','Wednesday'],['thursday','Thursday'],['friday','Friday']]} />
-                    <Sel label="Garage Pickup" name="garage_pickup_opt" value={editData.garage_pickup_opt||'none'} onChange={onEdit} options={[['none','None'],['standard','Standard ($10/mo)'],['senior','Senior 65+ ($5/mo)']]} />
+                    <Sel label="Garage Pickup" name="garage_pickup_opt" value={(editData as any).garage_pickup_opt} onChange={onEdit} options={[['none','None'],['standard','Standard ($10/mo)'],['senior','Senior 65+ ($5/mo)']]} />
                     <Inp label="Gate Notes" name="gate_notes" value={editData.gate_notes||''} onChange={onEdit} placeholder="Gate code, property access..." />
                     <Inp label="Notes" name="notes" value={editData.notes||''} onChange={onEdit} placeholder="Internal notes..." />
                     <div style={{ display:'flex', gap:'0.5rem', marginTop:'1rem' }}>
