@@ -1296,14 +1296,15 @@ export default function Admin() {
                 <div style={{ marginBottom:'0.75rem' }}>
                   <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Notice Type</label>
                   <select value={noticeType||'info'} onChange={e=>setNoticeType(e.target.value)} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%' }}>
-                    <option value='info' style={{background:'#111'}}>📢 General Info</option>
-                    <option value='cancellation' style={{background:'#111'}}>❌ Cancellation — no pickup this day</option>
-                    <option value='reschedule' style={{background:'#111'}}>🔄 Reschedule — moved to another day</option>
+                    <option value='announcement' style={{background:'#111'}}>📣 Announcement — all customers</option>
+                    <option value='info' style={{background:'#111'}}>📢 Info — pickup day customers only</option>
+                    <option value='cancellation' style={{background:'#111'}}>❌ Cancellation — pickup day customers only</option>
+                    <option value='reschedule' style={{background:'#111'}}>🔄 Reschedule — pickup day customers only</option>
                   </select>
                 </div>
                 <div style={{ display:'grid', gridTemplateColumns: noticeType==='reschedule' ? '1fr 1fr' : '1fr', gap:'0.75rem', marginBottom:'0.75rem' }}>
                   <div>
-                    <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>{noticeType==='info' ? 'Notice Date' : 'Affected Pickup Date'}</label>
+                    <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>{noticeType==='announcement' || noticeType==='info' ? 'Notice Date' : 'Affected Pickup Date'}</label>
                     <input type='date' value={noticeDate} onChange={e=>setNoticeDate(e.target.value)} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%' }} />
                   </div>
                   {noticeType==='reschedule' && (
@@ -1349,9 +1350,9 @@ export default function Admin() {
                         <div>
                           <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.3rem' }}>
                             <span style={{ fontSize:'0.72rem', fontWeight:700, padding:'0.15rem 0.5rem', borderRadius:'4px',
-                              background: n.notice_type==='cancellation' ? 'rgba(220,38,38,0.15)' : n.notice_type==='reschedule' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.08)',
-                              color: n.notice_type==='cancellation' ? '#f87171' : n.notice_type==='reschedule' ? '#fbbf24' : 'rgba(255,255,255,0.6)' }}>
-                              {n.notice_type === 'cancellation' ? '❌ Cancellation' : n.notice_type === 'reschedule' ? '🔄 Reschedule' : '📢 Info'}
+                              background: n.notice_type==='cancellation' ? 'rgba(220,38,38,0.15)' : n.notice_type==='reschedule' ? 'rgba(245,158,11,0.15)' : n.notice_type==='announcement' ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.08)',
+                              color: n.notice_type==='cancellation' ? '#f87171' : n.notice_type==='reschedule' ? '#fbbf24' : n.notice_type==='announcement' ? '#a78bfa' : 'rgba(255,255,255,0.6)' }}>
+                              {n.notice_type === 'cancellation' ? '❌ Cancellation' : n.notice_type === 'reschedule' ? '🔄 Reschedule' : n.notice_type === 'announcement' ? '📣 All Customers' : '📢 Info'}
                             </span>
                             <span style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.5)' }}>
                               {new Date(n.notice_date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' })}

@@ -816,18 +816,31 @@ export default function Portal() {
         {tab === 'home' && (
           <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
 
-            {/* Notices */}
-            {notices.length > 0 && (
-              <div style={{ background:'rgba(245,158,11,0.07)', border:'1px solid rgba(245,158,11,0.25)', borderRadius:'10px', padding:'1.25rem 1.5rem' }}>
-                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#f59e0b', marginBottom:'0.75rem' }}>📢 Schedule Notices</div>
-                {notices.map((n: any) => (
-                  <div key={n.id} style={{ paddingBottom:'0.6rem', marginBottom:'0.6rem', borderBottom:'1px solid rgba(245,158,11,0.12)', fontSize:'0.87rem' }}>
-                    <span style={{ color:'#fbbf24', fontWeight:600 }}>{new Date(n.notice_date).toLocaleDateString('en-US', { month:'short', day:'numeric' })} — </span>
-                    <span style={{ color:'rgba(255,255,255,0.9)' }}>{n.message}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Notices — filter to only those affecting this customer's pickup day, or global announcements */}
+            {(() => {
+              const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+              const relevant = notices.filter((n:any) => {
+                if (n.notice_type === 'announcement') return true  // global — show to all
+                if (!pickupDay) return false
+                // For day-specific notices: only show if notice_date falls on the customer's pickup day
+                const noticeDay = DAYS[new Date(n.notice_date + 'T12:00:00').getDay()]
+                return noticeDay === pickupDay.toLowerCase()
+              })
+              if (!relevant.length) return null
+              return (
+                <div style={{ background:'rgba(245,158,11,0.07)', border:'1px solid rgba(245,158,11,0.25)', borderRadius:'10px', padding:'1.25rem 1.5rem' }}>
+                  <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#f59e0b', marginBottom:'0.75rem' }}>📢 Schedule Notices</div>
+                  {relevant.map((n:any) => (
+                    <div key={n.id} style={{ paddingBottom:'0.6rem', marginBottom:'0.6rem', borderBottom:'1px solid rgba(245,158,11,0.12)', fontSize:'0.87rem' }}>
+                      {n.notice_type !== 'announcement' && (
+                        <span style={{ color:'#fbbf24', fontWeight:600 }}>{new Date(n.notice_date + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' })} — </span>
+                      )}
+                      <span style={{ color:'rgba(255,255,255,0.9)' }}>{n.message}</span>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
 
             {/* Plan card */}
             <div style={{ ...card, borderLeft:'3px solid #2e7d32' }}>
@@ -963,10 +976,17 @@ export default function Portal() {
           const pickupDayIndex = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].indexOf((pickupDay || '').toLowerCase())
           const calBillingStart = (activeSub as any)?.billing_start || null
 
-          // Build a set of notice dates for quick lookup
+          // Build a set of notice dates for quick lookup — only for this customer's pickup day
+          const DAYS_IDX = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
           const noticeMap: Record<string, any> = {}
           for (const n of notices) {
-            if (n.affected_date) noticeMap[n.affected_date] = n
+            if (n.notice_type === 'announcement') continue  // announcements don't affect specific pickup dates
+            if (!n.affected_date) continue
+            // Only include if the notice date matches this customer's pickup day
+            const noticeDayName = DAYS_IDX[new Date((n.notice_date || n.affected_date) + 'T12:00:00').getDay()]
+            if (!pickupDay || noticeDayName === pickupDay.toLowerCase()) {
+              noticeMap[n.affected_date] = n
+            }
           }
           // Build skip map from customer's skip requests
           const skipMap: Record<string, any> = {}
@@ -1088,13 +1108,13 @@ export default function Portal() {
               </div>
 
               {/* Notices for this month */}
-              {notices.filter((n:any) => {
+              {notices.filter((n:any) => n.notice_type === 'announcement' || (() => { const noticeDayName = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date((n.notice_date||n.affected_date)+'T12:00:00').getDay()]; return !pickupDay || noticeDayName === pickupDay.toLowerCase() })()).filter((n:any) => {
                 const d = n.affected_date || n.notice_date
                 return d && d.startsWith(`${year}-${String(month+1).padStart(2,'0')}`)
               }).length > 0 && (
                 <div style={card}>
                   <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'0.75rem' }}>This Month's Notices</div>
-                  {notices.filter((n:any) => {
+                  {notices.filter((n:any) => n.notice_type === 'announcement' || (() => { const noticeDayName = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][new Date((n.notice_date||n.affected_date)+'T12:00:00').getDay()]; return !pickupDay || noticeDayName === pickupDay.toLowerCase() })()).filter((n:any) => {
                     const d = n.affected_date || n.notice_date
                     return d && d.startsWith(`${year}-${String(month+1).padStart(2,'0')}`)
                   }).map((n:any) => (
