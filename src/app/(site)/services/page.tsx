@@ -18,7 +18,7 @@ export default function Services() {
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2rem',maxWidth:'840px',margin:'0 auto 3rem'}}>
             <div className="plan-card">
               <div className="plan-type">Curbside Trash Only</div>
-              <div className="d3">Standard Pick-up</div>
+              <div className="d3" style={{color:"#fff"}}>Standard Pick-up</div>
               <div className="plan-price">$42<sub> /mo</sub></div>
               <ul className="plan-includes">
                 <li>Max 10 standard (13-gal) bags per pickup</li>

@@ -490,7 +490,7 @@ export default function Portal() {
     <main style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', padding:'2rem', paddingTop:'6rem' }}>
       <div style={{ width:'100%', maxWidth:'420px' }}>
         <div style={{ textAlign:'center', marginBottom:'2.5rem' }}>
-          <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'2.5rem', letterSpacing:'0.05em', marginBottom:'0.5rem' }}>My Account</div>
+          <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'2.5rem', letterSpacing:'0.05em', marginBottom:'0.5rem', color:'#fff' }}>My Account</div>
           <p style={{ color:'rgba(255,255,255,0.45)', fontSize:'0.9rem' }}>Manage your Patil Waste Removal service</p>
         </div>
 
@@ -557,7 +557,7 @@ export default function Portal() {
       <div style={{ width:'100%', maxWidth:'420px' }}>
         <div style={{ textAlign:'center', marginBottom:'2rem' }}>
           <div style={{ fontSize:'2.5rem', marginBottom:'0.5rem' }}>🔐</div>
-          <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'2rem', letterSpacing:'0.05em', marginBottom:'0.5rem' }}>Set Your PIN</div>
+          <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'2rem', letterSpacing:'0.05em', marginBottom:'0.5rem', color:'#fff' }}>Set Your PIN</div>
           <p style={{ color:'rgba(255,255,255,0.45)', fontSize:'0.88rem' }}>Welcome, {customer?.first_name}! Create a 4-digit PIN for future logins.</p>
         </div>
         <div style={{ ...card, padding:'2rem' }}>
@@ -736,7 +736,7 @@ export default function Portal() {
       {/* Header bar */}
       <div style={{ background:'rgba(255,255,255,0.02)', borderBottom:'1px solid rgba(255,255,255,0.06)', padding:'1rem 2rem', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div>
-          <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.5rem', letterSpacing:'0.05em' }}>
+          <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.5rem', letterSpacing:'0.05em', color:'#fff' }}>
             Hey, {customer.first_name} 👋
           </div>
           <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.6)' }}>{customer.service_address}</div>
@@ -784,7 +784,7 @@ export default function Portal() {
                 ].map(([label, val]) => (
                   <div key={label}>
                     <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.65)', marginBottom:'0.2rem' }}>{label}</div>
-                    <div style={{ fontWeight:600, fontSize:'0.95rem' }}>{val}</div>
+                    <div style={{ fontWeight:600, fontSize:'0.95rem', color:'#fff' }}>{val}</div>
                   </div>
                 ))}
               </div>
