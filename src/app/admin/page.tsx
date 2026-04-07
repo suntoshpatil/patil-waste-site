@@ -160,7 +160,7 @@ export default function Admin() {
       sb('service_requests?select=*,customers(first_name,last_name),services(name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
       sb('skip_requests?select=*,customers(first_name,last_name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
       sb('job_requests?select=*&order=created_at.desc&limit=50').catch(()=>[]),
-      sb('pickup_addons?select=*,customers(first_name,last_name)&status=in.(pending_quote,confirmed)&order=created_at.desc').catch(()=>[]),
+      sb('pickup_addons?select=*,customers(first_name,last_name),bulky_item_catalog(name,base_price)&status=in.(pending_quote,confirmed)&order=created_at.desc').catch(()=>[]),
     ])
     setCustomers(custs || [])
     setInvoices(invs || [])
@@ -1227,7 +1227,9 @@ export default function Admin() {
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'0.5rem' }}>
                     <div>
                       <div style={{ fontWeight:700 }}>{a.customers?.first_name} {a.customers?.last_name}</div>
-                      <div style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.5)', marginTop:'0.2rem' }}>{a.custom_description || `Catalog item: ${a.catalog_item_id}`}</div>
+                      <div style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.5)', marginTop:'0.2rem' }}>
+                        {a.custom_description || (a.bulky_item_catalog ? `${a.bulky_item_catalog.name}${a.bulky_item_catalog.base_price ? ` — est. $${a.bulky_item_catalog.base_price}` : ''}` : a.catalog_item_id ? `Item ID: ${a.catalog_item_id}` : '—')}
+                      </div>
                       {a.requested_pickup_date && <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)' }}>Requested: {new Date(a.requested_pickup_date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>}
                     </div>
                     <span style={{ fontSize:'0.7rem', fontWeight:700, color:'#f59e0b', background:'rgba(245,158,11,0.1)', padding:'0.2rem 0.6rem', borderRadius:'4px' }}>{a.status==='pending_quote'?'NEEDS QUOTE':'CONFIRMED'}</span>
