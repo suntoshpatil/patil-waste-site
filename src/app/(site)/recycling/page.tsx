@@ -12,7 +12,7 @@ export default function Recycling() {
     { item: 'Cartons (milk, juice)', tip: 'Empty and rinse' },
   ]
   const notAccepted = [
-    'Plastic bags in the bin — must be separated (see note below)',
+    'Plastic bags loose in the bin — must be separated (see note above)',
     'Styrofoam of any kind',
     'Food waste or soiled containers',
     'Electronics or batteries',
@@ -81,6 +81,17 @@ export default function Recycling() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Plastic bag note */}
+          <div style={{ background: 'rgba(255,179,0,0.05)', border: '1px solid rgba(255,179,0,0.2)', borderRadius: '10px', padding: '1.25rem 1.5rem', marginBottom: '3rem', display: 'flex', gap: '0.85rem', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '1.2rem', flexShrink: 0, marginTop: '1px' }}>🛍️</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#92400e', marginBottom: '0.3rem' }}>Plastic Bags — We Can Recycle Them, Just Keep Them Separate</div>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#78350f', lineHeight: 1.6 }}>
+                Plastic bags jam recycling machines when mixed with loose recyclables, so they <strong>cannot go loose in your bin</strong>. However, we will accept them if they are <strong>bundled together in a separate bag or tied bundle</strong> placed next to your bin on pickup day — or you can simply toss them in your regular trash.
+              </p>
             </div>
           </div>
 
