@@ -75,6 +75,8 @@ export default function Admin() {
   const [payMethod, setPayMethod] = useState('cash')
   const [payRef, setPayRef] = useState('')
   const [adminToken, setAdminToken] = useState('')
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
   const [toast, setToast] = useState('')
   const [toastType, setToastType] = useState('success')
   const [showAddModal, setShowAddModal] = useState(false)
@@ -158,9 +160,29 @@ export default function Admin() {
       ;(c.bins||[]).forEach((b:any) => { if (b.ownership==='rental') revenue += Number(b.monthly_rental_fee||0) })
     })
     setStats({ active, pending, overdue, revenue })
+    setLastUpdated(new Date())
   }, [])
 
-  useEffect(() => { if (loggedIn) loadAll() }, [loggedIn, loadAll])
+  useEffect(() => {
+    // Restore login from localStorage on page load/refresh
+    const saved = localStorage.getItem('pwradmin')
+    if (saved && saved.length > 10) {
+      setLoggedIn(true)
+      setAdminToken(saved)
+    }
+  }, [])
+
+  // Load data when logged in
+  useEffect(() => {
+    if (!loggedIn) return
+    loadAll()
+    loadRevenueHistory()
+    // Auto-refresh every 60 seconds
+    const interval = setInterval(() => {
+      loadAll()
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [loggedIn, loadAll])
 
   async function login() {
     try {
@@ -169,7 +191,7 @@ export default function Admin() {
       if (data.ok) {
         setLoggedIn(true)
         setAdminToken(data.token)
-        sessionStorage.setItem('pwradmin', data.token)
+        localStorage.setItem('pwradmin', data.token)
       } else { setPwErr('Incorrect password.') }
     } catch { setPwErr('Login failed. Try again.') }
   }
@@ -512,7 +534,7 @@ export default function Admin() {
         <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.4rem', letterSpacing:'0.04em' }}>Patil <span style={{ color:'#4caf50' }}>Waste</span> Admin</div>
         <div style={{ display:'flex', alignItems:'center', gap:'1rem' }}>
           <span style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'#6b7280', background:'rgba(255,255,255,0.05)', padding:'0.3rem 0.7rem', borderRadius:'20px' }}>{customers.length} customers</span>
-          <button onClick={() => { sessionStorage.removeItem('pwradmin'); setLoggedIn(false) }} style={{ fontSize:'0.75rem', color:'#6b7280', background:'none', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'4px', padding:'0.3rem 0.75rem', cursor:'pointer', fontFamily:'inherit' }}>Log Out</button>
+          <button onClick={() => { localStorage.removeItem('pwradmin'); setLoggedIn(false); setAdminToken('') }} style={{ fontSize:'0.75rem', color:'#6b7280', background:'none', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'4px', padding:'0.3rem 0.75rem', cursor:'pointer', fontFamily:'inherit' }}>Log Out</button>
         </div>
       </div>
 
@@ -537,9 +559,20 @@ export default function Admin() {
           {view==='dashboard' && (
             <div>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.5rem' }}>
-                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'2rem', letterSpacing:'0.02em' }}>Dashboard</div>
-                <Btn onClick={() => setShowAddModal(true)}>+ Add Customer</Btn>
+                <div>
+                  <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'2rem', letterSpacing:'0.02em' }}>Dashboard</div>
+                  {lastUpdated && <div style={{ fontSize:'0.7rem', color:'#6b7280', marginTop:'0.1rem' }}>Updated {lastUpdated.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>}
+                </div>
+                <div style={{ display:'flex', gap:'0.5rem', alignItems:'center' }}>
+                  <button onClick={async () => { setRefreshing(true); await loadAll(); setRefreshing(false) }}
+                    style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'6px', color: refreshing ? '#6b7280' : 'rgba(255,255,255,0.7)', padding:'0.4rem 0.75rem', cursor:'pointer', fontSize:'0.78rem', fontFamily:'inherit', display:'flex', alignItems:'center', gap:'0.4rem' }}>
+                    <span style={{ display:'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>↻</span>
+                    {refreshing ? 'Refreshing…' : 'Refresh'}
+                  </button>
+                  <Btn onClick={() => setShowAddModal(true)}>+ Add Customer</Btn>
+                </div>
               </div>
+              <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'1rem', marginBottom:'1.5rem' }}>
                 {([['Active',stats.active,'#fff'],['Pending',stats.pending,'#fff'],['Est. Revenue',`$${stats.revenue.toFixed(0)}/mo`,'#4caf50'],['Overdue',stats.overdue,'#e53935']] as [string,any,string][]).map(([label,val,color]) => (
                   <div key={label} style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', padding:'1.25rem' }}>
