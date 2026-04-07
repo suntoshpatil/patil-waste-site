@@ -31,6 +31,16 @@ function Badge({ status }: { status: string }) {
 }
 
 const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '—'
+
+function isBiweeklyPickupWeek(billingStart: string | null | undefined): boolean {
+  if (!billingStart) return true // default to yes if unknown
+  const start = new Date(billingStart + 'T12:00:00')
+  const today = new Date()
+  // Number of weeks since billing start
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000
+  const weeksSinceStart = Math.floor((today.getTime() - start.getTime()) / msPerWeek)
+  return weeksSinceStart % 2 === 0
+}
 const cap = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '—'
 
 const Inp = ({ label, name, value, onChange, type='text', placeholder='' }: any) => (
@@ -911,17 +921,29 @@ export default function Admin() {
                       <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.3rem', letterSpacing:'0.04em' }}>{cap(day)}</div>
                       <span style={{ fontSize:'0.78rem', color:'#6b7280' }}>{list.length} stop{list.length!==1?'s':''}</span>
                     </div>
-                    {list.map((c,i)=>(
-                      <div key={c.id} style={{ display:'flex', alignItems:'center', gap:'1rem', padding:'0.75rem 1.25rem', borderBottom:'1px solid rgba(255,255,255,0.04)', fontSize:'0.84rem' }}>
-                        <div style={{ width:'24px', height:'24px', background:'#2e7d32', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.7rem', fontWeight:700, flexShrink:0 }}>{i+1}</div>
-                        <div style={{ flex:1 }}>
-                          <div style={{ fontWeight:600 }}>{c.first_name} {c.last_name}</div>
-                          <div style={{ fontSize:'0.78rem', color:'#6b7280' }}>{c.service_address}</div>
+                    {list.map((c,i)=>{
+                      const activeSub = (c as any).subscriptions?.find((s:any) => s.status === 'active')
+                      const isBiweekly = activeSub?.pickup_frequency === 'biweekly'
+                      const isThisWeek = !isBiweekly || isBiweeklyPickupWeek(activeSub?.billing_start)
+                      return (
+                        <div key={c.id} style={{ display:'flex', alignItems:'center', gap:'1rem', padding:'0.75rem 1.25rem', borderBottom:'1px solid rgba(255,255,255,0.04)', fontSize:'0.84rem', opacity: isThisWeek ? 1 : 0.35 }}>
+                          <div style={{ width:'24px', height:'24px', background: isThisWeek ? '#2e7d32' : '#374151', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.7rem', fontWeight:700, flexShrink:0 }}>{i+1}</div>
+                          <div style={{ flex:1 }}>
+                            <div style={{ fontWeight:600 }}>{c.first_name} {c.last_name}</div>
+                            <div style={{ fontSize:'0.78rem', color:'#6b7280' }}>{c.service_address}</div>
+                          </div>
+                          {isBiweekly && (
+                            <span style={{ fontSize:'0.7rem', fontWeight:700, padding:'0.2rem 0.55rem', borderRadius:'4px',
+                              background: isThisWeek ? 'rgba(46,125,50,0.15)' : 'rgba(255,255,255,0.06)',
+                              color: isThisWeek ? '#4caf50' : '#6b7280' }}>
+                              {isThisWeek ? '✅ This week' : '⏭ Skip week'}
+                            </span>
+                          )}
+                          {c.gate_notes && <span style={{ fontSize:'0.72rem', color:'#ffb300', background:'rgba(255,179,0,0.1)', padding:'0.2rem 0.5rem', borderRadius:'4px' }}>📌 {c.gate_notes}</span>}
+                          {c.garage_side_pickup && <span style={{ fontSize:'0.7rem', color:'#4caf50', background:'rgba(61,158,64,0.1)', padding:'0.2rem 0.5rem', borderRadius:'4px' }}>🏠 Garage</span>}
                         </div>
-                        {c.gate_notes && <span style={{ fontSize:'0.72rem', color:'#ffb300', background:'rgba(255,179,0,0.1)', padding:'0.2rem 0.5rem', borderRadius:'4px' }}>📌 {c.gate_notes}</span>}
-                        {c.garage_side_pickup && <span style={{ fontSize:'0.7rem', color:'#4caf50', background:'rgba(61,158,64,0.1)', padding:'0.2rem 0.5rem', borderRadius:'4px' }}>🏠 Garage</span>}
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )
               })}
@@ -1334,7 +1356,12 @@ export default function Admin() {
                   </div>
                 ) : (
                   <div>
-                    {(()=>{const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); return [['Status', <Badge key="s" status={selected.status} />],['Email',selected.email],['Phone',selected.phone||'—'],['Address',selected.service_address],['Town',cap(selected.town)],['Pickup Day',cap(activeSub?.pickup_day)||'—'],['Frequency',cap(activeSub?.pickup_frequency||'weekly')],['Plan',activeSub?.services?.name||'—'],['Billing',cap(activeSub?.billing_cycle||'monthly')],['Rate',`$${activeSub?.rate||'—'}/mo`],['Payment',cap(selected.payment_method)],['Bin',cap(selected.bin_situation)],['Garage Pickup',selected.garage_side_pickup?'✅ Yes':'No'],['Gate Notes',selected.gate_notes||'—'],['Started',fmt(selected.created_at)]] as [string,any][]})().map(([label,val])=>(
+                    {(()=>{const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); return [['Status', <Badge key="s" status={selected.status} />],['Email',selected.email],['Phone',selected.phone||'—'],['Address',selected.service_address],['Town',cap(selected.town)],['Pickup Day',cap(activeSub?.pickup_day)||'—'],['Frequency', (() => {
+    const isB = activeSub?.pickup_frequency === 'biweekly'
+    if (!isB) return 'Weekly'
+    const isThisWeek = isBiweeklyPickupWeek(activeSub?.billing_start)
+    return <span>{isThisWeek ? <span style={{color:'#4caf50',fontWeight:700}}>✅ Bi-Weekly — PICKUP THIS WEEK</span> : <span style={{color:'#6b7280'}}>⏭ Bi-Weekly — skip this week</span>}</span>
+  })()],['Plan',activeSub?.services?.name||'—'],['Billing',cap(activeSub?.billing_cycle||'monthly')],['Rate',`$${activeSub?.rate||'—'}/mo`],['Payment',cap(selected.payment_method)],['Bin',cap(selected.bin_situation)],['Garage Pickup',selected.garage_side_pickup?'✅ Yes':'No'],['Gate Notes',selected.gate_notes||'—'],['Started',fmt(selected.created_at)]] as [string,any][]})().map(([label,val])=>(
                       <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.45rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.84rem' }}>
                         <span style={{ color:'#6b7280', fontSize:'0.75rem' }}>{label}</span>
                         <span>{val}</span>
