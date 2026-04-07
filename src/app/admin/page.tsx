@@ -147,6 +147,9 @@ export default function Admin() {
   const [editMode, setEditMode] = useState(false)
   const [editData, setEditData] = useState<Partial<Customer>>({})
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [discountInvoice, setDiscountInvoice] = useState<any>(null)
+  const [discountAmount, setDiscountAmount] = useState('')
+  const [discountNote, setDiscountNote] = useState('')
 
   const showToast = (msg: string, type = 'success') => { setToast(msg); setToastType(type); setTimeout(() => setToast(''), 3500) }
 
@@ -685,6 +688,26 @@ export default function Admin() {
     loadAll()
   }
 
+  async function applyDiscount() {
+    if (!discountInvoice) return
+    const amount = parseFloat(discountAmount)
+    if (isNaN(amount) || amount <= 0) { showToast('Enter a valid discount amount', 'error'); return }
+    const newTotal = parseFloat(Math.max(0, Number(discountInvoice.total) - amount).toFixed(2))
+    const newAdjustments = parseFloat((Number(discountInvoice.adjustments_total || 0) + amount).toFixed(2))
+    const discountLine = `Discount: -$${amount.toFixed(2)}${discountNote ? ' (' + discountNote + ')' : ''}`
+    const updatedNotes = discountInvoice.notes ? `${discountInvoice.notes}, ${discountLine}` : discountLine
+    await sb(`invoices?id=eq.${discountInvoice.id}`, {
+      method: 'PATCH',
+      body: { total: newTotal, adjustments_total: newAdjustments, notes: updatedNotes },
+      prefer: 'return=minimal'
+    })
+    showToast(`Discount of $${amount.toFixed(2)} applied — new total $${newTotal.toFixed(2)}`)
+    setDiscountInvoice(null)
+    setDiscountAmount('')
+    setDiscountNote('')
+    loadAll()
+  }
+
   const filtered = customers.filter(c => {
     const q = `${c.first_name} ${c.last_name} ${c.email} ${c.service_address}`.toLowerCase()
     return (!search || q.includes(search.toLowerCase())) && (!statusFilter || c.status===statusFilter) && (!townFilter || c.town===townFilter)
@@ -995,6 +1018,37 @@ export default function Admin() {
           )}
 
           {/* ── INVOICES ── */}
+          {discountInvoice && (
+            <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }}>
+              <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'12px', padding:'2rem', width:'380px', maxWidth:'100%' }}>
+                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.6rem', letterSpacing:'0.02em', marginBottom:'0.25rem' }}>Apply Discount</div>
+                <div style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.4)', marginBottom:'1.5rem' }}>
+                  {discountInvoice.customers?.first_name} {discountInvoice.customers?.last_name} — Current total: <strong style={{ color:'#fff' }}>${Number(discountInvoice.total).toFixed(2)}</strong>
+                </div>
+                <div style={{ marginBottom:'0.75rem' }}>
+                  <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Discount Amount ($)</label>
+                  <input type='number' step='0.01' min='0' value={discountAmount} onChange={e=>setDiscountAmount(e.target.value)} placeholder='0.00' autoFocus
+                    style={{ width:'100%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'6px', padding:'0.7rem 0.9rem', color:'#fff', fontSize:'1rem', fontFamily:'inherit', outline:'none', boxSizing:'border-box' }} />
+                </div>
+                <div style={{ marginBottom:'1.25rem' }}>
+                  <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Reason (optional)</label>
+                  <input value={discountNote} onChange={e=>setDiscountNote(e.target.value)} placeholder='e.g. loyalty discount, service issue...'
+                    style={{ width:'100%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'6px', padding:'0.7rem 0.9rem', color:'#fff', fontSize:'0.88rem', fontFamily:'inherit', outline:'none', boxSizing:'border-box' }} />
+                </div>
+                {discountAmount && !isNaN(parseFloat(discountAmount)) && parseFloat(discountAmount) > 0 && (
+                  <div style={{ background:'rgba(46,125,50,0.1)', border:'1px solid rgba(46,125,50,0.3)', borderRadius:'6px', padding:'0.65rem 0.9rem', marginBottom:'1.25rem', fontSize:'0.88rem' }}>
+                    New total: <strong style={{ color:'#4caf50' }}>${Math.max(0, Number(discountInvoice.total) - parseFloat(discountAmount)).toFixed(2)}</strong>
+                    <span style={{ color:'rgba(255,255,255,0.35)', marginLeft:'0.5rem' }}>(saving ${parseFloat(discountAmount).toFixed(2)})</span>
+                  </div>
+                )}
+                <div style={{ display:'flex', gap:'0.75rem' }}>
+                  <Btn onClick={applyDiscount} style={{ flex:1 }}>Apply Discount</Btn>
+                  <Btn color='#2a2a2a' textColor='#aaa' onClick={()=>{ setDiscountInvoice(null); setDiscountAmount(''); setDiscountNote('') }} style={{ flex:1 }}>Cancel</Btn>
+                </div>
+              </div>
+            </div>
+          )}
+
           {view==='invoices' && (
             <div style={{ maxWidth:'900px' }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.25rem' }}>
@@ -1050,8 +1104,9 @@ export default function Admin() {
                           <td style={{ padding:'0.85rem 1rem' }}><Badge status={inv.status} /></td>
                           <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.5)' }}>{fmt(inv.due_date)}</td>
                           <td style={{ padding:'0.85rem 1rem' }}>
-                            <div style={{ display:'flex', gap:'0.4rem' }}>
+                            <div style={{ display:'flex', gap:'0.4rem', flexWrap:'wrap' }}>
                               {inv.status!=='paid' && <Btn small onClick={()=>markPaid(inv.id)}>Mark Paid</Btn>}
+                              <Btn small color='#4a1d96' onClick={()=>{ setDiscountInvoice(inv); setDiscountAmount(''); setDiscountNote('') }}>🏷️ Discount</Btn>
                               <Btn small color='#1e3a5f' onClick={()=>recalcInvoice(inv)}>↻ Recalc</Btn>
                             </div>
                           </td>
