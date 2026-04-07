@@ -1457,7 +1457,7 @@ export default function Admin() {
               <div>
                 <label style={{ display:'block', fontSize:'0.78rem', color:'rgba(255,255,255,0.5)', marginBottom:'0.5rem', textTransform:'uppercase', letterSpacing:'0.05em' }}>Select Services (choose all that apply)</label>
                 <div style={{ display:'flex', flexDirection:'column', gap:'0.4rem' }}>
-                  {servicesList.filter(s => s.type === 'recurring').map(s => {
+                  {servicesList.filter((s:any) => s.type === 'recurring').map((s:any) => {
                     const checked = addServiceIds.includes(s.id)
                     return (
                       <label key={s.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', background: checked ? 'rgba(46,125,50,0.1)' : 'rgba(255,255,255,0.03)', border:`1px solid ${checked ? 'rgba(46,125,50,0.4)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'6px', padding:'0.55rem 0.85rem', transition:'all 0.15s' }}>
