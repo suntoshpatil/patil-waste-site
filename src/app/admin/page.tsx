@@ -155,16 +155,12 @@ export default function Admin() {
     const pending = (custs||[]).filter((c:Customer) => c.status==='pending').length
     const overdue = (custs||[]).filter((c:Customer) => c.status==='overdue').length
     let revenue = 0
-    // Only count subscriptions belonging to active customers
-    const activeCustomerIds = new Set((custs||[]).filter((c:any)=>c.status==='active').map((c:any)=>c.id))
-    ;(subs||[]).filter((s:any)=> {
-      // Match sub to active customer via the customers array
-      return (custs||[]).some((c:any) => c.status==='active' && c.subscriptions?.some((cs:any)=>cs.id===s.id))
-    }).forEach((s:any) => { revenue += s.billing_cycle==='quarterly' ? s.rate/3 : s.rate })
-    // Add bin rentals and garage pickup from active customers
-    ;(custs||[]).filter((c:any)=>c.status==='active').forEach((c:any) => {
+    // Derive revenue directly from active customers' nested subscriptions
+    ;(custs||[]).filter((c:any) => c.status === 'active').forEach((c:any) => {
+      const activeSub = c.subscriptions?.find((s:any) => s.status === 'active')
+      if (activeSub) revenue += activeSub.billing_cycle === 'quarterly' ? activeSub.rate / 3 : activeSub.rate
       if (c.garage_side_pickup) revenue += Number(c.garage_side_rate || 10)
-      ;(c.bins||[]).forEach((b:any) => { if (b.ownership==='rental') revenue += Number(b.monthly_rental_fee||0) })
+      ;(c.bins||[]).forEach((b:any) => { if (b.ownership === 'rental') revenue += Number(b.monthly_rental_fee || 0) })
     })
     setStats({ active, pending, overdue, revenue })
     setLastUpdated(new Date())
@@ -1166,6 +1162,9 @@ export default function Admin() {
                     <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginTop:'1.25rem' }}>
                       <Btn small onClick={()=>{ const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); const gOpt = !selected.garage_side_pickup ? 'none' : Number((selected as any).garage_side_rate) === 5 ? 'senior' : 'standard'; setEditData({...selected, pickup_day: activeSub?.pickup_day||''} as any); setEditData((p:any) => ({...p, garage_pickup_opt: gOpt})); setEditMode(true); setConfirmDelete(false) }}>✏️ Edit</Btn>
                       <Btn small color='#7f1d1d' onClick={()=>{setConfirmDelete(true)}}>🗑️ Delete</Btn>
+                      <Btn small color='#1e3a5f' onClick={()=>resetCustomerPin(selected.id, selected.first_name)}>🔑 Reset PIN</Btn>
+                      <Btn small color='#374151' onClick={()=>{ loadHistory(selected.id); setShowHistory((h:boolean)=>!h) }}>📋 History</Btn>
+                      <Btn small color='#1a3a2a' onClick={()=>previewNextInvoice(selected)}>🧾 Preview Invoice</Btn>
                     </div>
                   </div>
                 )}
