@@ -97,6 +97,7 @@ export default function Admin() {
   const [onboardServiceId, setOnboardServiceId] = useState('')
   const [onboardBillingCycle, setOnboardBillingCycle] = useState('monthly')
   const [onboardGarage, setOnboardGarage] = useState(false)
+  const [onboardFrequency, setOnboardFrequency] = useState<'weekly'|'biweekly'>('weekly')
   const [onboardGarageSenior, setOnboardGarageSenior] = useState(false)
   const [onboardTrashBin, setOnboardTrashBin] = useState(false)
   const [onboardRecyclingBin, setOnboardRecyclingBin] = useState(false)
@@ -278,6 +279,7 @@ export default function Admin() {
             service_id: onboardServiceId,
             rate: svc?.base_price_monthly || 0,
             billing_cycle: onboardBillingCycle,
+            pickup_frequency: onboardFrequency,
             status: 'active',
             pickup_day: onboardData.pickup_day,
             billing_start: billingStart,
@@ -302,6 +304,7 @@ export default function Admin() {
       setOnboardBillingCycle('monthly')
       setOnboardGarage(false)
       setOnboardGarageSenior(false)
+      setOnboardFrequency('weekly')
       setOnboardTrashBin(false)
       setOnboardRecyclingBin(false)
       loadAll()
@@ -1265,7 +1268,7 @@ export default function Admin() {
                 ))}
               </select>
               {onboardServiceId && (
-                <div style={{ marginTop:'0.6rem', display:'flex', gap:'1rem' }}>
+                <div style={{ marginTop:'0.6rem', display:'flex', gap:'1rem', flexWrap:'wrap' }}>
                   {['monthly','quarterly'].map(cycle => (
                     <label key={cycle} style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.7)' }}>
                       <input type='radio' value={cycle} checked={onboardBillingCycle===cycle} onChange={()=>setOnboardBillingCycle(cycle)} style={{ accentColor:'#2e7d32' }} />
@@ -1274,6 +1277,21 @@ export default function Admin() {
                   ))}
                 </div>
               )}
+              {/* Pickup frequency — admin only, not advertised */}
+              <div style={{ marginTop:'0.75rem', paddingTop:'0.75rem', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                <label style={{ display:'block', fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.35)', marginBottom:'0.4rem' }}>Pickup Frequency</label>
+                <div style={{ display:'flex', gap:'0.75rem' }}>
+                  {(['weekly','biweekly'] as const).map(val => (
+                    <label key={val} style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.82rem', color: onboardFrequency===val ? '#fff' : 'rgba(255,255,255,0.5)' }}>
+                      <input type='radio' value={val} checked={onboardFrequency===val} onChange={()=>setOnboardFrequency(val as any)} style={{ accentColor:'#2e7d32' }} />
+                      {val === 'weekly' ? 'Weekly (standard)' : 'Bi-Weekly (by request)'}
+                    </label>
+                  ))}
+                </div>
+                {onboardFrequency === 'biweekly' && (
+                  <div style={{ marginTop:'0.4rem', fontSize:'0.72rem', color:'#f59e0b' }}>{'⚠️ Bi-weekly: every other ' + (onboardData.pickup_day || 'week') + '. Use $26 or $30/mo rate.'}</div>
+                )}
+              </div>
             </div>
 
             {/* Step 3: Add-ons */}

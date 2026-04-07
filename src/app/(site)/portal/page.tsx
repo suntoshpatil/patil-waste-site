@@ -55,30 +55,47 @@ function quarterSkipsUsed(skips: any[]): number {
   }).length
 }
 
-// Count how many times a given weekday (0=Sun..6=Sat) falls in a month
-function countWeekdayInMonth(year: number, month: number, weekday: number): number {
+// Count how many times a given weekday falls in a month (weekly or biweekly)
+function countWeekdayInMonth(year: number, month: number, weekday: number, billingStart?: Date, frequency?: string): number {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   let count = 0
   for (let d = 1; d <= daysInMonth; d++) {
-    if (new Date(year, month, d).getDay() === weekday) count++
+    const date = new Date(year, month, d)
+    if (date.getDay() === weekday) {
+      if (frequency === 'biweekly' && billingStart) {
+        // Only count if this is a "pickup week" — same parity as billing_start
+        const msPerWeek = 7 * 24 * 60 * 60 * 1000
+        const weeksDiff = Math.round((date.getTime() - billingStart.getTime()) / msPerWeek)
+        if (weeksDiff % 2 !== 0) continue
+      }
+      count++
+    }
   }
   return count
 }
 
-// Count remaining occurrences of a weekday from a given date (inclusive) to end of month
-function countRemainingWeekdays(from: Date, weekday: number): number {
+// Count remaining pickup occurrences from a given date to end of month
+function countRemainingWeekdays(from: Date, weekday: number, billingStart?: Date, frequency?: string): number {
   const year = from.getFullYear()
   const month = from.getMonth()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   let count = 0
   for (let d = from.getDate(); d <= daysInMonth; d++) {
-    if (new Date(year, month, d).getDay() === weekday) count++
+    const date = new Date(year, month, d)
+    if (date.getDay() === weekday) {
+      if (frequency === 'biweekly' && billingStart) {
+        const msPerWeek = 7 * 24 * 60 * 60 * 1000
+        const weeksDiff = Math.round((date.getTime() - billingStart.getTime()) / msPerWeek)
+        if (weeksDiff % 2 !== 0) continue
+      }
+      count++
+    }
   }
   return count
 }
 
 // Prorate based on pickup occurrences remaining vs total in the month
-function prorateDays(rate: number, pickupDay?: string): number {
+function prorateDays(rate: number, pickupDay?: string, billingStart?: Date, frequency?: string): number {
   const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
   const now = new Date()
   const year = now.getFullYear()
@@ -87,13 +104,13 @@ function prorateDays(rate: number, pickupDay?: string): number {
   if (pickupDay) {
     const weekday = DAYS.indexOf(pickupDay.toLowerCase())
     if (weekday !== -1) {
-      const total = countWeekdayInMonth(year, month, weekday)
-      const remaining = countRemainingWeekdays(now, weekday)
+      const total = countWeekdayInMonth(year, month, weekday, billingStart, frequency)
+      const remaining = countRemainingWeekdays(now, weekday, billingStart, frequency)
       if (total > 0) return parseFloat(((rate / total) * remaining).toFixed(2))
     }
   }
 
-  // Fallback: day-based proration if no pickup day set
+  // Fallback: day-based proration
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const remaining = daysInMonth - now.getDate() + 1
   return parseFloat(((rate / daysInMonth) * remaining).toFixed(2))
@@ -190,7 +207,7 @@ export default function Portal() {
         fetch(`/api/stripe/confirm-setup?session_id=${sessionId}&customer_id=${custId}`)
           .then(async () => {
             // Re-fetch customer so the UI shows card saved / auto-pay enabled
-            const res = await sb(`customers?id=eq.${custId}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,services(id,name))`)
+            const res = await sb(`customers?id=eq.${custId}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,pickup_frequency,services(id,name))`)
             if (res?.[0]) {
               const updated = res[0]
               sessionStorage.setItem('portal_customer', JSON.stringify(updated))
@@ -231,7 +248,7 @@ export default function Portal() {
     if (!email) { setError('Please enter your email address.'); return }
     setLoading(true); setError('')
     try {
-      const results = await sb(`customers?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,services(id,name))`)
+      const results = await sb(`customers?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,pickup_frequency,services(id,name))`)
       if (!results || results.length === 0) { setError('No account found with that email. Make sure you used the same email you signed up with.'); setLoading(false); return }
       const cust = results[0]
       if (!cust.portal_pin) {
@@ -490,8 +507,10 @@ export default function Portal() {
               const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
               const skipDateObj = skipDate ? new Date(skipDate + 'T12:00:00') : new Date()
               const weekday = pickupDay ? DAYS.indexOf(pickupDay.toLowerCase()) : -1
-              const pickupsInMonth = weekday !== -1 ? countWeekdayInMonth(skipDateObj.getFullYear(), skipDateObj.getMonth(), weekday) : 4
-              return parseFloat((customer.subscriptions![0].rate / (pickupsInMonth || 4)).toFixed(2))
+              const freq = (customer as any).subscriptions?.[0]?.pickup_frequency || 'weekly'
+              const bs = billingStartDate
+              const pickupsInMonth = weekday !== -1 ? countWeekdayInMonth(skipDateObj.getFullYear(), skipDateObj.getMonth(), weekday, bs, freq) : (freq === 'biweekly' ? 2 : 4)
+              return parseFloat((customer.subscriptions![0].rate / (pickupsInMonth || 2)).toFixed(2))
             })()
           : null,
       }})
@@ -607,6 +626,9 @@ export default function Portal() {
   // Derive pickupDay early so it's available for both contract screen and dashboard
   const activeSub = customer ? customer.subscriptions?.find(s => s.status === 'active') : null
   const pickupDay = (activeSub as any)?.pickup_day || (customer as any)?.pickup_day || ''
+  const pickupFrequency: string = (activeSub as any)?.pickup_frequency || 'weekly'
+  const isBiweekly = pickupFrequency === 'biweekly'
+  const billingStartDate = (activeSub as any)?.billing_start ? new Date((activeSub as any).billing_start + 'T12:00:00') : undefined
 
   // ── CONTRACT SCREEN ──
   if (customer && (customer as any).status === 'contract_pending' && !(customer as any).contract_accepted) {
@@ -940,8 +962,16 @@ export default function Portal() {
                       if (!day) return <div key={i} style={{ padding:'0.75rem', minHeight:'52px' }} />
                       const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
                       const dayOfWeek = new Date(year, month, day).getDay()
-                      const isPickupDay = pickupDayIndex !== -1 && dayOfWeek === pickupDayIndex
+                      const isPickupDayOfWeek = pickupDayIndex !== -1 && dayOfWeek === pickupDayIndex
                         && (!calBillingStart || dateStr >= calBillingStart)
+                      // For biweekly: only every other occurrence from billing_start
+                      const isPickupDay = isPickupDayOfWeek && (() => {
+                        if (!isBiweekly || !billingStartDate) return true
+                        const cellDate = new Date(year, month, parseInt(dateStr.split('-')[2]))
+                        const msPerWeek = 7 * 24 * 60 * 60 * 1000
+                        const weeksDiff = Math.round((cellDate.getTime() - billingStartDate.getTime()) / msPerWeek)
+                        return weeksDiff % 2 === 0
+                      })()
                       const notice = noticeMap[dateStr]
                       const isCancelled = notice?.notice_type === 'cancellation'
                       const isRescheduled = notice?.notice_type === 'reschedule'
@@ -1029,9 +1059,17 @@ export default function Portal() {
                   if (startFrom <= new Date()) d.setDate(d.getDate() + 1)
                   while (upcoming.length < 4) {
                     if (d.getDay() === pickupDayIndex) {
-                      const ds = d.toISOString().split('T')[0]
-                      const notice = noticeMap[ds]
-                      upcoming.push(ds)
+                      // For biweekly: skip off-weeks
+                      let isPickupWeek = true
+                      if (isBiweekly && billingStartDate) {
+                        const msPerWeek = 7 * 24 * 60 * 60 * 1000
+                        const weeksDiff = Math.round((d.getTime() - billingStartDate.getTime()) / msPerWeek)
+                        isPickupWeek = weeksDiff % 2 === 0
+                      }
+                      if (isPickupWeek) {
+                        const ds = d.toISOString().split('T')[0]
+                        upcoming.push(ds)
+                      }
                     }
                     d.setDate(d.getDate() + 1)
                   }
@@ -1248,9 +1286,18 @@ export default function Portal() {
                   // Find next pickup day
                   const diff = (weekday - d.getDay() + 7) % 7 || 7
                   d.setDate(d.getDate() + diff)
+                  // Advance to first pickup day
                   while (dates.length < 8) {
-                    dates.push(d.toISOString().split('T')[0])
-                    d.setDate(d.getDate() + 7)
+                    // For biweekly: only push pickup weeks
+                    if (!isBiweekly || !billingStartDate) {
+                      dates.push(d.toISOString().split('T')[0])
+                      d.setDate(d.getDate() + 7)
+                    } else {
+                      const msPerWeek = 7 * 24 * 60 * 60 * 1000
+                      const weeksDiff = Math.round((d.getTime() - billingStartDate.getTime()) / msPerWeek)
+                      if (weeksDiff % 2 === 0) dates.push(d.toISOString().split('T')[0])
+                      d.setDate(d.getDate() + 7)
+                    }
                   }
                   return (
                     <div style={{ display:'flex', flexDirection:'column', gap:'0.4rem', marginBottom:'1rem' }}>
