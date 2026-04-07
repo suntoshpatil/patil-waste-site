@@ -575,8 +575,12 @@ export default function Admin() {
       let total = isQ ? activeSub.rate * 3 : activeSub.rate
       ;(c.bins||[]).forEach((b:any) => { if (b.ownership==='rental') total += Number(b.monthly_rental_fee||0) })
       if (c.garage_side_pickup) total += Number(c.garage_side_rate || 10)
-      total = parseFloat(total.toFixed(2))
-      upcoming.push({ customerId: c.id, name: `${c.first_name} ${c.last_name}`, plan: activeSub.services?.name, billing: activeSub.billing_cycle, paidThrough, periodStart, periodEnd, sendDate, total })
+      // Add confirmed extra bag charges not yet invoiced
+      const addons = await sb(`pickup_addons?customer_id=eq.${c.id}&status=eq.confirmed&select=final_price,custom_description`).catch(()=>[])
+      const addonTotal = (addons||[]).reduce((s:number,a:any) => s + Number(a.final_price||0), 0)
+      const addonLabels = (addons||[]).map((a:any) => a.custom_description).join(', ')
+      total = parseFloat((total + addonTotal).toFixed(2))
+      upcoming.push({ customerId: c.id, name: `${c.first_name} ${c.last_name}`, plan: activeSub.services?.name, billing: activeSub.billing_cycle, paidThrough, periodStart, periodEnd, sendDate, total, addonTotal, addonLabels })
     }
     upcoming.sort((a:any,b:any) => a.sendDate.localeCompare(b.sendDate))
     setUpcomingInvoices(upcoming)
@@ -1017,7 +1021,16 @@ export default function Admin() {
                                 <input type='number' step='0.01' defaultValue={inv.total}
                                   onChange={e => setUpcomingEdits((p:any) => ({...p, [inv.customerId]: {...(p[inv.customerId]||{}), total: e.target.value}}))}
                                   style={{ width:'80px', background:'#111', border:'1px solid rgba(46,125,50,0.4)', borderRadius:'4px', padding:'0.25rem 0.4rem', color:'#fff', fontSize:'0.85rem', fontFamily:'inherit' }} />
-                              ) : `$${inv.total.toFixed(2)}`}
+                              ) : (
+                                <div>
+                                  ${inv.total.toFixed(2)}
+                                  {inv.addonTotal > 0 && (
+                                    <div style={{ fontSize:'0.7rem', color:'#fbbf24', fontWeight:400, marginTop:'0.15rem' }}>
+                                      🛍️ +${inv.addonTotal.toFixed(2)} extras
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </td>
                             <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.6)', whiteSpace:'nowrap' }}>
                               {isEditing ? (
