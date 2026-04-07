@@ -133,6 +133,27 @@ type Customer = {
   subscriptions?: { id: string; rate: number; billing_cycle: string; status: string; services: { name: string } }[]
 }
 
+function Tooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <span style={{ position:'relative', display:'inline-flex', alignItems:'center', marginLeft:'0.3rem', verticalAlign:'middle' }}>
+      <button
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onClick={e => { e.stopPropagation(); setShow(v => !v) }}
+        onBlur={() => setShow(false)}
+        style={{ background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'50%', width:'15px', height:'15px', fontSize:'9px', color:'rgba(255,255,255,0.55)', cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, flexShrink:0 }}
+        aria-label="More info"
+      >?</button>
+      {show && (
+        <span style={{ position:'absolute', bottom:'calc(100% + 8px)', left:'50%', transform:'translateX(-50%)', background:'#1e1e1e', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'8px', padding:'0.6rem 0.85rem', fontSize:'0.73rem', color:'rgba(255,255,255,0.85)', width:'210px', zIndex:1000, lineHeight:1.55, pointerEvents:'none', boxShadow:'0 4px 16px rgba(0,0,0,0.5)', textAlign:'left', whiteSpace:'normal' }}>
+          {text}
+        </span>
+      )}
+    </span>
+  )
+}
+
 export default function Portal() {
   const [screen, setScreen] = useState<'login'|'set-pin'|'dashboard'>('login')
   const [email, setEmail] = useState('')
@@ -858,6 +879,9 @@ export default function Portal() {
                   </div>
                 ))}
               </div>
+              {activeSub?.billing_cycle === 'quarterly' && (
+                <div style={{ marginTop:'0.75rem', fontSize:'0.78rem', color:'rgba(255,255,255,0.4)', lineHeight:1.5 }}>ℹ️ Quarterly billing: you're invoiced every 3 months. Your rate × 3 is charged at the start of each quarter.</div>
+              )}
             </div>
 
             {/* Pickup info */}
@@ -876,6 +900,9 @@ export default function Portal() {
               {customer.garage_side_pickup && (
                 <div style={{ marginTop:'0.75rem', fontSize:'0.82rem', color:'rgba(255,255,255,0.5)' }}>🏠 Garage-side pickup enabled</div>
               )}
+              <div style={{ marginTop:'0.75rem', paddingTop:'0.75rem', borderTop:'1px solid rgba(255,255,255,0.06)', fontSize:'0.78rem', color:'rgba(255,255,255,0.4)', lineHeight:1.5 }}>
+                📋 Bins must be at the end of your driveway by <strong style={{ color:'rgba(255,255,255,0.55)' }}>8am</strong> on pickup day. If they're not out when the driver arrives, you're still charged.
+              </div>
             </div>
 
             {/* Bin rentals */}
@@ -955,7 +982,7 @@ export default function Portal() {
             {/* Skip credits */}
             <div style={{ ...card, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'1rem' }}>
               <div>
-                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'0.4rem' }}>Skip Credits This Quarter</div>
+                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'0.4rem', display:'flex', alignItems:'center' }}>Skip Credits This Quarter<Tooltip text="You get 2 skip credits per quarter (Jan–Mar, Apr–Jun, Jul–Sep, Oct–Dec). Each approved skip earns a credit that's deducted from your next invoice." /></div>
                 <div style={{ fontSize:'0.9rem' }}>
                   <span style={{ fontSize:'1.4rem', fontWeight:700, color: skipsLeft > 0 ? '#4caf50' : '#f87171' }}>{skipsLeft}</span>
                   <span style={{ color:'rgba(255,255,255,0.6)' }}> / 2 remaining</span>
@@ -1002,6 +1029,9 @@ export default function Portal() {
 
           return (
             <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+              <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'8px', padding:'0.85rem 1.1rem', fontSize:'0.82rem', color:'rgba(255,255,255,0.6)', lineHeight:1.5 }}>
+                📅 Green days are your scheduled pickups. To skip a day, go to the <button onClick={() => setTab('skips')} style={{ background:'none', border:'none', color:'#4caf50', cursor:'pointer', fontFamily:'inherit', fontSize:'0.82rem', padding:0, textDecoration:'underline' }}>Skip Pickup tab</button>. Hover or tap highlighted dates for details.
+              </div>
               {/* Month navigator */}
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <button onClick={() => setCalMonth(p => {
@@ -1189,7 +1219,7 @@ export default function Portal() {
         {tab === 'pickup' && (
           <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
             <div style={{ background:'rgba(46,125,50,0.08)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'8px', padding:'1rem 1.25rem', fontSize:'0.84rem', color:'rgba(255,255,255,0.8)' }}>
-              📦 Add bulky items or extra bags to your next scheduled pickup. Fixed-price items are confirmed automatically — anything else will be quoted by Suntosh before your pickup.
+              📦 Add bulky items or extra bags to your next scheduled pickup. Fixed-price items are confirmed automatically — anything else will be quoted by Suntosh before your pickup. <span style={{ color:'rgba(255,179,0,0.8)' }}>Tip: notify by 5pm the night before for lower extra-bag rates.</span>
             </div>
 
             {/* Extra bags — fixed price, shown first and prominently */}
@@ -1373,6 +1403,9 @@ export default function Portal() {
               <p style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.45)', marginTop:'0.4rem' }}>
                 You get 2 refundable skip credits per quarter. Credits appear as a deduction on your next bill.
               </p>
+              <p style={{ fontSize:'0.78rem', color:'rgba(255,179,0,0.65)', marginTop:'0.2rem', lineHeight:1.5 }}>
+                ⚠️ Submit your skip request before <strong style={{ color:'rgba(255,179,0,0.85)' }}>5pm the day before your pickup</strong> so the driver isn't dispatched.
+              </p>
             </div>
 
             {skipsLeft > 0 && (
@@ -1454,6 +1487,9 @@ export default function Portal() {
         {/* ── BILLING TAB ── */}
         {tab === 'billing' && (
           <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+            <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'8px', padding:'0.85rem 1.1rem', fontSize:'0.82rem', color:'rgba(255,255,255,0.6)', lineHeight:1.5 }}>
+              💳 View and pay your current invoice, set up auto-pay, and download past invoices. Questions? Call or text <a href="tel:8024169484" style={{ color:'#4caf50' }}>(802) 416-9484</a>.
+            </div>
 
             {/* Current invoice / amount due */}
             {(() => {
@@ -1495,7 +1531,7 @@ export default function Portal() {
 
             {/* Auto-pay card setup */}
             <div style={card}>
-              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem' }}>Auto-Pay</div>
+              <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'1rem', display:'flex', alignItems:'center' }}>Auto-Pay<Tooltip text="When enabled, your saved card is charged automatically on the 1st of each month. Your first invoice is charged immediately when you save a card. You can disable it anytime by contacting Suntosh." /></div>
               {(customer as any).auto_pay && (customer as any).stripe_payment_method_id ? (
                 <div>
                   <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.5rem' }}>
@@ -1585,7 +1621,7 @@ export default function Portal() {
                         a.href = url; a.download = `invoice-${inv.period_start}.html`; a.click()
                         URL.revokeObjectURL(url)
                       }} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'4px', color:'rgba(255,255,255,0.6)', padding:'0.15rem 0.5rem', cursor:'pointer', fontSize:'0.7rem', fontFamily:'inherit' }}>
-                        ↓
+                        ↓ Save
                       </button>
                     </div>
                   </div>
