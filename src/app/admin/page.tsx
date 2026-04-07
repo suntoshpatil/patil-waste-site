@@ -183,7 +183,7 @@ export default function Admin() {
     ;(custs||[]).filter((c:any) => c.status === 'active').forEach((c:any) => {
       const activeSub = c.subscriptions?.find((s:any) => s.status === 'active')
       if (activeSub) revenue += activeSub.rate  // rate is always monthly regardless of billing cycle
-      if (c.garage_side_pickup) revenue += Number(c.garage_side_rate || 10)
+      if (c.garage_side_pickup) revenue += Number(c.garage_side_rate || 14.99)
       ;(c.bins||[]).forEach((b:any) => { if (b.ownership === 'rental') revenue += Number(b.monthly_rental_fee || 0) })
     })
     setStats({ active, pending, overdue, revenue })
@@ -354,7 +354,7 @@ export default function Admin() {
         body: {
           status: 'contract_pending',
           garage_side_pickup: onboardGarage || onboardGarageSenior,
-          garage_side_rate: onboardGarageSenior ? 5 : (onboardGarage ? 10 : null),
+          garage_side_rate: onboardGarageSenior ? 5 : (onboardGarage ? 14.99 : null),
           notes: onboardData.notes || onboardCustomer.notes || null,
         },
         prefer: 'return=minimal',
@@ -537,7 +537,7 @@ export default function Admin() {
     if (!selected) return
     const { pickup_day, pickup_frequency, garage_pickup_opt, subscriptions, bins, created_at, id, ...patchData } = editData as any
     if (garage_pickup_opt === 'none') { patchData.garage_side_pickup = false; patchData.garage_side_rate = null }
-    else if (garage_pickup_opt === 'standard') { patchData.garage_side_pickup = true; patchData.garage_side_rate = 10 }
+    else if (garage_pickup_opt === 'standard') { patchData.garage_side_pickup = true; patchData.garage_side_rate = 14.99 }
     else if (garage_pickup_opt === 'senior') { patchData.garage_side_pickup = true; patchData.garage_side_rate = 5 }
     await sb(`customers?id=eq.${selected.id}`, { method:'PATCH', body:patchData, prefer:'return=minimal' })
     const activeSub = (selected as any).subscriptions?.find((s:any) => s.status === 'active')
@@ -654,7 +654,7 @@ export default function Admin() {
     for (const b of bins || []) {
       lines.push({ label: b.bin_type === 'trash' ? 'Trash Bin Rental' : 'Recycling Bin Rental', amount: Number(b.monthly_rental_fee || 0) })
     }
-    if (cust.garage_side_pickup) lines.push({ label: 'Garage-Side Pickup', amount: Number(cust.garage_side_rate || 10) })
+    if (cust.garage_side_pickup) lines.push({ label: 'Garage-Side Pickup', amount: Number(cust.garage_side_rate || 14.99) })
     for (const a of addons || []) {
       lines.push({ label: a.custom_description || 'Extra item', amount: Number(a.final_price || 0), note: a.requested_pickup_date ? `Pickup: ${a.requested_pickup_date}` : undefined })
     }
@@ -681,7 +681,7 @@ export default function Admin() {
     for (const bin of cust.bins || []) {
       if (bin.ownership === 'rental') total += Number(bin.monthly_rental_fee || 0)
     }
-    if (cust.garage_side_pickup) total += Number(cust.garage_side_rate || 10)
+    if (cust.garage_side_pickup) total += Number(cust.garage_side_rate || 14.99)
     total = parseFloat(total.toFixed(2))
     await sb(`invoices?id=eq.${inv.id}`, { method:'PATCH', body:{ subtotal: total, total }, prefer:'return=minimal' })
     showToast(`Invoice recalculated to $${total.toFixed(2)}`)
@@ -1574,7 +1574,7 @@ export default function Admin() {
                     <Sel label="Payment Method" name="payment_method" value={editData.payment_method||''} onChange={onEdit} options={[['cash','Cash'],['venmo','Venmo'],['zelle','Zelle'],['card','Card']]} />
                     <Sel label="Pickup Day" name="pickup_day" value={editData.pickup_day||''} onChange={onEdit} options={[['','TBD'],['monday','Monday'],['tuesday','Tuesday'],['wednesday','Wednesday'],['thursday','Thursday'],['friday','Friday']]} />
                     <Sel label="Pickup Frequency" name="pickup_frequency" value={(editData as any).pickup_frequency||'weekly'} onChange={onEdit} options={[['weekly','Weekly'],['biweekly','Bi-Weekly (every other week)']]} />
-                    <Sel label="Garage Pickup" name="garage_pickup_opt" value={(editData as any).garage_pickup_opt} onChange={onEdit} options={[['none','None'],['standard','Standard ($10/mo)'],['senior','Senior 65+ ($5/mo)']]} />
+                    <Sel label="Garage Pickup" name="garage_pickup_opt" value={(editData as any).garage_pickup_opt} onChange={onEdit} options={[['none','None'],['standard','Standard ($14.99/mo)'],['senior','Senior 65+ ($5/mo)']]} />
                     <Inp label="Gate Notes" name="gate_notes" value={editData.gate_notes||''} onChange={onEdit} placeholder="Gate code, property access..." />
                     <Inp label="Notes" name="notes" value={editData.notes||''} onChange={onEdit} placeholder="Internal notes..." />
                     <div style={{ display:'flex', gap:'0.5rem', marginTop:'1rem' }}>

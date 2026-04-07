@@ -128,6 +128,7 @@ type Customer = {
   status: string
   payment_method: string
   garage_side_pickup: boolean
+  garage_side_rate?: number
   notes: string
   portal_pin?: string
   subscriptions?: { id: string; rate: number; billing_cycle: string; status: string; services: { name: string } }[]
@@ -404,7 +405,7 @@ export default function Portal() {
         }, 0)
 
         // Garage pickup proration — same logic as service
-        const garageRate = customer.garage_side_pickup ? 10 : 0
+        const garageRate = customer.garage_side_pickup ? Number(customer.garage_side_rate || 14.99) : 0
         const garageProrated = garageRate > 0
           ? parseFloat(((garageRate / (totalPickups || 1)) * remainingPickups).toFixed(2))
           : 0
@@ -1588,12 +1589,12 @@ export default function Portal() {
               ))}
               {customer.garage_side_pickup && (
                 <div style={{ display:'flex', justifyContent:'space-between', padding:'0.5rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.88rem' }}>
-                  <span style={{ color:'#fff' }}>Garage-Side Pickup</span><span style={{ color:'rgba(255,255,255,0.85)' }}>$10/mo</span>
+                  <span style={{ color:'#fff' }}>Garage-Side Pickup</span><span style={{ color:'rgba(255,255,255,0.85)' }}>${Number(customer.garage_side_rate || 14.99).toFixed(2)}/mo</span>
                 </div>
               )}
               <div style={{ display:'flex', justifyContent:'space-between', padding:'0.75rem 0', fontWeight:700, fontSize:'1rem' }}>
                 <span style={{ color:'#fff' }}>Monthly Total</span>
-                <span style={{ color:'#4caf50' }}>${((activeSub?.rate||0) + bins.reduce((s:number,b:any)=>s+Number(b.monthly_rental_fee),0) + (customer.garage_side_pickup?10:0)).toFixed(2)}/mo</span>
+                <span style={{ color:'#4caf50' }}>${((activeSub?.rate||0) + bins.reduce((s:number,b:any)=>s+Number(b.monthly_rental_fee),0) + (customer.garage_side_pickup ? Number(customer.garage_side_rate || 14.99) : 0)).toFixed(2)}/mo</span>
               </div>
             </div>
 

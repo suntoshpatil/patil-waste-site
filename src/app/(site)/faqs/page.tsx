@@ -8,7 +8,7 @@ export default function FAQs() {
       faqs: [
         ["What areas do you service?", "We currently serve Bedford, Merrimack, Amherst, Milford, and surrounding areas. We are expanding — contact us if you are in a nearby town."],
         ["When do I need to put my bins out?", "Have your trash at the end of the driveway by 8am on your scheduled pickup day. If you need to skip a week, let us know by 5pm the day before."],
-        ["What is garage-side pickup?", "Our driver comes to your garage or the side of your home — you don't need to drag your bin to the curb. It's $10/mo standard or $5/mo for seniors 65+."],
+        ["What is garage-side pickup?", "Our driver comes to your garage or the side of your home — you don't need to drag your bin to the curb. It's $14.99/mo standard or $5/mo for seniors 65+."],
         ["What can NOT be picked up?", "We cannot pick up explosives, firearms, hazardous waste (chemicals, paints, gas, oil), medical waste, yard waste, or construction materials. Visit our Junk Removal page to request a quote for larger items."],
       ]
     },

@@ -53,7 +53,7 @@ export function calcInvoiceTotal(customer: any): {
   // Garage-side pickup — use stored rate if available (senior = $5, standard = $10)
   const garageLines: { description: string; amount: number }[] = []
   if (customer.garage_side_pickup) {
-    const garageRate = Number(customer.garage_side_rate || 10)
+    const garageRate = Number(customer.garage_side_rate || 14.99)
     garageLines.push({ description: 'Garage-Side Pickup', amount: garageRate })
   }
 
