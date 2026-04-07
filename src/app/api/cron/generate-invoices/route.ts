@@ -26,13 +26,25 @@ export async function GET(req: Request) {
         const activeSub = customer.subscriptions?.find((s: any) => s.status === 'active')
         const isQuarterly = activeSub?.billing_cycle === 'quarterly'
 
-        // For quarterly customers: only invoice in Mar/Jun/Sep/Dec
-        // (25th of last month of quarter, covering next 3 months)
+        // Quarterly customers: two types handled by one rule —
+        // Generate when the last invoice's period_end falls in the CURRENT month
+        // This covers both fixed-cycle (existing customers: Mar/Jun/Sep/Dec)
+        // and rolling (new customers: every 3 months from their start date)
         if (isQuarterly) {
-          const cronMonth = new Date().getMonth() + 1  // 1-12
-          const isQuarterEnd = [3, 6, 9, 12].includes(cronMonth)
-          if (!isQuarterEnd) { skipped++; continue }
-          // Also skip if they already have an invoice for this period
+          const currentMonth = new Date().toISOString().slice(0, 7)  // e.g. '2026-06'
+          const lastInvoice = await sbServer(
+            `invoices?customer_id=eq.${customer.id}&status=in.(sent,paid,overdue)&order=period_end.desc&limit=1&select=period_end,period_start`
+          ).catch(() => [])
+
+          if (lastInvoice?.length > 0) {
+            const lastEndMonth = lastInvoice[0].period_end.slice(0, 7)  // e.g. '2026-06'
+            // Only generate if last invoice ends this month
+            if (lastEndMonth !== currentMonth) { skipped++; continue }
+          }
+          // No previous invoice = new quarterly customer, fall through to generate
+          // (their first invoice was created at contract acceptance, so this shouldn't happen)
+
+          // Skip duplicate
           const existing = await sbServer(
             `invoices?customer_id=eq.${customer.id}&period_start=eq.${periodStart}&select=id`
           )

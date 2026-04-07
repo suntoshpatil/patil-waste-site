@@ -388,7 +388,11 @@ export default function Portal() {
         const subtotal = proratedRate + binTotal + depositTotal + garageProrated
         const today = new Date()
         const periodStart = billingStart.toISOString().split('T')[0]
-        const periodEnd = new Date(year, month + 1, 0).toISOString().split('T')[0]
+        // Quarterly: period covers 3 months; monthly: covers rest of billing month
+        const isQuarterly = sub.billing_cycle === 'quarterly'
+        const periodEnd = isQuarterly
+          ? new Date(year, month + 3, 0).toISOString().split('T')[0]
+          : new Date(year, month + 1, 0).toISOString().split('T')[0]
         const dueDate = today.toISOString().split('T')[0]  // Due on receipt
 
         const noteLines = [
