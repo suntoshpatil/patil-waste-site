@@ -1,4 +1,4 @@
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://patil-waste-site.vercel.app'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://patilwasteremoval.com'
 
 export function invoiceEmail(customer: any, invoice: any, lines: any[]) {
   const lineRows = lines.map(l =>
