@@ -202,8 +202,8 @@ export default function Admin() {
       showToast('Name, email, address, and town are required', 'error'); return
     }
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { pickup_day, ...insertData } = addData
+      const { pickup_day, start_date, ...insertData } = addData
+      if (start_date) (insertData as any).start_date = start_date
       const result = await sb('customers', { method:'POST', body: insertData })
       const newCustomer = Array.isArray(result) ? result[0] : result
       // Create one subscription per selected service
