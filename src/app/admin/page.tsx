@@ -101,6 +101,10 @@ export default function Admin() {
   const [addTrashBin, setAddTrashBin] = useState(false)
   const [addRecyclingBin, setAddRecyclingBin] = useState(false)
   const [selectedBins, setSelectedBins] = useState<any[]>([])
+  const [extraBagDate, setExtraBagDate] = useState('')
+  const [extraBagType, setExtraBagType] = useState<'13gal'|'32gal'>('13gal')
+  const [extraBagQty, setExtraBagQty] = useState(1)
+  const [extraBagSaving, setExtraBagSaving] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [editData, setEditData] = useState<Partial<Customer>>({})
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -287,6 +291,31 @@ export default function Admin() {
     await sb(`customers?id=eq.${customerId}`, { method:'PATCH', body:{ portal_pin: null }, prefer:'return=minimal' })
     showToast(`${name}'s PIN cleared — they'll set a new one on next login`)
     loadAll()
+  }
+
+  async function addExtraBags() {
+    if (!selected || !extraBagDate) { showToast('Please select a pickup date', 'error'); return }
+    setExtraBagSaving(true)
+    const price = extraBagType === '13gal' ? 3.50 : 5.00
+    const label = extraBagType === '13gal' ? '13-gal bag' : '32-gal bag'
+    const total = parseFloat((price * extraBagQty).toFixed(2))
+    const note = `${extraBagQty}x ${label} (no notice) on ${extraBagDate} — $${total.toFixed(2)}`
+    try {
+      // Save as a pickup_addon record so it appears on the customer's next invoice
+      await sb('pickup_addons', { method:'POST', body:{
+        customer_id: selected.id,
+        custom_description: note,
+        quantity: extraBagQty,
+        estimated_price: total,
+        final_price: total,
+        status: 'confirmed',
+        requested_pickup_date: extraBagDate,
+      }})
+      showToast(`Added ${extraBagQty}x ${label} charge ($${total.toFixed(2)}) to ${selected.first_name}'s next bill`)
+      setExtraBagDate('')
+      setExtraBagQty(1)
+    } catch (e: any) { showToast(e.message || 'Failed to add charge', 'error') }
+    setExtraBagSaving(false)
   }
 
   async function loadSelectedBins(customerId: string) {
@@ -932,6 +961,52 @@ export default function Admin() {
                     </div>
                   )}
                 </div>
+
+                {/* ── EXTRA BAGS (NO NOTICE) ── */}
+                <div style={{ marginTop:'1.25rem', paddingTop:'1.25rem', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.75rem' }}>🛍️ Add Extra Bags (No-Notice Fee)</div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem', marginBottom:'0.5rem' }}>
+                    <div>
+                      <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.25rem' }}>Pickup Date</div>
+                      <input type='date' value={extraBagDate} onChange={e=>setExtraBagDate(e.target.value)}
+                        style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'6px', padding:'0.5rem 0.65rem', color:'#fff', fontSize:'0.82rem', fontFamily:'inherit', boxSizing:'border-box' }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.25rem' }}>Bag Type</div>
+                      <select value={extraBagType} onChange={e=>setExtraBagType(e.target.value as any)}
+                        style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'6px', padding:'0.5rem 0.65rem', color:'#fff', fontSize:'0.82rem', fontFamily:'inherit' }}>
+                        <option value='13gal'>13-gal — $3.50 each</option>
+                        <option value='32gal'>32-gal — $5.00 each</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                    <div>
+                      <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.25rem' }}>Qty</div>
+                      <div style={{ display:'flex', alignItems:'center', gap:'0.35rem' }}>
+                        <button onClick={()=>setExtraBagQty(q=>Math.max(1,q-1))} style={{ background:'rgba(255,255,255,0.08)', border:'none', borderRadius:'4px', color:'#fff', width:'28px', height:'28px', cursor:'pointer', fontSize:'1rem' }}>−</button>
+                        <span style={{ color:'#fff', fontWeight:700, fontSize:'0.95rem', minWidth:'24px', textAlign:'center' }}>{extraBagQty}</span>
+                        <button onClick={()=>setExtraBagQty(q=>q+1)} style={{ background:'rgba(255,255,255,0.08)', border:'none', borderRadius:'4px', color:'#fff', width:'28px', height:'28px', cursor:'pointer', fontSize:'1rem' }}>+</button>
+                      </div>
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.25rem' }}>Total</div>
+                      <div style={{ color:'#f59e0b', fontWeight:700, fontSize:'0.92rem' }}>
+                        ${((extraBagType === '13gal' ? 3.50 : 5.00) * extraBagQty).toFixed(2)}
+                      </div>
+                    </div>
+                    <div style={{ alignSelf:'flex-end' }}>
+                      <button onClick={addExtraBags} disabled={extraBagSaving || !extraBagDate}
+                        style={{ background:'#2e7d32', border:'none', borderRadius:'6px', color:'#fff', padding:'0.5rem 1rem', cursor:'pointer', fontSize:'0.8rem', fontWeight:700, fontFamily:'inherit', opacity: (!extraBagDate || extraBagSaving) ? 0.5 : 1 }}>
+                        {extraBagSaving ? 'Adding…' : '+ Add to Bill'}
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.35)', marginTop:'0.5rem' }}>
+                    Charged at no-notice rate. Will appear on customer's next invoice.
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>

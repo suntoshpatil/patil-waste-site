@@ -35,7 +35,17 @@ export async function GET(req: Request) {
         ).catch(() => [])
         const skipCredit = (skips || []).reduce((sum: number, s: any) => sum + Number(s.refund_amount || 0), 0)
 
-        const { lines, subtotal, total } = calcInvoiceTotal({ ...customer, skip_credits: skipCredit })
+        // Load any confirmed extra bag charges not yet invoiced
+        const addons = await sbServer(
+          `pickup_addons?customer_id=eq.${customer.id}&status=eq.confirmed&select=*`
+        ).catch(() => [])
+        const addonTotal = (addons || []).reduce((sum: number, a: any) => sum + Number(a.final_price || 0), 0)
+        const addonLines = (addons || []).map((a: any) => ({ description: a.custom_description || 'Extra item', amount: Number(a.final_price || 0) }))
+
+        const { lines, subtotal: baseSubtotal, total: baseTotal } = calcInvoiceTotal({ ...customer, skip_credits: skipCredit })
+        const subtotal = parseFloat((baseSubtotal + addonTotal).toFixed(2))
+        const total = parseFloat((baseTotal + addonTotal).toFixed(2))
+        const allLines = [...lines, ...addonLines]
 
         if (total <= 0) { skipped++; continue }
 
@@ -54,9 +64,16 @@ export async function GET(req: Request) {
             period_start: periodStart,
             period_end: periodEnd,
             due_date: dueDate,
-            notes: lines.map((l: any) => `${l.description}: $${l.amount.toFixed(2)}`).join(', '),
+            notes: allLines.map((l: any) => `${l.description}: $${l.amount.toFixed(2)}`).join(', '),
           },
         })
+
+        // Mark extra bag addons as invoiced
+        for (const addon of addons || []) {
+          await sbServer(`pickup_addons?id=eq.${addon.id}`, {
+            method: 'PATCH', body: { status: 'invoiced', notes: `Invoiced on ${new Date().toISOString().split('T')[0]}` }, prefer: 'return=minimal'
+          }).catch(() => {})
+        }
 
         // Mark invoice as sent
         await sbServer(`invoices?id=eq.${invoice.id}`, {
