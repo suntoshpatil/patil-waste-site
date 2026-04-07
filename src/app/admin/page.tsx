@@ -112,6 +112,7 @@ export default function Admin() {
   const [extraBagType, setExtraBagType] = useState<'13gal'|'32gal'>('13gal')
   const [extraBagQty, setExtraBagQty] = useState(1)
   const [extraBagSaving, setExtraBagSaving] = useState(false)
+  const [pendingAddons, setPendingAddons] = useState<any[]>([])
   // Bulk select
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [bulkAction, setBulkAction] = useState('')
@@ -405,6 +406,9 @@ export default function Admin() {
       showToast(`Added ${extraBagQty}x ${label} charge ($${total.toFixed(2)}) to ${selected.first_name}'s next bill`)
       setExtraBagDate('')
       setExtraBagQty(1)
+      // Refresh pending addons list
+      const addons = await sb(`pickup_addons?customer_id=eq.${selected.id}&status=eq.confirmed&order=created_at.desc&select=*`).catch(()=>[])
+      setPendingAddons(addons || [])
     } catch (e: any) { showToast(e.message || 'Failed to add charge', 'error') }
     setExtraBagSaving(false)
   }
@@ -472,6 +476,8 @@ export default function Admin() {
 
   async function loadSelectedBins(customerId: string) {
     setInvoicePreview(null)
+    const addons = await sb(`pickup_addons?customer_id=eq.${customerId}&status=eq.confirmed&order=created_at.desc&select=*`).catch(()=>[])
+    setPendingAddons(addons || [])
     try {
       const bins = await sb(`bins?customer_id=eq.${customerId}&select=*`)
       setSelectedBins(bins || [])
@@ -1368,6 +1374,25 @@ export default function Admin() {
                   <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.35)', marginTop:'0.5rem' }}>
                     Charged at no-notice rate. Will appear on customer's next invoice.
                   </div>
+                  {/* Pending extra bag charges */}
+                  {pendingAddons.length > 0 && (
+                    <div style={{ marginTop:'0.85rem', borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:'0.75rem' }}>
+                      <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'0.5rem' }}>Pending charges (click × to remove)</div>
+                      {pendingAddons.map((a:any) => (
+                        <div key={a.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(245,158,11,0.07)', border:'1px solid rgba(245,158,11,0.2)', borderRadius:'6px', padding:'0.45rem 0.7rem', marginBottom:'0.35rem' }}>
+                          <div>
+                            <span style={{ fontSize:'0.8rem', color:'#fbbf24' }}>${Number(a.final_price).toFixed(2)}</span>
+                            <span style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.5)', marginLeft:'0.5rem' }}>{a.custom_description}</span>
+                          </div>
+                          <button onClick={async () => {
+                            await sb(`pickup_addons?id=eq.${a.id}`, { method:'DELETE', prefer:'return=minimal' })
+                            setPendingAddons((prev:any[]) => prev.filter((x:any) => x.id !== a.id))
+                            showToast('Charge removed')
+                          }} style={{ background:'none', border:'none', color:'#f87171', cursor:'pointer', fontSize:'1rem', lineHeight:1, padding:'0 0.25rem' }}>×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* ── CUSTOMER HISTORY ── */}
