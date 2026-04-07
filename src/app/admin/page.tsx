@@ -483,7 +483,7 @@ export default function Admin() {
   async function loadRevenueHistory() {
     const sixMonthsAgo = new Date()
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
-    const data = await sb(`invoices?status=in.(paid,sent,overdue)&period_start=gte.${sixMonthsAgo.toISOString().split('T')[0]}&select=total,period_start,status&order=period_start.asc`).catch(() => [])
+    const data = await sb(`invoices?status=in.(paid,sent)&period_start=gte.${sixMonthsAgo.toISOString().split('T')[0]}&select=total,period_start,status&order=period_start.asc`).catch(() => [])
     // Group by month
     const byMonth: Record<string, number> = {}
     for (const inv of data || []) {
