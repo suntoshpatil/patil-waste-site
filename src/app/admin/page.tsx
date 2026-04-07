@@ -1109,7 +1109,7 @@ export default function Admin() {
                       </div>
                     ))}
                     <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginTop:'1.25rem' }}>
-                      <Btn small onClick={()=>{ const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); const gOpt = !selected.garage_side_pickup ? 'none' : Number((selected as any).garage_side_rate) === 5 ? 'senior' : 'standard'; setEditData({...selected, pickup_day: activeSub?.pickup_day||'', garage_pickup_opt: gOpt}); setEditMode(true); setConfirmDelete(false) }}>✏️ Edit</Btn>
+                      <Btn small onClick={()=>{ const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); const gOpt = !selected.garage_side_pickup ? 'none' : Number((selected as any).garage_side_rate) === 5 ? 'senior' : 'standard'; setEditData({...selected, pickup_day: activeSub?.pickup_day||''} as any); setEditData((p:any) => ({...p, garage_pickup_opt: gOpt})); setEditMode(true); setConfirmDelete(false) }}>✏️ Edit</Btn>
                       <Btn small color='#7f1d1d' onClick={()=>{setConfirmDelete(true)}}>🗑️ Delete</Btn>
                     </div>
                   </div>
