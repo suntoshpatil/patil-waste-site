@@ -51,8 +51,8 @@ const Sel = ({ label, name, value, onChange, options }: any) => (
   </div>
 )
 
-const Btn = ({ onClick, children, color='#2e7d32', textColor='#fff', small=false }: any) => (
-  <button onClick={onClick} style={{ background:color, color:textColor, border:'none', borderRadius:'4px', padding: small ? '0.3rem 0.65rem' : '0.55rem 1.1rem', cursor:'pointer', fontWeight:700, fontSize: small ? '0.72rem' : '0.8rem', letterSpacing:'0.06em', textTransform:'uppercase', fontFamily:'inherit' }}>
+const Btn = ({ onClick, children, color='#2e7d32', textColor='#fff', small=false, disabled=false }: any) => (
+  <button onClick={onClick} disabled={disabled} style={{ background:color, color:textColor, border:'none', borderRadius:'4px', padding: small ? '0.3rem 0.65rem' : '0.55rem 1.1rem', cursor: disabled ? 'not-allowed' : 'pointer', fontWeight:700, fontSize: small ? '0.72rem' : '0.8rem', letterSpacing:'0.06em', textTransform:'uppercase', fontFamily:'inherit', opacity: disabled ? 0.6 : 1 }}>
     {children}
   </button>
 )
@@ -494,7 +494,10 @@ export default function Admin() {
 
   async function saveEdit() {
     if (!selected) return
-    const { pickup_day, subscriptions, bins, created_at, id, ...patchData } = editData as any
+    const { pickup_day, garage_pickup_opt, subscriptions, bins, created_at, id, ...patchData } = editData as any
+    if (garage_pickup_opt === 'none') { patchData.garage_side_pickup = false; patchData.garage_side_rate = null }
+    else if (garage_pickup_opt === 'standard') { patchData.garage_side_pickup = true; patchData.garage_side_rate = 10 }
+    else if (garage_pickup_opt === 'senior') { patchData.garage_side_pickup = true; patchData.garage_side_rate = 5 }
     await sb(`customers?id=eq.${selected.id}`, { method:'PATCH', body:patchData, prefer:'return=minimal' })
     const activeSub = (selected as any).subscriptions?.find((s:any) => s.status === 'active')
     if (activeSub && pickup_day !== undefined) {
@@ -1089,31 +1092,7 @@ export default function Admin() {
                     <Sel label="Status" name="status" value={editData.status||''} onChange={onEdit} options={[['active','Active'],['pending','Pending'],['paused','Paused'],['cancelled','Cancelled'],['overdue','Overdue']]} />
                     <Sel label="Payment Method" name="payment_method" value={editData.payment_method||''} onChange={onEdit} options={[['cash','Cash'],['venmo','Venmo'],['zelle','Zelle'],['card','Card']]} />
                     <Sel label="Pickup Day" name="pickup_day" value={editData.pickup_day||''} onChange={onEdit} options={[['','TBD'],['monday','Monday'],['tuesday','Tuesday'],['wednesday','Wednesday'],['thursday','Thursday'],['friday','Friday']]} />
-                    {(() => {
-                      const setGarageNone = () => setEditData((p:any) => ({...p, garage_side_pickup: false, garage_side_rate: null}))
-                      const setGarageStd  = () => setEditData((p:any) => ({...p, garage_side_pickup: true, garage_side_rate: 10}))
-                      const setGarageSen  = () => setEditData((p:any) => ({...p, garage_side_pickup: true, garage_side_rate: 5}))
-                      const gRate = Number(editData.garage_side_rate)
-                      const chkNone = !editData.garage_side_pickup
-                      const chkStd  = !!editData.garage_side_pickup && gRate !== 5
-                      const chkSen  = !!editData.garage_side_pickup && gRate === 5
-                      return (
-                        <div style={{ marginBottom:'0.75rem' }}>
-                          <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.5rem' }}>Garage-Side Pickup</label>
-                          <div style={{ display:'flex', gap:'1.5rem' }}>
-                            <label style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.75)' }}>
-                              <input type='radio' checked={chkNone} onChange={setGarageNone} style={{ accentColor:'#2e7d32' }} /> None
-                            </label>
-                            <label style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.75)' }}>
-                              <input type='radio' checked={chkStd} onChange={setGarageStd} style={{ accentColor:'#2e7d32' }} /> Standard ($10/mo)
-                            </label>
-                            <label style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.75)' }}>
-                              <input type='radio' checked={chkSen} onChange={setGarageSen} style={{ accentColor:'#2e7d32' }} /> Senior 65+ ($5/mo)
-                            </label>
-                          </div>
-                        </div>
-                      )
-                    })()}
+                    <Sel label="Garage Pickup" name="garage_pickup_opt" value={editData.garage_pickup_opt||'none'} onChange={onEdit} options={[['none','None'],['standard','Standard ($10/mo)'],['senior','Senior 65+ ($5/mo)']]} />
                     <Inp label="Gate Notes" name="gate_notes" value={editData.gate_notes||''} onChange={onEdit} placeholder="Gate code, property access..." />
                     <Inp label="Notes" name="notes" value={editData.notes||''} onChange={onEdit} placeholder="Internal notes..." />
                     <div style={{ display:'flex', gap:'0.5rem', marginTop:'1rem' }}>
@@ -1130,7 +1109,7 @@ export default function Admin() {
                       </div>
                     ))}
                     <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginTop:'1.25rem' }}>
-                      <Btn small onClick={()=>{ const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); setEditData({...selected, pickup_day: activeSub?.pickup_day||''}); setEditMode(true); setConfirmDelete(false) }}>✏️ Edit</Btn>
+                      <Btn small onClick={()=>{ const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); const gOpt = !selected.garage_side_pickup ? 'none' : Number((selected as any).garage_side_rate) === 5 ? 'senior' : 'standard'; setEditData({...selected, pickup_day: activeSub?.pickup_day||'', garage_pickup_opt: gOpt}); setEditMode(true); setConfirmDelete(false) }}>✏️ Edit</Btn>
                       <Btn small color='#7f1d1d' onClick={()=>{setConfirmDelete(true)}}>🗑️ Delete</Btn>
                     </div>
                   </div>
