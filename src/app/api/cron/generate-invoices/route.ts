@@ -26,19 +26,17 @@ export async function GET(req: Request) {
         const activeSub = customer.subscriptions?.find((s: any) => s.status === 'active')
         const isQuarterly = activeSub?.billing_cycle === 'quarterly'
 
-        // For quarterly customers: only generate when their current coverage
-        // ends THIS month (1 month advance notice for next quarter)
+        // For quarterly customers: only invoice in Mar/Jun/Sep/Dec
+        // (25th of last month of quarter, covering next 3 months)
         if (isQuarterly) {
-          const lastInvoice = await sbServer(
-            `invoices?customer_id=eq.${customer.id}&status=in.(sent,paid)&order=period_end.desc&limit=1&select=period_end`
-          ).catch(() => [])
-
-          if (lastInvoice?.length > 0) {
-            const lastEndMonth = lastInvoice[0].period_end.slice(0, 7)  // e.g. '2026-06'
-            const nextMonth    = periodStart.slice(0, 7)                 // e.g. '2026-06'
-            // Only generate if their coverage ends this month or earlier
-            if (lastEndMonth > nextMonth) { skipped++; continue }
-          }
+          const cronMonth = new Date().getMonth() + 1  // 1-12
+          const isQuarterEnd = [3, 6, 9, 12].includes(cronMonth)
+          if (!isQuarterEnd) { skipped++; continue }
+          // Also skip if they already have an invoice for this period
+          const existing = await sbServer(
+            `invoices?customer_id=eq.${customer.id}&period_start=eq.${periodStart}&select=id`
+          )
+          if (existing?.length > 0) { skipped++; continue }
         }
 
         // For monthly: skip if invoice already exists for this period
