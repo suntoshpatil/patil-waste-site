@@ -1367,7 +1367,6 @@ export default function Admin() {
                             setAllNotices((prev:any[]) => prev.filter((x:any) => x.id !== n.id))
                             await sb(`schedule_notices?id=eq.${n.id}`, { method:'DELETE', prefer:'return=minimal' }).catch(()=>{})
                             showToast('Notice deleted')
-                            loadAllNotices()
                           }} style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:'4px', color:'#f87171', padding:'0.25rem 0.55rem', cursor:'pointer', fontSize:'0.75rem', fontFamily:'inherit' }}>🗑️ Delete</button>
                         </div>
                       </div>
