@@ -525,26 +525,40 @@ export default function Admin() {
   async function previewNextInvoice(cust: any) {
     const activeSub = cust.subscriptions?.find((s:any) => s.status === 'active')
     const bins = await sb(`bins?customer_id=eq.${cust.id}&ownership=eq.rental&select=*`).catch(()=>[])
-    const lines: {label:string, amount:number}[] = []
+    const addons = await sb(`pickup_addons?customer_id=eq.${cust.id}&status=eq.confirmed&select=*`).catch(()=>[])
+    const lines: {label:string, amount:number, note?:string}[] = []
+
+    // Service plan
     if (activeSub) {
       const isQ = activeSub.billing_cycle === 'quarterly'
       const amt = isQ ? activeSub.rate * 3 : activeSub.rate
       lines.push({ label: `${activeSub.services?.name || 'Service'}${isQ ? ' (Quarterly)' : ''}`, amount: amt })
     }
+
+    // Bin rentals
     for (const b of bins || []) {
       lines.push({ label: b.bin_type === 'trash' ? 'Trash Bin Rental' : 'Recycling Bin Rental', amount: Number(b.monthly_rental_fee || 0) })
     }
+
+    // Garage pickup
     if (cust.garage_side_pickup) lines.push({ label: 'Garage-Side Pickup', amount: Number(cust.garage_side_rate || 10) })
-    const total = lines.reduce((s,l) => s + l.amount, 0)
+
+    // Extra bags and other confirmed add-on charges
+    for (const a of addons || []) {
+      lines.push({ label: a.custom_description || 'Extra item', amount: Number(a.final_price || 0), note: a.requested_pickup_date ? `Pickup: ${a.requested_pickup_date}` : undefined })
+    }
+
+    const total = parseFloat(lines.reduce((s,l) => s + l.amount, 0).toFixed(2))
+
     // Next period dates
     const now = new Date()
     const periodStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().split('T')[0]
-    const activeSub2 = cust.subscriptions?.find((s:any) => s.status === 'active')
-    const isQ2 = activeSub2?.billing_cycle === 'quarterly'
-    const periodEnd = isQ2
+    const isQ = activeSub?.billing_cycle === 'quarterly'
+    const periodEnd = isQ
       ? new Date(now.getFullYear(), now.getMonth() + 4, 0).toISOString().split('T')[0]
       : new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString().split('T')[0]
-    setInvoicePreview({ lines, total, periodStart, periodEnd, customer: cust })
+
+    setInvoicePreview({ lines, total, periodStart, periodEnd, customer: cust, hasAddons: (addons||[]).length > 0 })
   }
 
   async function recalcInvoice(inv: any) {
@@ -1230,15 +1244,21 @@ export default function Admin() {
                         {invoicePreview.periodStart} – {invoicePreview.periodEnd} · Due {invoicePreview.periodStart}
                       </div>
                       {invoicePreview.lines.map((l:any, i:number) => (
-                        <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:'0.84rem', padding:'0.3rem 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
-                          <span style={{ color:'rgba(255,255,255,0.75)' }}>{l.label}</span>
-                          <span style={{ color:'#fff' }}>${l.amount.toFixed(2)}</span>
+                        <div key={i} style={{ padding:'0.3rem 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                          <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.84rem' }}>
+                            <span style={{ color: l.note ? '#fbbf24' : 'rgba(255,255,255,0.75)' }}>{l.note ? '🛍️ ' : ''}{l.label}</span>
+                            <span style={{ color:'#fff' }}>${l.amount.toFixed(2)}</span>
+                          </div>
+                          {l.note && <div style={{ fontSize:'0.72rem', color:'rgba(255,179,0,0.7)', marginTop:'0.1rem' }}>{l.note}</div>}
                         </div>
                       ))}
                       <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.92rem', fontWeight:700, paddingTop:'0.5rem', marginTop:'0.25rem', borderTop:'1px solid rgba(255,255,255,0.1)' }}>
                         <span style={{ color:'#fff' }}>Total</span>
                         <span style={{ color:'#4caf50' }}>${invoicePreview.total.toFixed(2)}</span>
                       </div>
+                      {invoicePreview.hasAddons && (
+                        <div style={{ marginTop:'0.5rem', fontSize:'0.72rem', color:'#fbbf24' }}>⚠️ Includes extra bag charges — these will be marked as invoiced when the bill is sent</div>
+                      )}
                     </div>
                   </div>
                 )}
