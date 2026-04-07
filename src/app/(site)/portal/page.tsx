@@ -1033,7 +1033,8 @@ export default function Portal() {
                         if (!isBiweekly || !billingStartDate) return true
                         const cellDate = new Date(year, month, parseInt(dateStr.split('-')[2]))
                         const msPerWeek = 7 * 24 * 60 * 60 * 1000
-                        const weeksDiff = Math.round((cellDate.getTime() - billingStartDate.getTime()) / msPerWeek)
+                        const bsDate2 = typeof billingStartDate === 'string' ? new Date((billingStartDate as string)+'T00:00:00') : billingStartDate
+                        const weeksDiff = Math.round((cellDate.getTime() - (bsDate2 as Date).getTime()) / msPerWeek)
                         return weeksDiff % 2 === 0
                       })()
                       const notice = noticeMap[dateStr]
@@ -1127,7 +1128,8 @@ export default function Portal() {
                       let isPickupWeek = true
                       if (isBiweekly && billingStartDate) {
                         const msPerWeek = 7 * 24 * 60 * 60 * 1000
-                        const weeksDiff = Math.round((d.getTime() - billingStartDate.getTime()) / msPerWeek)
+                        const bsDate = typeof billingStartDate === 'string' ? new Date(billingStartDate+'T00:00:00') : billingStartDate
+                        const weeksDiff = Math.round((d.getTime() - bsDate.getTime()) / msPerWeek)
                         isPickupWeek = weeksDiff % 2 === 0
                       }
                       if (isPickupWeek) {
@@ -1358,7 +1360,8 @@ export default function Portal() {
                       d.setDate(d.getDate() + 7)
                     } else {
                       const msPerWeek = 7 * 24 * 60 * 60 * 1000
-                      const weeksDiff = Math.round((d.getTime() - billingStartDate.getTime()) / msPerWeek)
+                      const bsD = typeof billingStartDate === 'string' ? new Date((billingStartDate as string)+'T00:00:00') : billingStartDate as Date
+                      const weeksDiff = Math.round((d.getTime() - bsD.getTime()) / msPerWeek)
                       if (weeksDiff % 2 === 0) dates.push(d.toISOString().split('T')[0])
                       d.setDate(d.getDate() + 7)
                     }
