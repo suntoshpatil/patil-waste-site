@@ -71,7 +71,12 @@ export default function Signup() {
         const data = await res.json().catch(() => ({}))
         throw new Error(data?.message || `Error ${res.status}`)
       }
-      setDone(true)
+      // Send signup confirmation email (fire and forget)
+    fetch('/api/emails/signup', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ customer: { first_name, last_name, email }, planName: plan || 'Service Plan', startDate: start_date || '' })
+    }).catch(()=>{})
+    setDone(true)
     } catch (e: any) {
       setErr(e.message || "Something went wrong. Please try again or call us directly.")
     }

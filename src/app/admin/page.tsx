@@ -105,6 +105,16 @@ export default function Admin() {
   const [extraBagType, setExtraBagType] = useState<'13gal'|'32gal'>('13gal')
   const [extraBagQty, setExtraBagQty] = useState(1)
   const [extraBagSaving, setExtraBagSaving] = useState(false)
+  // Bulk select
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [bulkAction, setBulkAction] = useState('')
+  // Customer history
+  const [customerHistory, setCustomerHistory] = useState<any[]>([])
+  const [showHistory, setShowHistory] = useState(false)
+  // Revenue chart
+  const [revenueHistory, setRevenueHistory] = useState<any[]>([])
+  // Overdue reminder sending
+  const [sendingReminders, setSendingReminders] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [editData, setEditData] = useState<Partial<Customer>>({})
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -318,6 +328,67 @@ export default function Admin() {
     setExtraBagSaving(false)
   }
 
+  // ── Load customer history ──
+  async function loadHistory(customerId: string) {
+    const data = await sb(`customer_history?customer_id=eq.${customerId}&order=created_at.desc&limit=30`).catch(() => [])
+    setCustomerHistory(data || [])
+  }
+
+  // ── Bulk action ──
+  async function applyBulkAction() {
+    if (!bulkAction || selectedIds.length === 0) return
+    if (!confirm(`Apply "${bulkAction}" to ${selectedIds.length} customers?`)) return
+    for (const id of selectedIds) {
+      try {
+        if (['active','paused','cancelled'].includes(bulkAction)) {
+          const cust = customers.find((c:any) => c.id === id)
+          await sb(`customers?id=eq.${id}`, { method:'PATCH', body:{ status: bulkAction }, prefer:'return=minimal' })
+          await sb('customer_history', { method:'POST', body:{ customer_id:id, field_changed:'status', old_value:cust?.status, new_value:bulkAction, changed_by:'admin-bulk' }})
+        }
+      } catch {}
+    }
+    setSelectedIds([])
+    setBulkAction('')
+    showToast(`Applied "${bulkAction}" to ${selectedIds.length} customers`)
+    loadAll()
+  }
+
+  // ── Send overdue reminders ──
+  async function sendOverdueReminders() {
+    const overdueInvs = invoices.filter((i:any) => i.status === 'overdue' || i.status === 'sent')
+    if (overdueInvs.length === 0) { showToast('No outstanding invoices', 'error'); return }
+    setSendingReminders(true)
+    let sent = 0
+    for (const inv of overdueInvs) {
+      try {
+        await sb('customer_history', { method:'POST', body:{
+          customer_id: inv.customer_id,
+          field_changed: 'reminder_sent',
+          old_value: null,
+          new_value: `Payment reminder sent for $${Number(inv.total).toFixed(2)} invoice`,
+          changed_by: 'admin'
+        }})
+        sent++
+      } catch {}
+    }
+    showToast(`Logged ${sent} payment reminders — email delivery requires Resend setup`)
+    setSendingReminders(false)
+  }
+
+  // ── Load revenue history (last 6 months from invoices) ──
+  async function loadRevenueHistory() {
+    const sixMonthsAgo = new Date()
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+    const data = await sb(`invoices?status=in.(paid,sent,overdue)&period_start=gte.${sixMonthsAgo.toISOString().split('T')[0]}&select=total,period_start,status&order=period_start.asc`).catch(() => [])
+    // Group by month
+    const byMonth: Record<string, number> = {}
+    for (const inv of data || []) {
+      const month = inv.period_start?.slice(0, 7)
+      if (month) byMonth[month] = (byMonth[month] || 0) + Number(inv.total || 0)
+    }
+    setRevenueHistory(Object.entries(byMonth).map(([month, total]) => ({ month, total })))
+  }
+
   async function loadSelectedBins(customerId: string) {
     try {
       const bins = await sb(`bins?customer_id=eq.${customerId}&select=*`)
@@ -496,6 +567,27 @@ export default function Admin() {
                 </div>
               )}
 
+              {/* Revenue Chart */}
+              {revenueHistory.length > 0 && (
+                <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', padding:'1.25rem', marginBottom:'1.25rem' }}>
+                  <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.1rem', letterSpacing:'0.04em', marginBottom:'1rem' }}>📈 Revenue (Last 6 Months)</div>
+                  <div style={{ display:'flex', alignItems:'flex-end', gap:'0.5rem', height:'100px' }}>
+                    {revenueHistory.map(({ month, total }) => {
+                      const max = Math.max(...revenueHistory.map(r => r.total), 1)
+                      const pct = (total / max) * 100
+                      const label = new Date(month + '-15').toLocaleDateString('en-US', { month:'short', year:'2-digit' })
+                      return (
+                        <div key={month} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:'0.35rem' }}>
+                          <div style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.4)' }}>${total >= 1000 ? (total/1000).toFixed(1)+'k' : total.toFixed(0)}</div>
+                          <div style={{ width:'100%', background:'rgba(46,125,50,0.7)', borderRadius:'3px 3px 0 0', height:`${Math.max(pct, 4)}%`, transition:'height 0.3s', minHeight:'4px' }} />
+                          <div style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.4)', textAlign:'center' }}>{label}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
                 <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid rgba(255,255,255,0.07)', fontFamily:'Bebas Neue,sans-serif', fontSize:'1.1rem', letterSpacing:'0.04em' }}>Recent Signups</div>
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.84rem' }}>
@@ -518,10 +610,25 @@ export default function Admin() {
           {/* ── CUSTOMERS ── */}
           {view==='customers' && (
             <div>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.5rem' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1rem' }}>
                 <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'2rem', letterSpacing:'0.02em' }}>Customers</div>
                 <Btn onClick={()=>setShowAddModal(true)}>+ Add Customer</Btn>
               </div>
+              {/* Bulk actions bar */}
+              {selectedIds.length > 0 && (
+                <div style={{ background:'rgba(46,125,50,0.08)', border:'1px solid rgba(46,125,50,0.25)', borderRadius:'8px', padding:'0.75rem 1rem', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.75rem', flexWrap:'wrap' }}>
+                  <span style={{ fontSize:'0.82rem', fontWeight:700, color:'#4caf50' }}>{selectedIds.length} selected</span>
+                  <select value={bulkAction} onChange={e=>setBulkAction(e.target.value)}
+                    style={{ background:'#111', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'6px', padding:'0.4rem 0.65rem', color:'#fff', fontSize:'0.8rem', fontFamily:'inherit' }}>
+                    <option value=''>— Choose action —</option>
+                    <option value='active'>Set Active</option>
+                    <option value='paused'>Set Paused</option>
+                    <option value='cancelled'>Set Cancelled</option>
+                  </select>
+                  <Btn small onClick={applyBulkAction} color='#2e7d32'>Apply</Btn>
+                  <button onClick={()=>setSelectedIds([])} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.4)', cursor:'pointer', fontSize:'0.78rem', fontFamily:'inherit' }}>Clear</button>
+                </div>
+              )}
 
               {/* Search + filters */}
               <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
@@ -599,15 +706,20 @@ export default function Admin() {
             <div style={{ maxWidth:'860px' }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.5rem' }}>
                 <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'2rem', letterSpacing:'0.02em' }}>Invoices</div>
-                <Btn small onClick={async () => {
-                  showToast('Generating invoices…')
-                  try {
-                    const res = await fetch('/api/cron/generate-invoices', { headers:{ Authorization:`Bearer patilwaste_cron_2024` }})
-                    const data = await res.json()
-                    showToast(`Done — ${data.generated} generated, ${data.skipped} skipped`)
-                    loadAll()
-                  } catch { showToast('Failed to generate invoices','error') }
-                }}>⚡ Generate Now</Btn>
+                <div style={{ display:'flex', gap:'0.5rem' }}>
+                  <Btn small color='#7f1d1d' onClick={sendOverdueReminders} disabled={sendingReminders}>
+                    {sendingReminders ? 'Sending…' : '📧 Send Reminders'}
+                  </Btn>
+                  <Btn small onClick={async () => {
+                    showToast('Generating invoices…')
+                    try {
+                      const res = await fetch('/api/cron/generate-invoices', { headers:{ Authorization:`Bearer patilwaste_cron_2024` }})
+                      const data = await res.json()
+                      showToast(`Done — ${data.generated} generated, ${data.skipped} skipped`)
+                      loadAll()
+                    } catch { showToast('Failed to generate invoices','error') }
+                  }}>⚡ Generate Now</Btn>
+                </div>
               </div>
 
               {/* Failed / overdue alerts */}
@@ -1006,6 +1118,32 @@ export default function Admin() {
                     Charged at no-notice rate. Will appear on customer's next invoice.
                   </div>
                 </div>
+
+                {/* ── CUSTOMER HISTORY ── */}
+                {showHistory && (
+                  <div style={{ marginTop:'1.25rem', paddingTop:'1.25rem', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.75rem' }}>📋 Customer History</div>
+                    {customerHistory.length === 0 ? (
+                      <p style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.3)' }}>No history yet</p>
+                    ) : (
+                      <div style={{ display:'flex', flexDirection:'column', gap:'0.4rem', maxHeight:'240px', overflowY:'auto' }}>
+                        {customerHistory.map((h:any) => (
+                          <div key={h.id} style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'6px', padding:'0.55rem 0.75rem', fontSize:'0.78rem' }}>
+                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'0.5rem' }}>
+                              <div>
+                                <span style={{ color:'rgba(255,255,255,0.5)', textTransform:'uppercase', fontSize:'0.68rem', letterSpacing:'0.06em' }}>{h.field_changed?.replace(/_/g,' ')}</span>
+                                {h.old_value && <span style={{ color:'rgba(255,255,255,0.35)', marginLeft:'0.4rem' }}>· {h.old_value} →</span>}
+                                <span style={{ color:'#fff', marginLeft:'0.3rem' }}>{h.new_value || '—'}</span>
+                              </div>
+                              <span style={{ color:'rgba(255,255,255,0.3)', fontSize:'0.7rem', whiteSpace:'nowrap' }}>{fmt(h.created_at)}</span>
+                            </div>
+                            {h.changed_by && <div style={{ color:'rgba(255,255,255,0.25)', fontSize:'0.68rem', marginTop:'0.15rem' }}>by {h.changed_by}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
               </div>
             </div>

@@ -380,6 +380,18 @@ export default function Portal() {
         }})
       }
 
+      // Send contract accepted email
+      const emailSub = (customer as any).subscriptions?.[0]
+      const planName = emailSub?.services?.name || 'Service Plan'
+      const firstPickupLabel = emailSub?.billing_start
+        ? new Date(emailSub.billing_start + 'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })
+        : 'your first scheduled day'
+      fetch('/api/emails/contract-accepted', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer, planName, firstPickup: firstPickupLabel, invoiceTotal: 0 })
+      }).catch(() => {})
+
       const updated = { ...customer, contract_accepted: true, status: 'active' } as any
       setCustomer(updated)
       sessionStorage.setItem('portal_customer', JSON.stringify(updated))
@@ -1379,12 +1391,33 @@ export default function Portal() {
                       <div style={{ fontWeight:500, color:'#fff' }}>{inv.period_start} – {inv.period_end}</div>
                       <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.65)' }}>Due {inv.due_date}</div>
                     </div>
-                    <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
                       <span style={{ fontWeight:600, color:'#fff' }}>${Number(inv.total).toFixed(2)}</span>
                       <span style={{ fontSize:'0.72rem', fontWeight:700, textTransform:'uppercase', padding:'0.15rem 0.5rem', borderRadius:'4px',
                         color: inv.status==='paid'?'#4caf50': inv.status==='overdue'?'#f87171':'#f59e0b',
                         background: inv.status==='paid'?'rgba(76,175,80,0.1)': inv.status==='overdue'?'rgba(248,113,113,0.1)':'rgba(245,158,11,0.1)'
                       }}>{inv.status}</span>
+                      <button onClick={() => {
+                        const lines = (inv.notes || '').split(' | ').map((l:string) => `<tr><td style="padding:6px 0;color:#555">${l.replace(/: \$/,': $')}</td></tr>`).join('')
+                        const html = `<html><head><style>body{font-family:sans-serif;max-width:600px;margin:40px auto;color:#111} h1{font-size:20px} .badge{background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:10px;font-size:12px}</style></head><body>
+                          <h1>Patil Waste Removal</h1>
+                          <p style="color:#555">80 Palomino Ln, Bedford NH 03110 · (802) 416-9484</p>
+                          <hr/>
+                          <p><strong>Invoice for:</strong> ${customer.first_name} ${customer.last_name}</p>
+                          <p><strong>Period:</strong> ${inv.period_start} – ${inv.period_end}</p>
+                          <p><strong>Due:</strong> ${inv.due_date} &nbsp; <span class="badge">${inv.status}</span></p>
+                          <table style="width:100%;border-collapse:collapse;margin:16px 0">${lines}</table>
+                          <hr/>
+                          <p style="font-size:18px"><strong>Total: $${Number(inv.total).toFixed(2)}</strong></p>
+                        </body></html>`
+                        const blob = new Blob([html], { type: 'text/html' })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url; a.download = `invoice-${inv.period_start}.html`; a.click()
+                        URL.revokeObjectURL(url)
+                      }} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'4px', color:'rgba(255,255,255,0.6)', padding:'0.15rem 0.5rem', cursor:'pointer', fontSize:'0.7rem', fontFamily:'inherit' }}>
+                        ↓
+                      </button>
                     </div>
                   </div>
                 ))}
