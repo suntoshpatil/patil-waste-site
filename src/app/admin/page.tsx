@@ -858,7 +858,7 @@ export default function Admin() {
                         <td style={{ padding:'0.85rem 1rem' }}>
                           <div style={{ display:'flex', gap:'0.4rem' }}>
                             {inv.status!=='paid' && <Btn small onClick={()=>markPaid(inv.id)}>Mark Paid</Btn>}
-                            {inv.status!=='paid' && <Btn small color='#1e3a5f' onClick={()=>recalcInvoice(inv)}>↻ Recalc</Btn>}
+                            <Btn small color='#1e3a5f' onClick={()=>recalcInvoice(inv)}>↻ Recalc</Btn>
                           </div>
                         </td>
                       </tr>
