@@ -138,7 +138,7 @@ export default function Admin() {
 
   const loadAll = useCallback(async () => {
     const [custs, subs, invs, pays, svcs, svcReqs, skipReqs, jobReqs, addons] = await Promise.all([
-      sb('customers?select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,services(name)),bins(id,bin_type,monthly_rental_fee,ownership)&order=created_at.desc'),
+      sb('customers?select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,pickup_frequency,billing_start,services(name)),bins(id,bin_type,monthly_rental_fee,ownership)&order=created_at.desc'),
       sb('subscriptions?select=rate,billing_cycle,status&status=eq.active'),
       sb('invoices?select=*,customers(first_name,last_name)&order=due_date.desc&limit=100'),
       sb('payment_logs?select=*,customers(first_name,last_name)&order=paid_at.desc&limit=20'),
