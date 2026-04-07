@@ -120,6 +120,7 @@ export default function Admin() {
   const [showHistory, setShowHistory] = useState(false)
   const [editingRate, setEditingRate] = useState(false)
   const [newRate, setNewRate] = useState('')
+  const [invoicePreview, setInvoicePreview] = useState<any>(null)
   // Revenue chart
   const [revenueHistory, setRevenueHistory] = useState<any[]>([])
   // Overdue reminder sending
@@ -461,6 +462,7 @@ export default function Admin() {
   }
 
   async function loadSelectedBins(customerId: string) {
+    setInvoicePreview(null)
     try {
       const bins = await sb(`bins?customer_id=eq.${customerId}&select=*`)
       setSelectedBins(bins || [])
@@ -517,6 +519,31 @@ export default function Admin() {
     showToast('Payment logged')
     setPayAmount(''); setPayRef('')
     loadAll()
+  }
+
+  async function previewNextInvoice(cust: any) {
+    const activeSub = cust.subscriptions?.find((s:any) => s.status === 'active')
+    const bins = await sb(`bins?customer_id=eq.${cust.id}&ownership=eq.rental&select=*`).catch(()=>[])
+    const lines: {label:string, amount:number}[] = []
+    if (activeSub) {
+      const isQ = activeSub.billing_cycle === 'quarterly'
+      const amt = isQ ? activeSub.rate * 3 : activeSub.rate
+      lines.push({ label: `${activeSub.services?.name || 'Service'}${isQ ? ' (Quarterly)' : ''}`, amount: amt })
+    }
+    for (const b of bins || []) {
+      lines.push({ label: b.bin_type === 'trash' ? 'Trash Bin Rental' : 'Recycling Bin Rental', amount: Number(b.monthly_rental_fee || 0) })
+    }
+    if (cust.garage_side_pickup) lines.push({ label: 'Garage-Side Pickup', amount: Number(cust.garage_side_rate || 10) })
+    const total = lines.reduce((s,l) => s + l.amount, 0)
+    // Next period dates
+    const now = new Date()
+    const periodStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().split('T')[0]
+    const activeSub2 = cust.subscriptions?.find((s:any) => s.status === 'active')
+    const isQ2 = activeSub2?.billing_cycle === 'quarterly'
+    const periodEnd = isQ2
+      ? new Date(now.getFullYear(), now.getMonth() + 4, 0).toISOString().split('T')[0]
+      : new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString().split('T')[0]
+    setInvoicePreview({ lines, total, periodStart, periodEnd, customer: cust })
   }
 
   async function recalcInvoice(inv: any) {
@@ -1186,6 +1213,31 @@ export default function Admin() {
                     </div>
                   )}
                 </div>
+
+                {/* ── INVOICE PREVIEW ── */}
+                {invoicePreview && invoicePreview.customer?.id === selected.id && (
+                  <div style={{ marginTop:'1.25rem', paddingTop:'1.25rem', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'0.75rem' }}>
+                      <div style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'#6b7280' }}>🧾 Next Invoice Preview</div>
+                      <button onClick={()=>setInvoicePreview(null)} style={{ background:'none', border:'none', color:'#6b7280', cursor:'pointer', fontSize:'0.85rem' }}>✕</button>
+                    </div>
+                    <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'6px', padding:'0.85rem 1rem' }}>
+                      <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.5rem' }}>
+                        {invoicePreview.periodStart} – {invoicePreview.periodEnd} · Due {invoicePreview.periodStart}
+                      </div>
+                      {invoicePreview.lines.map((l:any, i:number) => (
+                        <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:'0.84rem', padding:'0.3rem 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                          <span style={{ color:'rgba(255,255,255,0.75)' }}>{l.label}</span>
+                          <span style={{ color:'#fff' }}>${l.amount.toFixed(2)}</span>
+                        </div>
+                      ))}
+                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.92rem', fontWeight:700, paddingTop:'0.5rem', marginTop:'0.25rem', borderTop:'1px solid rgba(255,255,255,0.1)' }}>
+                        <span style={{ color:'#fff' }}>Total</span>
+                        <span style={{ color:'#4caf50' }}>${invoicePreview.total.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* ── RATE OVERRIDE ── */}
                 <div style={{ marginTop:'1.25rem', paddingTop:'1.25rem', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
