@@ -3,27 +3,27 @@ import { useState, useEffect } from 'react'
 
 const REVIEWS = [
   {
-    name: 'Arti Kanwal',
+    name: 'Arti K.',
     text: 'This is the best waste removal service I\'ve ever had! They are very professional, prompt and offer great pricing for their services. So glad they service the Milford area! Definitely a 5 Star rating!!',
   },
   {
-    name: 'Curtis Denison',
+    name: 'Curtis D.',
     text: 'Patil has been great to work with. They have been great at communicating any delay pick ups and are reasonably priced. Happy to recommend!',
   },
   {
-    name: 'Nick Deres',
+    name: 'Nick D.',
     text: 'We\'ve been very happy with their services to date, and they\'ve been responsive to inquiries when needed. Recommended!',
   },
   {
-    name: 'Carol Malony',
+    name: 'Carol M.',
     text: 'We have been using Patil Waste Removal for six months and recommend them highly to anyone in the Milford area.',
   },
   {
-    name: 'Leslie Toomy',
+    name: 'Leslie T.',
     text: 'Patil Waste Removal was amazing! They responded quickly to my request for service and arrived promptly for the scheduled pickup.',
   },
   {
-    name: 'Gail Bannon',
+    name: 'Gail B.',
     text: 'Patil Waste Removal has been super professional and very dependable. Excellent customer service in answering all our questions.',
   },
 ]
