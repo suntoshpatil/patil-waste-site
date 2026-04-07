@@ -1,43 +1,99 @@
-
 export const metadata = { title: 'Recycling | Patil Waste Removal' }
 import Link from 'next/link'
+
 export default function Recycling() {
-  const accepted = ['Cardboard & paperboard','Newspapers & magazines','Office paper & junk mail','Plastic bottles & jugs (1-7)','Glass bottles & jars','Aluminum & steel cans','Cartons (milk, juice)']
-  const notAccepted = ['Plastic bags (recycle at grocery store)','Styrofoam','Food waste','Dirty / soiled containers','Electronics','Hazardous materials','Medical waste']
+  const accepted = [
+    { item: 'Cardboard & paperboard', tip: 'Break down boxes flat' },
+    { item: 'Newspapers & magazines', tip: 'No need to remove staples' },
+    { item: 'Office paper & junk mail', tip: 'Shredded paper is OK' },
+    { item: 'Plastic bottles & jugs (1–7)', tip: 'Rinse before placing' },
+    { item: 'Glass bottles & jars', tip: 'Keep separate from other recyclables' },
+    { item: 'Aluminum & steel cans', tip: 'Rinse, no need to crush' },
+    { item: 'Cartons (milk, juice)', tip: 'Empty and rinse' },
+  ]
+  const notAccepted = [
+    'Plastic bags — recycle at grocery store',
+    'Styrofoam of any kind',
+    'Food waste or soiled containers',
+    'Electronics or batteries',
+    'Hazardous materials',
+    'Medical waste',
+    'Clothing or textiles',
+  ]
+
   return (
     <>
-      <div style={{background:'var(--black)',paddingTop:'57px'}}>
-        <div className="section" style={{textAlign:'center'}}>
+      {/* Hero */}
+      <div style={{ background: 'var(--black)', paddingTop: '57px', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 80% at 50% 100%, rgba(46,125,50,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div className="section" style={{ textAlign: 'center', position: 'relative' }}>
           <div className="section-inner">
             <span className="eyebrow">Going Green</span>
-            <h1 className="d1" style={{color:'var(--white)'}}>Recycling</h1>
-            <p className="lead" style={{color:'rgba(255,255,255,0.55)',maxWidth:'600px',margin:'0 auto'}}>At Patil Waste Removal, we are passionate about recycling and doing our part to keep our planet clean and healthy for future generations.</p>
+            <h1 className="d1" style={{ color: 'var(--white)' }}>Recycling</h1>
+            <p className="lead" style={{ color: 'rgba(255,255,255,0.6)', maxWidth: '560px', margin: '0 auto' }}>
+              We make recycling simple. Just toss it in — no sorting needed.
+            </p>
           </div>
         </div>
       </div>
-      <section className="section" style={{background:'var(--white)'}}>
+
+      {/* Important notice */}
+      <div style={{ background: '#1a1200', borderBottom: '1px solid rgba(255,179,0,0.2)', padding: '1rem 2rem', textAlign: 'center' }}>
+        <p style={{ margin: 0, fontSize: '0.88rem', color: '#fbbf24', maxWidth: '700px', marginInline: 'auto' }}>
+          ⚠️ <strong>Do NOT bag your recycling.</strong> Loose materials only — plastic bags contaminate single-stream bins and must be recycled separately at your grocery store. Glass must be kept separate from other recyclables.
+        </p>
+      </div>
+
+      {/* Accepted / Not Accepted */}
+      <section className="section" style={{ background: 'var(--white)' }}>
         <div className="section-inner">
-          <div style={{background:'rgba(255,179,0,0.08)',border:'1px solid rgba(255,179,0,0.3)',borderRadius:'6px',padding:'1.5rem',marginBottom:'2.5rem'}}>
-            <p>⚠️ <strong style={{color:'var(--accent)'}}>Important:</strong> Plastic bags must be kept completely separate from all other recyclables — they are recycled differently and contaminate single-stream bins. Do <strong>NOT</strong> bag your recycling. Loose materials only.</p>
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2rem',marginBottom:'2.5rem'}}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem', marginBottom: '3rem' }}>
+            {/* Accepted */}
             <div>
-              <span className="eyebrow">Accepted Items</span>
-              <ul style={{listStyle:'none',padding:0}}>
-                {accepted.map(item => <li key={item} style={{padding:'0.5rem 0',borderBottom:'1px solid var(--border-light)',display:'flex',gap:'0.5rem',fontSize:'0.9rem'}}><span style={{color:'var(--green)',fontWeight:700}}>✓</span>{item}</li>)}
-              </ul>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
+                <div style={{ background: 'rgba(46,125,50,0.1)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>♻️</div>
+                <span className="eyebrow" style={{ margin: 0 }}>Accepted Items</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {accepted.map(({ item, tip }) => (
+                  <div key={item} style={{ background: 'rgba(46,125,50,0.04)', border: '1px solid rgba(46,125,50,0.15)', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: '1rem', flexShrink: 0, marginTop: '1px' }}>✓</span>
+                    <div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#111' }}>{item}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--gray)', marginTop: '0.1rem' }}>{tip}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {/* Not accepted */}
             <div>
-              <span className="eyebrow" style={{color:'var(--red)'}}>Not Accepted</span>
-              <ul style={{listStyle:'none',padding:0}}>
-                {notAccepted.map(item => <li key={item} style={{padding:'0.5rem 0',borderBottom:'1px solid var(--border-light)',display:'flex',gap:'0.5rem',fontSize:'0.9rem'}}><span style={{color:'var(--red)',fontWeight:700}}>✗</span>{item}</li>)}
-              </ul>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
+                <div style={{ background: 'rgba(220,38,38,0.08)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>🚫</div>
+                <span className="eyebrow" style={{ margin: 0, color: 'var(--red)' }}>Not Accepted</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {notAccepted.map(item => (
+                  <div key={item} style={{ background: 'rgba(220,38,38,0.03)', border: '1px solid rgba(220,38,38,0.1)', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ color: 'var(--red)', fontWeight: 700, fontSize: '1rem', flexShrink: 0 }}>✗</span>
+                    <span style={{ fontSize: '0.9rem', color: '#333' }}>{item}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-          <div style={{background:'var(--green-pale)',border:'1px solid rgba(46,125,50,0.2)',borderRadius:'6px',padding:'2rem',textAlign:'center'}}>
-            <div className="d3" style={{marginBottom:'0.5rem'}}>Add Recycling to Your Plan</div>
-            <p style={{fontSize:'0.88rem',color:'var(--gray)',marginBottom:'1.5rem'}}>Add recycling to your service for just <strong>$52/mo</strong> (Trash & Recycling plan).</p>
-            <Link href="/signup" className="btn btn-green">Sign Up for Recycling</Link>
+
+          {/* CTA */}
+          <div style={{ background: 'var(--black)', borderRadius: '12px', padding: '3rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.07)', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 50% 80% at 50% 100%, rgba(46,125,50,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
+            <div style={{ position: 'relative' }}>
+              <div className="d3" style={{ color: 'var(--white)', marginBottom: '0.75rem' }}>Add Recycling to Your Plan</div>
+              <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.6)', marginBottom: '1.75rem' }}>
+                Upgrade to Trash & Recycling for just <strong style={{ color: '#fff' }}>$52/mo</strong> — same pickup day, same driver.
+              </p>
+              <Link href="/signup" className="btn btn-green">Sign Up for Recycling →</Link>
+            </div>
           </div>
         </div>
       </section>

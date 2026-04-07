@@ -19,8 +19,9 @@ export default function Signup() {
     const g = (n: string) => (f.elements.namedItem(n) as HTMLInputElement)?.value?.trim() || ""
     const checked = (n: string) => (f.elements.namedItem(n) as HTMLInputElement)?.checked || false
 
-    const first_name        = g("fn")
-    const last_name         = g("ln")
+    const cap = (s: string) => s.trim() ? s.trim().charAt(0).toUpperCase() + s.trim().slice(1).toLowerCase() : ''
+    const first_name        = cap(g("fn"))
+    const last_name         = cap(g("ln"))
     const email             = g("em").toLowerCase()
     const phone             = g("ph")
     const service_address   = g("addr")

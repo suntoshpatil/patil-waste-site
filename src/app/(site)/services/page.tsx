@@ -4,7 +4,7 @@ export const metadata = { title: 'Curbside Services | Patil Waste Removal' }
 export default function Services() {
   return (
     <>
-      <div style={{background:'var(--black)',paddingTop:'57px'}}>
+      <div style={{background:'var(--black)',paddingTop:'57px',position:'relative',overflow:'hidden'}}><div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 60% 70% at 50% 100%, rgba(46,125,50,0.1) 0%, transparent 70%)',pointerEvents:'none'}} />
         <div className="section" style={{textAlign:'center',paddingBottom:'3rem'}}>
           <div className="section-inner">
             <span className="eyebrow">What We Offer</span>
@@ -15,7 +15,7 @@ export default function Services() {
       </div>
       <section className="section" style={{background:'var(--cream)'}}>
         <div className="section-inner">
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.5rem',maxWidth:'820px',margin:'0 auto 3rem'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2rem',maxWidth:'840px',margin:'0 auto 3rem'}}>
             <div className="plan-card">
               <div className="plan-type">Curbside Trash Only</div>
               <div className="d3">Standard Pick-up</div>
@@ -64,8 +64,8 @@ export default function Services() {
           </div>
           <div style={{maxWidth:'820px',margin:'0 auto'}}>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem'}}>
-              {[['Junk Removal','Furniture, appliances, electronics, construction debris, moving cleanouts.'],['Yard Waste','Leaves, logs, branches, and landscaping debris. Scheduled separately.']].map(([title, desc]) => (
-                <div key={title} style={{background:'var(--cream)',borderRadius:'6px',padding:'1.5rem',border:'1px solid var(--border-light)'}}>
+              {[['Junk Removal','Furniture, appliances, electronics, construction debris, moving cleanouts.'],['Yard Waste','Leaves, logs, branches, and landscaping debris.']].map(([title, desc]) => (
+                <div key={title} style={{background:'var(--cream)',borderRadius:'10px',padding:'2rem',border:'1px solid var(--border-light)',transition:'transform 0.2s'}}>
                   <div className="d3" style={{marginBottom:'0.4rem'}}>{title}</div>
                   <p style={{fontSize:'0.82rem',color:'var(--gray)',lineHeight:1.6}}>{desc}</p>
                   <Link href="/junk-removal" className="btn btn-green" style={{display:'inline-block',marginTop:'1rem',fontSize:'0.72rem'}}>Get a Quote</Link>

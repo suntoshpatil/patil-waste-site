@@ -51,7 +51,7 @@ export default function JunkRemoval() {
         <div style={{ fontSize:'4rem', marginBottom:'1rem' }}>✅</div>
         <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'2.5rem', letterSpacing:'0.05em', marginBottom:'1rem' }}>Request Received!</div>
         <p style={{ color:'rgba(255,255,255,0.6)', lineHeight:1.7, marginBottom:'1.5rem' }}>
-          Thanks, {form.name.split(' ')[0]}! Suntosh will review your request and reach out within 1 business day with availability and a quote.
+          Thanks, {form.name.split(' ')[0]}! Patil Waste Removal will review your request and reach out within 1 business day with availability and a quote.
         </p>
         <p style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.88rem' }}>
           Questions? Call or text <a href="tel:8024169484" style={{ color:'#4caf50' }}>(802) 416-9484</a>
@@ -63,23 +63,23 @@ export default function JunkRemoval() {
   return (
     <main style={{ minHeight:'100vh', background:'#0a0a0a', paddingTop:'5rem' }}>
       {/* Hero */}
-      <section style={{ background:'linear-gradient(180deg, #0f1f0f 0%, #0a0a0a 100%)', padding:'4rem 2rem 3rem', textAlign:'center' }}>
+      <section style={{ background:'linear-gradient(180deg, #0f2010 0%, #0a0a0a 100%)', padding:'5rem 2rem 4rem', textAlign:'center', position:'relative', overflow:'hidden' }}><div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse 60% 70% at 50% 100%, rgba(46,125,50,0.12) 0%, transparent 70%)', pointerEvents:'none' }} /><div style={{position:'relative'}}>
         <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'clamp(2.5rem, 6vw, 4.5rem)', letterSpacing:'0.04em', lineHeight:1, marginBottom:'1rem' }}>
           <span style={{ color:'#fff' }}>Junk Removal</span> <span style={{ color:'#fff' }}>&amp;</span> <span style={{ color:'#4caf50' }}>Yard Cleanup</span>
         </div>
         <p style={{ color:'rgba(255,255,255,0.55)', fontSize:'1.05rem', maxWidth:'520px', margin:'0 auto 2rem' }}>
           No subscription needed. Fill out the form and we'll get back to you with a quote — usually within one business day.
         </p>
-        <div style={{ display:'flex', gap:'2rem', justifyContent:'center', flexWrap:'wrap' }}>
+        <div style={{ display:'flex', gap:'0.75rem', justifyContent:'center', flexWrap:'wrap' }}>
           {[['📦','Furniture & Appliances'],['🌿','Yard & Brush Waste'],['🏚️','Estate Cleanouts'],['🚛','Full Truckload Hauls']].map(([icon, label]) => (
-            <div key={label as string} style={{ fontSize:'0.85rem', color:'rgba(255,255,255,0.5)' }}><span style={{ marginRight:'0.4rem' }}>{icon}</span>{label}</div>
+            <div key={label as string} style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.75)', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'20px', padding:'0.35rem 0.85rem' }}><span style={{ marginRight:'0.4rem' }}>{icon}</span>{label}</div>
           ))}
         </div>
-      </section>
+      </div></section>
 
       {/* Form */}
       <section style={{ maxWidth:'640px', margin:'0 auto', padding:'2rem' }}>
-        <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'2rem' }}>
+        <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'14px', padding:'2.5rem', boxShadow:'0 4px 24px rgba(0,0,0,0.3)' }}>
           <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.6rem', letterSpacing:'0.05em', marginBottom:'1.5rem' }}>Request a Quote</div>
 
           {/* Job type */}

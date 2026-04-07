@@ -705,7 +705,7 @@ export default function Portal() {
                 {contractAccepting ? 'Processing…' : '✅ I Accept — Activate My Account'}
               </button>
             </div>
-            <p style={{ fontSize:'0.78rem', color:'#aaa', marginTop:'0.75rem' }}>Questions? Call or text Suntosh at (802) 416-9484</p>
+            <p style={{ fontSize:'0.78rem', color:'#aaa', marginTop:'0.75rem' }}>Questions? Call or text Patil Waste Removal at (802) 416-9484</p>
           </div>
 
         </div>
@@ -1321,7 +1321,7 @@ export default function Portal() {
                     <span style={{ fontSize:'1.2rem' }}>💳</span>
                     <span style={{ fontSize:'0.9rem', fontWeight:600, color:'#fff' }}>Card saved — auto-pay enabled</span>
                   </div>
-                  <p style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.6)' }}>Your card will be charged automatically on the 1st of each month. To update your card, contact Suntosh.</p>
+                  <p style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.6)' }}>Your card will be charged automatically on the 1st of each month. To update your card, contact Patil Waste Removal.</p>
                 </div>
               ) : cardSaved ? (
                 <div style={{ color:'#4caf50', fontSize:'0.9rem', fontWeight:600 }}>✅ Card saved! Auto-pay is now enabled.</div>
@@ -1392,7 +1392,7 @@ export default function Portal() {
             )}
 
             <div style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'8px', padding:'1rem 1.25rem', fontSize:'0.82rem', color:'rgba(255,255,255,0.75)' }}>
-              Questions about your bill? Call or text Suntosh at <a href="tel:8024169484" style={{ color:'#4caf50' }}>(802) 416-9484</a> or email <a href="mailto:patilwasteremoval@gmail.com" style={{ color:'#4caf50' }}>patilwasteremoval@gmail.com</a>
+              Questions about your bill? Call or text Patil Waste Removal at <a href="tel:8024169484" style={{ color:'#4caf50' }}>(802) 416-9484</a> or email <a href="mailto:patilwasteremoval@gmail.com" style={{ color:'#4caf50' }}>patilwasteremoval@gmail.com</a>
             </div>
           </div>
         )}
