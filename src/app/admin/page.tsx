@@ -1086,7 +1086,26 @@ export default function Admin() {
                     <Inp label="Phone" name="phone" value={editData.phone||''} onChange={onEdit} />
                     <Inp label="Address" name="service_address" value={editData.service_address||''} onChange={onEdit} />
                     <Sel label="Town" name="town" value={editData.town||''} onChange={onEdit} options={[['bedford','Bedford'],['merrimack','Merrimack'],['amherst','Amherst'],['milford','Milford'],['other','Other']]} />
+                    <Sel label="Status" name="status" value={editData.status||''} onChange={onEdit} options={[['active','Active'],['pending','Pending'],['paused','Paused'],['cancelled','Cancelled'],['overdue','Overdue']]} />
+                    <Sel label="Payment Method" name="payment_method" value={editData.payment_method||''} onChange={onEdit} options={[['cash','Cash'],['venmo','Venmo'],['zelle','Zelle'],['card','Card']]} />
                     <Sel label="Pickup Day" name="pickup_day" value={editData.pickup_day||''} onChange={onEdit} options={[['','TBD'],['monday','Monday'],['tuesday','Tuesday'],['wednesday','Wednesday'],['thursday','Thursday'],['friday','Friday']]} />
+                    <div style={{ marginBottom:'0.75rem' }}>
+                      <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.5rem' }}>Garage-Side Pickup</label>
+                      <div style={{ display:'flex', gap:'1.5rem' }}>
+                        <label style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.75)' }}>
+                          <input type='radio' checked={!editData.garage_side_pickup} onChange={() => setEditData((p:any) => ({...p, garage_side_pickup: false, garage_side_rate: null}))} style={{ accentColor:'#2e7d32' }} />
+                          None
+                        </label>
+                        <label style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.75)' }}>
+                          <input type='radio' checked={!!editData.garage_side_pickup && Number(editData.garage_side_rate) !== 5} onChange={() => setEditData((p:any) => ({...p, garage_side_pickup: true, garage_side_rate: 10}))} style={{ accentColor:'#2e7d32' }} />
+                          Standard ($10/mo)
+                        </label>
+                        <label style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.75)' }}>
+                          <input type='radio' checked={!!editData.garage_side_pickup && Number(editData.garage_side_rate) === 5} onChange={() => setEditData((p:any) => ({...p, garage_side_pickup: true, garage_side_rate: 5}))} style={{ accentColor:'#2e7d32' }} />
+                          Senior 65+ ($5/mo)
+                        </label>
+                      </div>
+                    </div>
                     <Inp label="Gate Notes" name="gate_notes" value={editData.gate_notes||''} onChange={onEdit} placeholder="Gate code, property access..." />
                     <Inp label="Notes" name="notes" value={editData.notes||''} onChange={onEdit} placeholder="Internal notes..." />
                     <div style={{ display:'flex', gap:'0.5rem', marginTop:'1rem' }}>
