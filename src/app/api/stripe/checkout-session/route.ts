@@ -20,6 +20,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invoice or customer not found' }, { status: 404 })
     }
 
+    if (invoice.customer_id !== customerId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     // Create or retrieve Stripe customer
     let stripeCustomerId = customer.stripe_customer_id
     if (!stripeCustomerId) {

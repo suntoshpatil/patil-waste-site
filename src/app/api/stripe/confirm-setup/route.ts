@@ -29,6 +29,15 @@ export async function GET(req: Request) {
     // Load customer to get stripe_customer_id
     const [customer] = await sbServer(`customers?id=eq.${customerId}&select=id,email,stripe_customer_id`)
 
+    if (!customer) {
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+    }
+
+    // Verify the Stripe session actually belongs to this customer
+    if (customer.stripe_customer_id && session.customer !== customer.stripe_customer_id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     // Set as default payment method on Stripe customer
     if (customer?.stripe_customer_id) {
       await stripe.customers.update(customer.stripe_customer_id, {

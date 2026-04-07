@@ -450,7 +450,7 @@ export default function Portal() {
       fetch('/api/emails/contract-accepted', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer, planName, firstPickup: firstPickupLabel, invoiceTotal: 0 })
+        body: JSON.stringify({ customerId: (customer as any).id, planName, firstPickup: firstPickupLabel, invoiceTotal: 0 })
       }).catch(() => {})
 
       const updated = { ...customer, contract_accepted: true, status: 'active' } as any

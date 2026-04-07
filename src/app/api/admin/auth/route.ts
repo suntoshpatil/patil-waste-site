@@ -1,7 +1,11 @@
 /* eslint-disable */
 import { NextResponse } from 'next/server'
 
-const correct = () => process.env.ADMIN_PASSWORD || 'PatilWaste2024!'
+const correct = () => {
+  const pw = process.env.ADMIN_PASSWORD
+  if (!pw) throw new Error('ADMIN_PASSWORD env var not set')
+  return pw
+}
 
 export async function POST(req: Request) {
   try {

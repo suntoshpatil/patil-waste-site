@@ -19,6 +19,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No Stripe customer found' }, { status: 404 })
     }
 
+    // Verify the payment method isn't already owned by a different customer
+    const pm = await stripe.paymentMethods.retrieve(paymentMethodId)
+    if (pm.customer && pm.customer !== customer.stripe_customer_id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     // Attach payment method to Stripe customer and set as default
     await stripe.paymentMethods.attach(paymentMethodId, { customer: customer.stripe_customer_id })
     await stripe.customers.update(customer.stripe_customer_id, {

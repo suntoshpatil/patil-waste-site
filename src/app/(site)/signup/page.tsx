@@ -74,7 +74,7 @@ export default function Signup() {
       // Send signup confirmation email (fire and forget)
     fetch('/api/emails/signup', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ customer: { first_name, last_name, email }, planName: plan || 'Service Plan', startDate: start_date || '' })
+      body: JSON.stringify({ email, planName: plan || 'Service Plan', startDate: start_date || '' })
     }).catch(()=>{})
     setDone(true)
     } catch (e: any) {
