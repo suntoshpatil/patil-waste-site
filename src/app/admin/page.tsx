@@ -216,6 +216,7 @@ export default function Admin() {
             service_id: svcId,
             rate,
             billing_cycle: addBillingCycle,
+            pickup_day: pickup_day || null,
             status: 'active',
             billing_start: addData.start_date || new Date().toISOString().split('T')[0],
             next_billing_date: addData.start_date || new Date().toISOString().split('T')[0],
