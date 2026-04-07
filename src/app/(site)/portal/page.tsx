@@ -674,7 +674,7 @@ export default function Portal() {
 
     return (
       <main style={{ minHeight:'100vh', background:'#f5f5f5', paddingTop:'4rem', paddingBottom:'4rem' }}>
-        <div style={{ maxWidth:'780px', margin:'0 auto', padding:'0 1.5rem' }}>
+        <div className="portal-contract-wrap" style={{ maxWidth:'780px', margin:'0 auto', padding:'0 1.5rem' }}>
 
           {/* Header */}
           <div style={{ textAlign:'center', marginBottom:'2.5rem' }}>
@@ -690,7 +690,7 @@ export default function Portal() {
           <div style={{ background:'#fff', borderRadius:'10px', padding:'2.5rem', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', marginBottom:'1.5rem' }}>
 
             {/* Parties */}
-            <div style={{ ...section, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'2rem' }}>
+            <div className="portal-contract-parties" style={{ ...section, display:'grid', gridTemplateColumns:'1fr 1fr', gap:'2rem' }}>
               <div>
                 <h2 style={{ fontSize:'1.5rem', fontWeight:700, color:'#111', marginBottom:'0.75rem' }}>Parties</h2>
                 <p style={{ ...p, fontWeight:600, marginBottom:'0.15rem' }}>Patil Waste Removal LLC.</p>
@@ -722,7 +722,7 @@ export default function Portal() {
 
             {/* Terms */}
             <h2 style={{ fontSize:'1.5rem', fontWeight:700, color:'#111', marginBottom:'1.25rem' }}>Terms</h2>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'2rem' }}>
+            <div className="portal-contract-terms" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'2rem' }}>
               <div>
                 <div style={section}>
                   <h3 style={h3}>Payment</h3>
@@ -811,8 +811,19 @@ export default function Portal() {
 
   return (
     <main style={{ minHeight:'100vh', background:'#0a0a0a', paddingTop:'3rem' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .portal-header { padding: 0.75rem 1rem !important; }
+          .portal-content { padding: 1rem !important; }
+          .portal-tabs { padding: 0 0.5rem !important; }
+          .portal-contract-wrap { padding: 0 0.75rem !important; }
+          .portal-contract-parties { grid-template-columns: 1fr !important; gap: 1rem !important; }
+          .portal-contract-terms { grid-template-columns: 1fr !important; gap: 1rem !important; }
+          .portal-cal-cell { min-height: 38px !important; padding: 0.3rem 0.25rem !important; }
+        }
+      `}</style>
       {/* Header bar */}
-      <div style={{ background:'rgba(255,255,255,0.02)', borderBottom:'1px solid rgba(255,255,255,0.06)', padding:'1rem 2rem', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+      <div className="portal-header" style={{ background:'rgba(255,255,255,0.02)', borderBottom:'1px solid rgba(255,255,255,0.06)', padding:'1rem 2rem', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div>
           <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.5rem', letterSpacing:'0.05em', color:'#fff' }}>
             Hey, {customer.first_name} 👋
@@ -823,7 +834,7 @@ export default function Portal() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display:'flex', borderBottom:'1px solid rgba(255,255,255,0.07)', padding:'0 2rem', gap:'0.25rem', overflowX:'auto' }}>
+      <div className="portal-tabs" style={{ display:'flex', borderBottom:'1px solid rgba(255,255,255,0.07)', padding:'0 2rem', gap:'0.25rem', overflowX:'auto' }}>
         {([['home','🏠 Overview'],['calendar','📅 Schedule'],['pickup','📦 Add to Pickup'],['services','➕ Services'],['skips','⏸️ Skip Pickup'],['billing','💳 Billing']] as [typeof tab, string][]).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{ background:'none', border:'none', color: tab===id ? '#4caf50' : 'rgba(255,255,255,0.4)', borderBottom: tab===id ? '2px solid #4caf50' : '2px solid transparent', padding:'0.85rem 1.25rem', cursor:'pointer', fontSize:'0.82rem', fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', transition:'color 0.15s' }}>
             {label}
@@ -831,7 +842,7 @@ export default function Portal() {
         ))}
       </div>
 
-      <div style={{ maxWidth:'860px', margin:'0 auto', padding:'2rem' }}>
+      <div className="portal-content" style={{ maxWidth:'860px', margin:'0 auto', padding:'2rem' }}>
 
         {/* ── OVERVIEW TAB ── */}
         {tab === 'home' && (
@@ -1111,7 +1122,7 @@ export default function Portal() {
                       if (isReplacement) { bg = 'rgba(245,158,11,0.12)'; border = '#f59e0b' }
 
                       return (
-                        <div key={i} title={notice?.message || (isReplacement ? 'Replacement pickup' : '')} style={{
+                        <div key={i} className="portal-cal-cell" title={notice?.message || (isReplacement ? 'Replacement pickup' : '')} style={{
                           padding:'0.5rem',
                           minHeight:'52px',
                           background: bg,

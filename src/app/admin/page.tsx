@@ -721,20 +721,20 @@ export default function Admin() {
   const navItems: [string,string,string][] = [['dashboard','📊','Dashboard'],['customers','👥','Customers'],['routes','🗓️','Routes'],['invoices','🧾','Invoices'],['payments','💵','Payments'],['requests','🔔','Requests'],['jobs','🚛','Jobs'],['notices','📢','Notices']]
 
   return (
-    <div style={{ fontFamily:'DM Sans,sans-serif', background:'#0f0f0f', color:'#f9f9f6', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+    <div className="admin-page" style={{ fontFamily:'DM Sans,sans-serif', background:'#0f0f0f', color:'#f9f9f6', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
       {/* Topbar */}
-      <div style={{ background:'#141414', borderBottom:'1px solid rgba(255,255,255,0.07)', padding:'0 1.5rem', height:'56px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+      <div className="admin-topbar" style={{ background:'#141414', borderBottom:'1px solid rgba(255,255,255,0.07)', padding:'0 1.5rem', height:'56px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
         <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.4rem', letterSpacing:'0.04em' }}>Patil <span style={{ color:'#4caf50' }}>Waste</span> Admin</div>
         <div style={{ display:'flex', alignItems:'center', gap:'1rem' }}>
-          <span style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'#6b7280', background:'rgba(255,255,255,0.05)', padding:'0.3rem 0.7rem', borderRadius:'20px' }}>{customers.length} customers</span>
+          <span className="admin-topbar-badge" style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'#6b7280', background:'rgba(255,255,255,0.05)', padding:'0.3rem 0.7rem', borderRadius:'20px' }}>{customers.length} customers</span>
           <button onClick={() => { localStorage.removeItem('pwradmin'); setLoggedIn(false); setAdminToken('') }} style={{ fontSize:'0.75rem', color:'#6b7280', background:'none', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'4px', padding:'0.3rem 0.75rem', cursor:'pointer', fontFamily:'inherit' }}>Log Out</button>
         </div>
       </div>
 
-      <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
+      <div className="admin-layout" style={{ display:'flex', flex:1, overflow:'hidden' }}>
         {/* Sidebar */}
-        <nav style={{ width:'180px', background:'#141414', borderRight:'1px solid rgba(255,255,255,0.07)', padding:'1rem 0', flexShrink:0, overflowY:'auto' }}>
+        <nav className="admin-sidebar" style={{ width:'180px', background:'#141414', borderRight:'1px solid rgba(255,255,255,0.07)', padding:'1rem 0', flexShrink:0, overflowY:'auto' }}>
           {navItems.map(([id,icon,label]) => {
             const pendingCount = id === 'requests' ? serviceRequests.length + skipRequests.length : id === 'jobs' ? jobRequests.filter((j:any)=>j.status==='new').length + pickupAddons.filter((a:any)=>a.status==='pending_quote').length : id === 'dashboard' ? customers.filter(c=>c.status==='pending').length : 0
             return (
@@ -747,7 +747,7 @@ export default function Admin() {
         </nav>
 
         {/* Main content */}
-        <div style={{ flex:1, overflowY:'auto', padding:'1.5rem' }}>
+        <div className="admin-main" style={{ flex:1, overflowY:'auto', padding:'1.5rem' }}>
 
           {/* ── DASHBOARD ── */}
           {view==='dashboard' && (
@@ -766,8 +766,40 @@ export default function Admin() {
                   <Btn onClick={() => setShowAddModal(true)}>+ Add Customer</Btn>
                 </div>
               </div>
-              <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'1rem', marginBottom:'1.5rem' }}>
+              <style>{`
+                @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+                @media (max-width: 768px) {
+                  .admin-page { height: auto !important; overflow: visible !important; min-height: 100vh; }
+                  .admin-topbar { padding: 0 1rem !important; height: auto !important; min-height: 56px; flex-wrap: wrap; }
+                  .admin-topbar-badge { display: none !important; }
+                  .admin-layout { flex-direction: column !important; height: auto !important; overflow: visible !important; }
+                  .admin-sidebar {
+                    width: 100% !important;
+                    display: flex !important;
+                    flex-direction: row !important;
+                    overflow-x: auto !important;
+                    overflow-y: hidden !important;
+                    padding: 0 !important;
+                    border-right: none !important;
+                    border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+                  }
+                  .admin-sidebar > div {
+                    flex-direction: column !important;
+                    padding: 0.55rem 0.7rem !important;
+                    font-size: 0.7rem !important;
+                    border-left: none !important;
+                    border-bottom: 2px solid transparent;
+                    white-space: nowrap !important;
+                    gap: 0.2rem !important;
+                    min-width: fit-content;
+                    justify-content: center;
+                    align-items: center !important;
+                  }
+                  .admin-main { padding: 0.75rem !important; }
+                  .admin-stats-grid { grid-template-columns: 1fr 1fr !important; }
+                }
+              `}</style>
+              <div className="admin-stats-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'1rem', marginBottom:'1.5rem' }}>
                 {([['Active',stats.active,'#fff'],['Pending',stats.pending,'#fff'],['Est. Revenue',`$${stats.revenue.toFixed(0)}/mo`,'#4caf50'],['Overdue',stats.overdue,'#e53935']] as [string,any,string][]).map(([label,val,color]) => (
                   <div key={label} style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', padding:'1.25rem' }}>
                     <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.4rem' }}>{label}</div>
