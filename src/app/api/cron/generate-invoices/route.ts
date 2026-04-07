@@ -51,12 +51,19 @@ export async function GET(req: Request) {
           if (existing?.length > 0) { skipped++; continue }
         }
 
-        // For monthly: skip if invoice already exists for this period
+        // For monthly: skip if invoice already exists for this period,
+        // OR if there's a paid invoice that covers the upcoming period_start
         if (!isQuarterly) {
           const existing = await sbServer(
             `invoices?customer_id=eq.${customer.id}&period_start=eq.${periodStart}&select=id`
           )
           if (existing?.length > 0) { skipped++; continue }
+
+          // Also skip if a paid invoice already covers this period (e.g. imported from Squarespace)
+          const covered = await sbServer(
+            `invoices?customer_id=eq.${customer.id}&status=eq.paid&period_end=gte.${periodStart}&select=id`
+          ).catch(() => [])
+          if (covered?.length > 0) { skipped++; continue }
         }
 
         // Determine period end
