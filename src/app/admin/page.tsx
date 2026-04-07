@@ -722,7 +722,7 @@ export default function Admin() {
                 </div>
                 <div style={{ overflowX:'auto' }}>
                   <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.84rem' }}>
-                    <thead><tr>{['Name','Email','Town','Plan','Status','Actions'].map(h=><th key={h} style={{ padding:'0.75rem 1rem', textAlign:'left', fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', borderBottom:'1px solid rgba(255,255,255,0.07)', whiteSpace:'nowrap' }}>{h}</th>)}</tr></thead>
+                    <thead><tr>{['Name','Email','Town','Plan','Billing','Status','Actions'].map(h=><th key={h} style={{ padding:'0.75rem 1rem', textAlign:'left', fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', borderBottom:'1px solid rgba(255,255,255,0.07)', whiteSpace:'nowrap' }}>{h}</th>)}</tr></thead>
                     <tbody>
                       {filtered.map(c=>(
                         <tr key={c.id} style={{ borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
@@ -730,6 +730,12 @@ export default function Admin() {
                           <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.5)' }}>{c.email}</td>
                           <td style={{ padding:'0.85rem 1rem', textTransform:'capitalize' }}>{c.town}</td>
                           <td style={{ padding:'0.85rem 1rem', fontSize:'0.78rem', color:'rgba(255,255,255,0.6)' }}>{c.subscriptions?.[0]?.services?.name || '—'}</td>
+                          <td style={{ padding:'0.85rem 1rem', fontSize:'0.75rem' }}>
+                            {c.subscriptions?.[0]?.billing_cycle === 'quarterly'
+                              ? <span style={{ background:'rgba(124,58,237,0.15)', color:'#a78bfa', padding:'0.15rem 0.5rem', borderRadius:'10px', fontWeight:700 }}>Quarterly</span>
+                              : <span style={{ background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)', padding:'0.15rem 0.5rem', borderRadius:'10px' }}>Monthly</span>
+                            }
+                          </td>
                           <td style={{ padding:'0.85rem 1rem' }}><Badge status={c.status} /></td>
                           <td style={{ padding:'0.85rem 1rem' }}>
                             <div style={{ display:'flex', gap:'0.4rem' }}>
@@ -1089,7 +1095,7 @@ export default function Admin() {
                   </div>
                 ) : (
                   <div>
-                    {(()=>{const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); return [['Status', <Badge key="s" status={selected.status} />],['Email',selected.email],['Phone',selected.phone||'—'],['Address',selected.service_address],['Town',cap(selected.town)],['Pickup Day',cap(activeSub?.pickup_day)||'—'],['Plan',activeSub?.services?.name||'—'],['Rate',`$${activeSub?.rate||'—'}/mo`],['Payment',cap(selected.payment_method)],['Bin',cap(selected.bin_situation)],['Garage Pickup',selected.garage_side_pickup?'✅ Yes':'No'],['Gate Notes',selected.gate_notes||'—'],['Started',fmt(selected.created_at)]] as [string,any][]})().map(([label,val])=>(
+                    {(()=>{const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); return [['Status', <Badge key="s" status={selected.status} />],['Email',selected.email],['Phone',selected.phone||'—'],['Address',selected.service_address],['Town',cap(selected.town)],['Pickup Day',cap(activeSub?.pickup_day)||'—'],['Frequency',cap(activeSub?.pickup_frequency||'weekly')],['Plan',activeSub?.services?.name||'—'],['Billing',cap(activeSub?.billing_cycle||'monthly')],['Rate',`$${activeSub?.rate||'—'}/mo`],['Payment',cap(selected.payment_method)],['Bin',cap(selected.bin_situation)],['Garage Pickup',selected.garage_side_pickup?'✅ Yes':'No'],['Gate Notes',selected.gate_notes||'—'],['Started',fmt(selected.created_at)]] as [string,any][]})().map(([label,val])=>(
                       <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.45rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.84rem' }}>
                         <span style={{ color:'#6b7280', fontSize:'0.75rem' }}>{label}</span>
                         <span>{val}</span>
