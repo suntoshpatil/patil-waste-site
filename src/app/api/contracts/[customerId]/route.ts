@@ -133,9 +133,9 @@ async function generateContractPDF(customer: any, sub: any): Promise<Buffer> {
   })
 }
 
-export async function GET(req: Request, { params }: { params: { customerId: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ customerId: string }> }) {
   try {
-    const { customerId } = params
+    const { customerId } = await params
 
     // Auth: admin token or open (customer portal calls with their own ID)
     const auth = req.headers.get('Authorization')?.replace('Bearer ', '') || ''
