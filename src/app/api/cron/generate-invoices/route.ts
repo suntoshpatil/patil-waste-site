@@ -26,26 +26,19 @@ export async function GET(req: Request) {
         const activeSub = customer.subscriptions?.find((s: any) => s.status === 'active')
         const isQuarterly = activeSub?.billing_cycle === 'quarterly'
 
-        // For quarterly customers: only generate on the 25th of the last month of their quarter
-        // Their quarter starts on periodStart month, so we should only invoice when
-        // their last invoice's period_end < periodStart (i.e. their coverage runs out next month)
+        // For quarterly customers: only generate when their current coverage
+        // ends THIS month (1 month advance notice for next quarter)
         if (isQuarterly) {
           const lastInvoice = await sbServer(
-            `invoices?customer_id=eq.${customer.id}&status=in.(sent,paid)&order=period_end.desc&limit=1&select=period_end,period_start`
+            `invoices?customer_id=eq.${customer.id}&status=in.(sent,paid)&order=period_end.desc&limit=1&select=period_end`
           ).catch(() => [])
 
           if (lastInvoice?.length > 0) {
-            const lastEnd = lastInvoice[0].period_end  // e.g. '2026-05-31'
-            // Only generate if their coverage ends this month or has already ended
-            // i.e. period_end is in the same month as periodStart or before
-            const coverageEndsMonth = lastEnd.slice(0, 7)        // e.g. '2026-05'
-            const nextInvoiceMonth  = periodStart.slice(0, 7)    // e.g. '2026-06'
-            if (coverageEndsMonth >= nextInvoiceMonth) {
-              // They still have coverage — skip
-              skipped++; continue
-            }
+            const lastEndMonth = lastInvoice[0].period_end.slice(0, 7)  // e.g. '2026-06'
+            const nextMonth    = periodStart.slice(0, 7)                 // e.g. '2026-06'
+            // Only generate if their coverage ends this month or earlier
+            if (lastEndMonth > nextMonth) { skipped++; continue }
           }
-          // No previous invoice OR coverage just ran out — generate quarterly invoice
         }
 
         // For monthly: skip if invoice already exists for this period
