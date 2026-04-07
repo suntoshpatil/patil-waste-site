@@ -115,6 +115,8 @@ export default function Admin() {
   // Customer history
   const [customerHistory, setCustomerHistory] = useState<any[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [editingRate, setEditingRate] = useState(false)
+  const [newRate, setNewRate] = useState('')
   // Revenue chart
   const [revenueHistory, setRevenueHistory] = useState<any[]>([])
   // Overdue reminder sending
@@ -439,16 +441,11 @@ export default function Admin() {
 
   async function saveEdit() {
     if (!selected) return
-    const { pickup_day, subscription_rate, subscriptions, bins, created_at, id, ...patchData } = editData as any
-    // Save customer fields
+    const { pickup_day, subscriptions, bins, created_at, id, ...patchData } = editData as any
     await sb(`customers?id=eq.${selected.id}`, { method:'PATCH', body:patchData, prefer:'return=minimal' })
-    // Save pickup_day and rate to active subscription
     const activeSub = (selected as any).subscriptions?.find((s:any) => s.status === 'active')
-    if (activeSub && (pickup_day !== undefined || subscription_rate)) {
-      const subPatch: any = {}
-      if (pickup_day !== undefined) subPatch.pickup_day = pickup_day
-      if (subscription_rate) subPatch.rate = parseFloat(subscription_rate)
-      await sb(`subscriptions?id=eq.${activeSub.id}`, { method:'PATCH', body:subPatch, prefer:'return=minimal' })
+    if (activeSub && pickup_day !== undefined) {
+      await sb(`subscriptions?id=eq.${activeSub.id}`, { method:'PATCH', body:{ pickup_day }, prefer:'return=minimal' })
     }
     showToast('Customer updated')
     setEditMode(false)
@@ -1020,11 +1017,6 @@ export default function Admin() {
                     <Inp label="Address" name="service_address" value={editData.service_address||''} onChange={onEdit} />
                     <Sel label="Town" name="town" value={editData.town||''} onChange={onEdit} options={[['bedford','Bedford'],['merrimack','Merrimack'],['amherst','Amherst'],['milford','Milford'],['other','Other']]} />
                     <Sel label="Pickup Day" name="pickup_day" value={editData.pickup_day||''} onChange={onEdit} options={[['','TBD'],['monday','Monday'],['tuesday','Tuesday'],['wednesday','Wednesday'],['thursday','Thursday'],['friday','Friday']]} />
-                    <div style={{ marginBottom:'0.75rem' }}>
-                      <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Monthly Rate ($)</label>
-                      <input type='number' step='0.01' name='subscription_rate' value={editData.subscription_rate||''} onChange={onEdit}
-                        style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%' }} />
-                    </div>
                     <Inp label="Gate Notes" name="gate_notes" value={editData.gate_notes||''} onChange={onEdit} placeholder="Gate code, property access..." />
                     <Inp label="Notes" name="notes" value={editData.notes||''} onChange={onEdit} placeholder="Internal notes..." />
                     <div style={{ display:'flex', gap:'0.5rem', marginTop:'1rem' }}>
@@ -1034,14 +1026,14 @@ export default function Admin() {
                   </div>
                 ) : (
                   <div>
-                    {(()=>{const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); return [['Status', <Badge key="s" status={selected.status} />],['Email',selected.email],['Phone',selected.phone||'—'],['Address',selected.service_address],['Town',cap(selected.town)],['Pickup Day',cap(activeSub?.pickup_day)||'—'],['Plan',activeSub?.services?.name||'—'],['Payment',cap(selected.payment_method)],['Bin',cap(selected.bin_situation)],['Garage Pickup',selected.garage_side_pickup?'✅ Yes':'No'],['Gate Notes',selected.gate_notes||'—'],['Started',fmt(selected.created_at)]] as [string,any][]})().map(([label,val])=>(
+                    {(()=>{const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); return [['Status', <Badge key="s" status={selected.status} />],['Email',selected.email],['Phone',selected.phone||'—'],['Address',selected.service_address],['Town',cap(selected.town)],['Pickup Day',cap(activeSub?.pickup_day)||'—'],['Plan',activeSub?.services?.name||'—'],['Rate',`$${activeSub?.rate||'—'}/mo`],['Payment',cap(selected.payment_method)],['Bin',cap(selected.bin_situation)],['Garage Pickup',selected.garage_side_pickup?'✅ Yes':'No'],['Gate Notes',selected.gate_notes||'—'],['Started',fmt(selected.created_at)]] as [string,any][]})().map(([label,val])=>(
                       <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.45rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.84rem' }}>
                         <span style={{ color:'#6b7280', fontSize:'0.75rem' }}>{label}</span>
                         <span>{val}</span>
                       </div>
                     ))}
                     <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginTop:'1.25rem' }}>
-                      <Btn small onClick={()=>{ const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); setEditData({...selected, pickup_day: activeSub?.pickup_day||'', subscription_rate: activeSub?.rate ? String(activeSub.rate) : ''}); setEditMode(true); setConfirmDelete(false) }}>✏️ Edit</Btn>
+                      <Btn small onClick={()=>{ const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); setEditData({...selected, pickup_day: activeSub?.pickup_day||''}); setEditMode(true); setConfirmDelete(false) }}>✏️ Edit</Btn>
                       <Btn small color='#7f1d1d' onClick={()=>{setConfirmDelete(true)}}>🗑️ Delete</Btn>
                     </div>
                   </div>
@@ -1092,6 +1084,42 @@ export default function Admin() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── RATE OVERRIDE ── */}
+                <div style={{ marginTop:'1.25rem', paddingTop:'1.25rem', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'#6b7280', marginBottom:'0.6rem' }}>💰 Monthly Rate</div>
+                  {editingRate ? (
+                    <div style={{ display:'flex', gap:'0.5rem', alignItems:'center' }}>
+                      <span style={{ color:'rgba(255,255,255,0.5)', fontSize:'0.85rem' }}>$</span>
+                      <input autoFocus value={newRate} onChange={e => setNewRate(e.target.value)}
+                        style={{ width:'90px', background:'#111', border:'1px solid rgba(46,125,50,0.5)', borderRadius:'6px', padding:'0.5rem 0.65rem', color:'#fff', fontSize:'0.9rem', fontFamily:'inherit', fontWeight:700 }} />
+                      <span style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.85rem' }}>/mo</span>
+                      <Btn small onClick={async () => {
+                        const activeSub = (selected as any).subscriptions?.find((s:any) => s.status === 'active')
+                        if (activeSub && newRate) {
+                          await sb(`subscriptions?id=eq.${activeSub.id}`, { method:'PATCH', body:{ rate: parseFloat(newRate) }, prefer:'return=minimal' })
+                          showToast('Rate updated')
+                          setEditingRate(false)
+                          loadAll()
+                        }
+                      }}>Save</Btn>
+                      <Btn small color='transparent' textColor='#6b7280' onClick={() => setEditingRate(false)}>Cancel</Btn>
+                    </div>
+                  ) : (
+                    <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+                      <span style={{ fontSize:'1.1rem', fontWeight:700, color:'#4caf50' }}>
+                        ${(selected as any).subscriptions?.find((s:any) => s.status === 'active')?.rate || '—'}/mo
+                      </span>
+                      <button onClick={() => {
+                        const activeSub = (selected as any).subscriptions?.find((s:any) => s.status === 'active')
+                        setNewRate(String(activeSub?.rate || ''))
+                        setEditingRate(true)
+                      }} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'5px', color:'rgba(255,255,255,0.55)', padding:'0.25rem 0.6rem', cursor:'pointer', fontSize:'0.72rem', fontFamily:'inherit' }}>
+                        ✏️ Edit Rate
+                      </button>
                     </div>
                   )}
                 </div>
