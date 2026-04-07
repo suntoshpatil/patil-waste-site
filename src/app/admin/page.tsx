@@ -1077,8 +1077,11 @@ export default function Admin() {
                                       const subs = await sb(`subscriptions?customer_id=eq.${inv.customerId}&status=eq.active&select=id,billing_cycle`).catch(()=>[])
                                       if (subs?.[0]) {
                                         const isQ = subs[0].billing_cycle === 'quarterly'
-                                        const monthlyRate = isQ ? parseFloat(e.total) / 3 : parseFloat(e.total)
-                                        await sb(`subscriptions?id=eq.${subs[0].id}`, { method:'PATCH', body:{ rate: parseFloat(monthlyRate.toFixed(2)) }, prefer:'return=minimal' })
+                                        const parsed = parseFloat(e.total)
+                                        if (!isNaN(parsed) && parsed > 0) {
+                                          const monthlyRate = isQ ? parsed / 3 : parsed
+                                          await sb(`subscriptions?id=eq.${subs[0].id}`, { method:'PATCH', body:{ rate: parseFloat(monthlyRate.toFixed(2)) }, prefer:'return=minimal' })
+                                        }
                                       }
                                     }
                                     showToast('Updated')
@@ -1475,7 +1478,9 @@ export default function Admin() {
                       <Btn small onClick={async () => {
                         const activeSub = (selected as any).subscriptions?.find((s:any) => s.status === 'active')
                         if (activeSub && newRate) {
-                          await sb(`subscriptions?id=eq.${activeSub.id}`, { method:'PATCH', body:{ rate: parseFloat(newRate) }, prefer:'return=minimal' })
+                          const parsed = parseFloat(newRate)
+                          if (isNaN(parsed) || parsed <= 0) { showToast('Please enter a valid rate', 'error'); return }
+                          await sb(`subscriptions?id=eq.${activeSub.id}`, { method:'PATCH', body:{ rate: parsed }, prefer:'return=minimal' })
                           showToast('Rate updated')
                           setEditingRate(false)
                           loadAll()
