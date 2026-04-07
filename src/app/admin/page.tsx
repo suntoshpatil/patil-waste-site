@@ -243,6 +243,7 @@ export default function Admin() {
         const total = addBillingCycle === 'quarterly' ? rate * 3 : rate
         // period_start = their billing start, period_end = paid through date
         const periodStart = addData.start_date || new Date().toISOString().split('T')[0]
+        if (!importPaidThrough) { /* no paid-through date set, skip invoice creation */ } else
         await sb('invoices', { method:'POST', body:{
           customer_id: newCustomer.id,
           subscription_id: subId || null,
