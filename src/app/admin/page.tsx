@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 
 const SUPABASE_URL = 'https://kmvwwxlwzacxvtlqugws.supabase.co'
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imttdnd3eGx3emFjeHZ0bHF1Z3dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNDMxOTMsImV4cCI6MjA5MDkxOTE5M30.TELT8SLAI2CJOQ2BJQq_3FyKzCkOKoT1lxmJIhrqMhQ'
-const ADMIN_PASSWORD = 'PatilWaste2024!'
 
 const BLANK_CUSTOMER = { first_name:'', last_name:'', email:'', phone:'', service_address:'', town:'bedford', status:'active', payment_method:'cash', pickup_day:'', bin_situation:'own', garage_side_pickup:false, gate_notes:'', notes:'', start_date:'' }
 
@@ -75,6 +74,7 @@ export default function Admin() {
   const [payAmount, setPayAmount] = useState('')
   const [payMethod, setPayMethod] = useState('cash')
   const [payRef, setPayRef] = useState('')
+  const [adminToken, setAdminToken] = useState('')
   const [toast, setToast] = useState('')
   const [toastType, setToastType] = useState('success')
   const [showAddModal, setShowAddModal] = useState(false)
@@ -155,11 +155,17 @@ export default function Admin() {
   }, [])
 
   useEffect(() => { if (loggedIn) loadAll() }, [loggedIn, loadAll])
-  useEffect(() => { if (sessionStorage.getItem('pwradmin')==='1') setLoggedIn(true) }, [])
 
-  function login() {
-    if (pw === ADMIN_PASSWORD) { setLoggedIn(true); sessionStorage.setItem('pwradmin','1') }
-    else setPwErr('Incorrect password.')
+  async function login() {
+    try {
+      const res = await fetch('/api/admin/auth', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ password: pw }) })
+      const data = await res.json()
+      if (data.ok) {
+        setLoggedIn(true)
+        setAdminToken(data.token)
+        sessionStorage.setItem('pwradmin', data.token)
+      } else { setPwErr('Incorrect password.') }
+    } catch { setPwErr('Login failed. Try again.') }
   }
 
   async function addCustomer() {
@@ -713,7 +719,7 @@ export default function Admin() {
                   <Btn small onClick={async () => {
                     showToast('Generating invoices…')
                     try {
-                      const res = await fetch('/api/cron/generate-invoices', { headers:{ Authorization:`Bearer patilwaste_cron_2024` }})
+                      const res = await fetch('/api/admin/run-cron', { method:'POST', headers:{ Authorization:`Bearer ${adminToken}` }})
                       const data = await res.json()
                       showToast(`Done — ${data.generated} generated, ${data.skipped} skipped`)
                       loadAll()

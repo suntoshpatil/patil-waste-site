@@ -141,6 +141,8 @@ export default function Portal() {
   const [cardSaving, setCardSaving] = useState(false)
   const [payingNow, setPayingNow] = useState(false)
   const [portalMenuOpen, setPortalMenuOpen] = useState(false)
+  const [pinAttempts, setPinAttempts] = useState(0)
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null)
   const [forgotPin, setForgotPin] = useState(false)
   const [resetPhone, setResetPhone] = useState('')
   const [resetNewPin, setResetNewPin] = useState('')
@@ -275,7 +277,21 @@ export default function Portal() {
   async function handleLogin() {
     if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) { setError('Please enter your 4-digit PIN.'); return }
     if (!foundCustomer) return
-    if (foundCustomer.portal_pin !== pin) { setError('Incorrect PIN. Please try again.'); return }
+    if (foundCustomer.portal_pin !== pin) {
+      const newAttempts = pinAttempts + 1
+      setPinAttempts(newAttempts)
+      if (newAttempts >= 5) {
+        const lockTime = Date.now() + 15 * 60 * 1000
+        setLockedUntil(lockTime)
+        setPinAttempts(0)
+        setError('Too many failed attempts. Your account is locked for 15 minutes.')
+      } else {
+        setError(`Incorrect PIN. ${5 - newAttempts} attempt${5 - newAttempts !== 1 ? 's' : ''} remaining.`)
+      }
+      return
+    }
+    setPinAttempts(0)
+    setLockedUntil(null)
     sessionStorage.setItem('portal_customer', JSON.stringify(foundCustomer))
     setCustomer(foundCustomer)
     setScreen('dashboard')
