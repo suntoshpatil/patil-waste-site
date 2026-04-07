@@ -1,4 +1,5 @@
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://patilwasteremoval.com'
+const REPLY_TO = 'suntosh@patilwasteremoval.com'
 
 export function invoiceEmail(customer: any, invoice: any, lines: any[]) {
   const lineRows = lines.map(l =>
@@ -7,6 +8,7 @@ export function invoiceEmail(customer: any, invoice: any, lines: any[]) {
 
   return {
     from: 'Patil Waste Removal <billing@patilwasteremoval.com>',
+    reply_to: REPLY_TO,
     to: customer.email,
     subject: `Your invoice is ready — $${Number(invoice.total).toFixed(2)} due ${invoice.due_date}`,
     html: `
@@ -44,6 +46,9 @@ export function invoiceEmail(customer: any, invoice: any, lines: any[]) {
 
           <p style="color:#999;font-size:13px;margin-top:32px">Questions? Reply to this email or call/text <a href="tel:8024169484" style="color:#2e7d32">(802) 416-9484</a>.</p>
         </div>
+        <div style="background:#f5f5f5;padding:20px 32px;border-top:1px solid #e5e5e5">
+          <p style="color:#999;font-size:12px;margin:0">Patil Waste Removal · 80 Palomino Ln, Bedford NH 03110 · <a href="tel:8024169484" style="color:#999">(802) 416-9484</a></p>
+        </div>
       </div>
     `,
   }
@@ -52,6 +57,7 @@ export function invoiceEmail(customer: any, invoice: any, lines: any[]) {
 export function receiptEmail(customer: any, invoice: any, chargedAmount: number) {
   return {
     from: 'Patil Waste Removal <billing@patilwasteremoval.com>',
+    reply_to: REPLY_TO,
     to: customer.email,
     subject: `Payment confirmed — $${chargedAmount.toFixed(2)} received`,
     html: `
@@ -66,7 +72,10 @@ export function receiptEmail(customer: any, invoice: any, chargedAmount: number)
           <p style="color:#555;font-size:15px">Hi ${customer.first_name}, we received your payment of</p>
           <div style="font-size:36px;font-weight:700;color:#2e7d32;margin:16px 0">$${chargedAmount.toFixed(2)}</div>
           <p style="color:#999;font-size:13px">Period: ${invoice.period_start} – ${invoice.period_end}</p>
-          <p style="color:#999;font-size:13px;margin-top:32px">Questions? Call/text <a href="tel:8024169484" style="color:#2e7d32">(802) 416-9484</a></p>
+          <p style="color:#999;font-size:13px;margin-top:32px">Questions? Reply to this email or call/text <a href="tel:8024169484" style="color:#2e7d32">(802) 416-9484</a></p>
+        </div>
+        <div style="background:#f5f5f5;padding:20px 32px;border-top:1px solid #e5e5e5">
+          <p style="color:#999;font-size:12px;margin:0">Patil Waste Removal · 80 Palomino Ln, Bedford NH 03110 · <a href="tel:8024169484" style="color:#999">(802) 416-9484</a></p>
         </div>
       </div>
     `,
@@ -76,12 +85,14 @@ export function receiptEmail(customer: any, invoice: any, chargedAmount: number)
 export function failedPaymentEmail(customer: any, amount: number) {
   return {
     from: 'Patil Waste Removal <billing@patilwasteremoval.com>',
+    reply_to: REPLY_TO,
     to: customer.email,
     subject: `Action required — payment of $${amount.toFixed(2)} failed`,
     html: `
       <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff">
         <div style="background:#1a1a1a;padding:28px 32px">
           <h1 style="color:#fff;margin:0;font-size:22px;letter-spacing:1px">PATIL WASTE REMOVAL</h1>
+          <p style="color:#4caf50;margin:4px 0 0;font-size:13px">Bedford, NH · (802) 416-9484</p>
         </div>
         <div style="padding:32px">
           <p style="color:#333;font-size:16px">Hi ${customer.first_name},</p>
@@ -89,7 +100,10 @@ export function failedPaymentEmail(customer: any, amount: number) {
           <div style="text-align:center;margin:28px 0">
             <a href="${SITE_URL}/portal" style="background:#dc2626;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-size:16px;font-weight:700;display:inline-block">Update Payment →</a>
           </div>
-          <p style="color:#999;font-size:13px">Questions? Call/text <a href="tel:8024169484" style="color:#2e7d32">(802) 416-9484</a>.</p>
+          <p style="color:#999;font-size:13px">Questions? Reply to this email or call/text <a href="tel:8024169484" style="color:#2e7d32">(802) 416-9484</a>.</p>
+        </div>
+        <div style="background:#f5f5f5;padding:20px 32px;border-top:1px solid #e5e5e5">
+          <p style="color:#999;font-size:12px;margin:0">Patil Waste Removal · 80 Palomino Ln, Bedford NH 03110 · <a href="tel:8024169484" style="color:#999">(802) 416-9484</a></p>
         </div>
       </div>
     `,
@@ -99,6 +113,7 @@ export function failedPaymentEmail(customer: any, amount: number) {
 export function signupConfirmationEmail(customer: any, planName: string, startDate: string) {
   return {
     from: 'Patil Waste Removal <hello@patilwasteremoval.com>',
+    reply_to: REPLY_TO,
     to: customer.email,
     subject: `Welcome to Patil Waste Removal, ${customer.first_name}!`,
     html: `
@@ -117,7 +132,7 @@ export function signupConfirmationEmail(customer: any, planName: string, startDa
           </div>
           <p style="color:#555;font-size:14px">You'll receive a service agreement to review and sign before your first pickup. In the meantime, feel free to call or text us at <a href="tel:8024169484" style="color:#2e7d32">(802) 416-9484</a>.</p>
           <div style="margin:28px 0;text-align:center">
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://patil-waste-site.vercel.app'}/portal" style="background:#2e7d32;color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:700;font-size:15px">View My Account →</a>
+            <a href="${SITE_URL}/portal" style="background:#2e7d32;color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:700;font-size:15px">View My Account →</a>
           </div>
         </div>
         <div style="background:#f5f5f5;padding:20px 32px;border-top:1px solid #e5e5e5">
@@ -131,6 +146,7 @@ export function signupConfirmationEmail(customer: any, planName: string, startDa
 export function contractAcceptedEmail(customer: any, planName: string, firstPickup: string, firstInvoiceTotal: number) {
   return {
     from: 'Patil Waste Removal <hello@patilwasteremoval.com>',
+    reply_to: REPLY_TO,
     to: customer.email,
     subject: `You're all set, ${customer.first_name}! First pickup: ${firstPickup}`,
     html: `
@@ -149,13 +165,13 @@ export function contractAcceptedEmail(customer: any, planName: string, firstPick
               <tr><td style="padding:6px 0;color:#555;font-size:14px">First invoice</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#111;font-size:14px">$${firstInvoiceTotal.toFixed(2)} — due on receipt</td></tr>
             </table>
           </div>
-          <p style="color:#555;font-size:14px"><strong>Have your bins at the end of the driveway by 8am</strong> on your pickup day. If you have any questions, call or text us at <a href="tel:8024169484" style="color:#2e7d32">(802) 416-9484</a>.</p>
+          <p style="color:#555;font-size:14px"><strong>Have your bins at the end of the driveway by 8am</strong> on your pickup day. If you have any questions, reply to this email or call/text <a href="tel:8024169484" style="color:#2e7d32">(802) 416-9484</a>.</p>
           <div style="margin:28px 0;text-align:center">
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://patil-waste-site.vercel.app'}/portal" style="background:#2e7d32;color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:700;font-size:15px">View My Portal →</a>
+            <a href="${SITE_URL}/portal" style="background:#2e7d32;color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:700;font-size:15px">View My Portal →</a>
           </div>
         </div>
         <div style="background:#f5f5f5;padding:20px 32px;border-top:1px solid #e5e5e5">
-          <p style="color:#999;font-size:12px;margin:0">Patil Waste Removal · 80 Palomino Ln, Bedford NH 03110</p>
+          <p style="color:#999;font-size:12px;margin:0">Patil Waste Removal · 80 Palomino Ln, Bedford NH 03110 · <a href="tel:8024169484" style="color:#999">(802) 416-9484</a></p>
         </div>
       </div>
     `
@@ -165,6 +181,7 @@ export function contractAcceptedEmail(customer: any, planName: string, firstPick
 export function paymentConfirmationEmail(customer: any, amount: number, period: string) {
   return {
     from: 'Patil Waste Removal <billing@patilwasteremoval.com>',
+    reply_to: REPLY_TO,
     to: customer.email,
     subject: `Payment received — $${amount.toFixed(2)}`,
     html: `
@@ -177,10 +194,10 @@ export function paymentConfirmationEmail(customer: any, amount: number, period: 
           <div style="font-size:48px;margin-bottom:16px">✅</div>
           <h2 style="color:#111;margin:0 0 8px">Payment Received</h2>
           <p style="color:#555;font-size:15px;margin:0 0 24px">Hi ${customer.first_name}, we received your payment of <strong style="color:#2e7d32">$${amount.toFixed(2)}</strong> for ${period}.</p>
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://patil-waste-site.vercel.app'}/portal" style="background:#2e7d32;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:700;font-size:14px">View Receipt →</a>
+          <a href="${SITE_URL}/portal" style="background:#2e7d32;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:700;font-size:14px">View Receipt →</a>
         </div>
         <div style="background:#f5f5f5;padding:20px 32px;border-top:1px solid #e5e5e5">
-          <p style="color:#999;font-size:12px;margin:0">Questions? Call (802) 416-9484 or email patilwasteremoval@gmail.com</p>
+          <p style="color:#999;font-size:12px;margin:0">Patil Waste Removal · 80 Palomino Ln, Bedford NH 03110 · <a href="tel:8024169484" style="color:#999">(802) 416-9484</a></p>
         </div>
       </div>
     `
