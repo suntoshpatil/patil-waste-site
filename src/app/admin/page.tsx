@@ -83,6 +83,7 @@ export default function Admin() {
   const [addData, setAddData] = useState<any>({ ...BLANK_CUSTOMER })
   const [importMode, setImportMode] = useState(false)
   const [importDepositPaid, setImportDepositPaid] = useState(false)
+  const [importPaidThrough, setImportPaidThrough] = useState('')
   const [addServiceIds, setAddServiceIds] = useState<string[]>([])
   const [addBillingCycle, setAddBillingCycle] = useState('monthly')
   const [servicesList, setServicesList] = useState<{id:string,name:string,base_price_monthly:number}[]>([])
@@ -230,11 +231,39 @@ export default function Admin() {
           await sb('bins', { method:'POST', body: bin })
         }
       }
-      showToast('Customer added!')
+      // If importing existing customer with a paid-through date, create a paid invoice
+      // so the cron knows they're already covered and won't double-charge
+      if (importMode && importPaidThrough && newCustomer?.id) {
+        const subId = addServiceIds.length > 0
+          ? (await sb(`subscriptions?customer_id=eq.${newCustomer.id}&select=id&limit=1`).catch(()=>[]))?.[0]?.id
+          : null
+        // Calculate total for the paid invoice
+        const rate = servicesList.find(s => addServiceIds.includes(s.id))?.base_price_monthly || 0
+        const total = addBillingCycle === 'quarterly' ? rate * 3 : rate
+        // period_start = their billing start, period_end = paid through date
+        const periodStart = addData.start_date || new Date().toISOString().split('T')[0]
+        await sb('invoices', { method:'POST', body:{
+          customer_id: newCustomer.id,
+          subscription_id: subId || null,
+          subtotal: total,
+          adjustments_total: 0,
+          tax_rate: 0,
+          tax_amount: 0,
+          total,
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          period_start: periodStart,
+          period_end: importPaidThrough,
+          due_date: periodStart,
+          notes: `Imported from Squarespace — already paid through ${importPaidThrough}`,
+        }})
+      }
+      showToast(importMode ? 'Customer imported!' : 'Customer added!')
       setShowAddModal(false)
       setAddData({ ...BLANK_CUSTOMER })
       setImportMode(false)
       setImportDepositPaid(false)
+      setImportPaidThrough('')
       setAddServiceIds([])
       setAddBillingCycle('monthly')
       setAddTrashBin(false)
@@ -1457,8 +1486,26 @@ export default function Admin() {
               ))}
             </div>
             {importMode && (
-              <div style={{ background:'rgba(46,125,50,0.06)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'8px', padding:'0.75rem 1rem', marginBottom:'1.25rem', fontSize:'0.82rem', color:'rgba(255,255,255,0.7)' }}>
-                ✅ Customer will be set to <strong style={{color:'#4caf50'}}>active</strong> immediately. No contract will be sent and <strong style={{color:'#fff'}}>no invoice will be generated</strong> — their first invoice from this system will be on the 25th of this month.
+              <div style={{ background:'rgba(46,125,50,0.06)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'8px', padding:'0.85rem 1rem', marginBottom:'1.25rem' }}>
+                <div style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.7)', marginBottom:'0.75rem' }}>
+                  ✅ Set to <strong style={{color:'#4caf50'}}>active</strong> immediately — no contract, no new invoice generated.
+                </div>
+                <div>
+                  <label style={{ display:'block', fontSize:'0.72rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.45)', marginBottom:'0.3rem' }}>
+                    Already paid through (optional)
+                  </label>
+                  <input type='date' value={importPaidThrough} onChange={e => setImportPaidThrough(e.target.value)}
+                    style={{ background:'#111', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'6px', padding:'0.5rem 0.75rem', color:'#fff', fontSize:'0.85rem', fontFamily:'inherit' }} />
+                  <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.35)', marginTop:'0.3rem' }}>
+                    Enter their current paid-through date so the system won't invoice them until then.
+                    e.g. June 30 for quarterly customers who just paid for Apr–Jun.
+                  </div>
+                  {importPaidThrough && (
+                    <div style={{ marginTop:'0.4rem', fontSize:'0.78rem', color:'#4caf50', fontWeight:600 }}>
+                      ✓ A paid invoice will be recorded through {new Date(importPaidThrough+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
