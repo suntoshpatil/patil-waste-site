@@ -516,14 +516,16 @@ export default function Admin() {
 
   async function saveEdit() {
     if (!selected) return
-    const { pickup_day, garage_pickup_opt, subscriptions, bins, created_at, id, ...patchData } = editData as any
+    const { pickup_day, pickup_frequency, garage_pickup_opt, subscriptions, bins, created_at, id, ...patchData } = editData as any
     if (garage_pickup_opt === 'none') { patchData.garage_side_pickup = false; patchData.garage_side_rate = null }
     else if (garage_pickup_opt === 'standard') { patchData.garage_side_pickup = true; patchData.garage_side_rate = 10 }
     else if (garage_pickup_opt === 'senior') { patchData.garage_side_pickup = true; patchData.garage_side_rate = 5 }
     await sb(`customers?id=eq.${selected.id}`, { method:'PATCH', body:patchData, prefer:'return=minimal' })
     const activeSub = (selected as any).subscriptions?.find((s:any) => s.status === 'active')
     if (activeSub && pickup_day !== undefined) {
-      await sb(`subscriptions?id=eq.${activeSub.id}`, { method:'PATCH', body:{ pickup_day }, prefer:'return=minimal' })
+      const subPatch: any = { pickup_day }
+      if (pickup_frequency) subPatch.pickup_frequency = pickup_frequency
+      await sb(`subscriptions?id=eq.${activeSub.id}`, { method:'PATCH', body: subPatch, prefer:'return=minimal' })
     }
     showToast('Customer updated')
     setEditMode(false)
@@ -1321,6 +1323,7 @@ export default function Admin() {
                     <Sel label="Status" name="status" value={editData.status||''} onChange={onEdit} options={[['active','Active'],['pending','Pending'],['paused','Paused'],['cancelled','Cancelled'],['overdue','Overdue']]} />
                     <Sel label="Payment Method" name="payment_method" value={editData.payment_method||''} onChange={onEdit} options={[['cash','Cash'],['venmo','Venmo'],['zelle','Zelle'],['card','Card']]} />
                     <Sel label="Pickup Day" name="pickup_day" value={editData.pickup_day||''} onChange={onEdit} options={[['','TBD'],['monday','Monday'],['tuesday','Tuesday'],['wednesday','Wednesday'],['thursday','Thursday'],['friday','Friday']]} />
+                    <Sel label="Pickup Frequency" name="pickup_frequency" value={(editData as any).pickup_frequency||'weekly'} onChange={onEdit} options={[['weekly','Weekly'],['biweekly','Bi-Weekly (every other week)']]} />
                     <Sel label="Garage Pickup" name="garage_pickup_opt" value={(editData as any).garage_pickup_opt} onChange={onEdit} options={[['none','None'],['standard','Standard ($10/mo)'],['senior','Senior 65+ ($5/mo)']]} />
                     <Inp label="Gate Notes" name="gate_notes" value={editData.gate_notes||''} onChange={onEdit} placeholder="Gate code, property access..." />
                     <Inp label="Notes" name="notes" value={editData.notes||''} onChange={onEdit} placeholder="Internal notes..." />
@@ -1338,7 +1341,7 @@ export default function Admin() {
                       </div>
                     ))}
                     <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginTop:'1.25rem' }}>
-                      <Btn small onClick={()=>{ const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); const gOpt = !selected.garage_side_pickup ? 'none' : Number((selected as any).garage_side_rate) === 5 ? 'senior' : 'standard'; setEditData({...selected, pickup_day: activeSub?.pickup_day||''} as any); setEditData((p:any) => ({...p, garage_pickup_opt: gOpt})); setEditMode(true); setConfirmDelete(false) }}>✏️ Edit</Btn>
+                      <Btn small onClick={()=>{ const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); const gOpt = !selected.garage_side_pickup ? 'none' : Number((selected as any).garage_side_rate) === 5 ? 'senior' : 'standard'; setEditData({...selected, pickup_day: activeSub?.pickup_day||'', pickup_frequency: activeSub?.pickup_frequency||'weekly'} as any); setEditData((p:any) => ({...p, garage_pickup_opt: gOpt})); setEditMode(true); setConfirmDelete(false) }}>✏️ Edit</Btn>
                       <Btn small color='#7f1d1d' onClick={()=>{setConfirmDelete(true)}}>🗑️ Delete</Btn>
                       <Btn small color='#1e3a5f' onClick={()=>resetCustomerPin(selected.id, selected.first_name)}>🔑 Reset PIN</Btn>
                       <Btn small color='#374151' onClick={()=>{ loadHistory(selected.id); setShowHistory((h:boolean)=>!h) }}>📋 History</Btn>
