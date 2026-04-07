@@ -73,7 +73,7 @@ export default function Nav() {
       {open && (
         <div
           onClick={() => setOpen(false)}
-          style={{ position:'fixed', inset:0, background:'#0d0d0d', zIndex:490, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'1.75rem', paddingTop:'72px', paddingBottom:'2rem', overflowY:'auto' }}
+          style={{ position:'fixed', top:'60px', left:0, right:0, bottom:0, background:'#0d0d0d', zIndex:490, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'1.75rem', overflowY:'auto', padding:'1rem 0' }}
         >
           {[...links, { href:'/signup', label:'Sign Up' }].map(l => (
             <Link
