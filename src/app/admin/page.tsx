@@ -1608,6 +1608,12 @@ export default function Admin() {
                       <Btn small color='#1e3a5f' onClick={()=>resetCustomerPin(selected.id, selected.first_name)}>🔑 Reset PIN</Btn>
                       <Btn small color='#374151' onClick={()=>{ loadHistory(selected.id); setShowHistory((h:boolean)=>!h) }}>📋 History</Btn>
                       <Btn small color='#1a3a2a' onClick={()=>previewNextInvoice(selected)}>🧾 Preview Invoice</Btn>
+                      {(selected as any).contract_accepted && (
+                        <a href={`/api/contracts/${selected.id}`} target="_blank" rel="noopener noreferrer"
+                          style={{ display:'inline-flex', alignItems:'center', gap:'0.35rem', background:'rgba(30,58,95,0.5)', border:'1px solid rgba(59,130,246,0.3)', color:'#93c5fd', borderRadius:'4px', padding:'0.3rem 0.65rem', fontSize:'0.72rem', fontWeight:700, textDecoration:'none', cursor:'pointer' }}>
+                          📄 Contract
+                        </a>
+                      )}
                     </div>
                   </div>
                 )}

@@ -915,6 +915,14 @@ export default function Portal() {
               <div style={{ marginTop:'0.75rem', paddingTop:'0.75rem', borderTop:'1px solid rgba(255,255,255,0.06)', fontSize:'0.78rem', color:'rgba(255,255,255,0.4)', lineHeight:1.5 }}>
                 📋 Bins must be at the end of your driveway by <strong style={{ color:'rgba(255,255,255,0.55)' }}>8am</strong> on pickup day. If they're not out when the driver arrives, you're still charged.
               </div>
+              {(customer as any).contract_accepted && (
+                <div style={{ marginTop:'0.75rem', paddingTop:'0.75rem', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                  <a href={`/api/contracts/${(customer as any).id}`} target="_blank" rel="noopener noreferrer"
+                    style={{ display:'inline-flex', alignItems:'center', gap:'0.4rem', fontSize:'0.78rem', color:'#4caf50', textDecoration:'none', background:'rgba(46,125,50,0.08)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'6px', padding:'0.4rem 0.85rem' }}>
+                    📄 Download Signed Contract
+                  </a>
+                </div>
+              )}
             </div>
 
             {/* Bin rentals */}
