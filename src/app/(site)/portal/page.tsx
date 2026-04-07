@@ -976,7 +976,7 @@ export default function Portal() {
                     return d && d.startsWith(`${year}-${String(month+1).padStart(2,'0')}`)
                   }).map((n:any) => (
                     <div key={n.id} style={{ padding:'0.65rem 0.85rem', marginBottom:'0.5rem', borderRadius:'6px', background: n.notice_type==='cancellation'?'rgba(220,38,38,0.08)': n.notice_type==='reschedule'?'rgba(245,158,11,0.08)':'rgba(255,255,255,0.04)', border:`1px solid ${n.notice_type==='cancellation'?'rgba(220,38,38,0.25)': n.notice_type==='reschedule'?'rgba(245,158,11,0.25)':'rgba(255,255,255,0.08)'}` }}>
-                      <div style={{ fontSize:'0.82rem', fontWeight:600, marginBottom:'0.2rem' }}>
+                      <div style={{ fontSize:'0.82rem', fontWeight:600, marginBottom:'0.2rem', color:'#fff' }}>
                         {n.notice_type==='cancellation'?'❌':n.notice_type==='reschedule'?'🔄':'📢'} {n.message}
                       </div>
                       {n.affected_date && <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.6)' }}>Affected: {new Date(n.affected_date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>}

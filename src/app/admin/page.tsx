@@ -109,11 +109,11 @@ export default function Admin() {
 
   const loadAll = useCallback(async () => {
     const [custs, subs, invs, pays, svcs, svcReqs, skipReqs, jobReqs, addons] = await Promise.all([
-      sb('customers?select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,services(name))&order=created_at.desc'),
+      sb('customers?select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,services(name)),bins(id,bin_type,monthly_rental_fee,ownership)&order=created_at.desc'),
       sb('subscriptions?select=rate,billing_cycle,status&status=eq.active'),
       sb('invoices?select=*,customers(first_name,last_name)&order=due_date.desc&limit=100'),
       sb('payment_logs?select=*,customers(first_name,last_name)&order=paid_at.desc&limit=20'),
-      sb('services?select=id,name,base_price_monthly&is_active=eq.true&type=in.(recurring,addon)&order=base_price_monthly.asc'),
+      sb('services?select=id,name,base_price_monthly,type&is_active=eq.true&order=base_price_monthly.asc'),
       sb('service_requests?select=*,customers(first_name,last_name),services(name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
       sb('skip_requests?select=*,customers(first_name,last_name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
       sb('job_requests?select=*&order=created_at.desc&limit=50').catch(()=>[]),
@@ -132,6 +132,11 @@ export default function Admin() {
     const overdue = (custs||[]).filter((c:Customer) => c.status==='overdue').length
     let revenue = 0
     ;(subs||[]).forEach((s:any) => { revenue += s.billing_cycle==='quarterly' ? s.rate/3 : s.rate })
+    // Add bin rentals and garage pickup from active customers
+    ;(custs||[]).filter((c:any)=>c.status==='active').forEach((c:any) => {
+      if (c.garage_side_pickup) revenue += 10
+      ;(c.bins||[]).forEach((b:any) => { if (b.ownership==='rental') revenue += Number(b.monthly_rental_fee||0) })
+    })
     setStats({ active, pending, overdue, revenue })
   }, [])
 
@@ -1031,7 +1036,7 @@ export default function Admin() {
               <select value={onboardServiceId} onChange={e=>setOnboardServiceId(e.target.value)}
                 style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'6px', padding:'0.65rem 0.85rem', color:'#fff', fontSize:'0.9rem', fontFamily:'inherit' }}>
                 <option value=''>— None / add later —</option>
-                {servicesList.filter((s:any) => s.type === 'recurring' || !s.type).map((s:any) => (
+                {servicesList.filter((s:any) => s.type === 'recurring').map((s:any) => (
                   <option key={s.id} value={s.id}>{s.name} (${s.base_price_monthly}/mo)</option>
                 ))}
               </select>

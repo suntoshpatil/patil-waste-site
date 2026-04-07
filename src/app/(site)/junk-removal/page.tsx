@@ -90,8 +90,8 @@ export default function JunkRemoval() {
                 <label key={jt.id} style={{ display:'flex', alignItems:'flex-start', gap:'0.75rem', cursor:'pointer', background: form.job_type===jt.id ? 'rgba(46,125,50,0.1)' : 'rgba(255,255,255,0.02)', border:`1px solid ${form.job_type===jt.id ? 'rgba(46,125,50,0.4)' : 'rgba(255,255,255,0.08)'}`, borderRadius:'8px', padding:'0.85rem 1rem', transition:'all 0.15s' }}>
                   <input type='radio' name='job_type' value={jt.id} checked={form.job_type===jt.id} onChange={()=>set('job_type',jt.id)} style={{ accentColor:'#2e7d32', marginTop:'3px' }} />
                   <div>
-                    <div style={{ fontWeight:600, fontSize:'0.92rem' }}>{jt.label}</div>
-                    <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)', marginTop:'0.15rem' }}>{jt.desc}</div>
+                    <div style={{ fontWeight:600, fontSize:'0.92rem', color:'#fff' }}>{jt.label}</div>
+                    <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.6)', marginTop:'0.15rem' }}>{jt.desc}</div>
                   </div>
                 </label>
               ))}
