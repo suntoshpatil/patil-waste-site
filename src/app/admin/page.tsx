@@ -519,6 +519,26 @@ export default function Admin() {
     loadAll()
   }
 
+  async function recalcInvoice(inv: any) {
+    // Find the customer and recalculate total including bins and garage
+    const custs = await sb(`customers?id=eq.${inv.customer_id}&select=*,subscriptions(id,rate,billing_cycle,status,pickup_day,billing_start,services(name)),bins(id,bin_type,monthly_rental_fee,ownership)`)
+    const cust = custs?.[0]
+    if (!cust) { showToast('Customer not found', 'error'); return }
+    const { calcInvoiceTotal } = await import('@/lib/billing').catch(() => ({ calcInvoiceTotal: null }))
+    // Manual calculation since we can't import server lib client-side
+    let total = 0
+    const activeSub = cust.subscriptions?.find((s:any) => s.status === 'active')
+    if (activeSub) total += activeSub.billing_cycle === 'quarterly' ? activeSub.rate * 3 : activeSub.rate
+    for (const bin of cust.bins || []) {
+      if (bin.ownership === 'rental') total += Number(bin.monthly_rental_fee || 0)
+    }
+    if (cust.garage_side_pickup) total += Number(cust.garage_side_rate || 10)
+    total = parseFloat(total.toFixed(2))
+    await sb(`invoices?id=eq.${inv.id}`, { method:'PATCH', body:{ subtotal: total, total }, prefer:'return=minimal' })
+    showToast(`Invoice recalculated to $${total.toFixed(2)}`)
+    loadAll()
+  }
+
   async function markPaid(id: string) {
     await sb(`invoices?id=eq.${id}`, { method:'PATCH', body:{ status:'paid', paid_at:new Date().toISOString() }, prefer:'return=minimal' })
     showToast('Marked as paid')
@@ -836,7 +856,10 @@ export default function Admin() {
                         <td style={{ padding:'0.85rem 1rem' }}><Badge status={inv.status} /></td>
                         <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.5)' }}>{fmt(inv.due_date)}</td>
                         <td style={{ padding:'0.85rem 1rem' }}>
-                          {inv.status!=='paid' && <Btn small onClick={()=>markPaid(inv.id)}>Mark Paid</Btn>}
+                          <div style={{ display:'flex', gap:'0.4rem' }}>
+                            {inv.status!=='paid' && <Btn small onClick={()=>markPaid(inv.id)}>Mark Paid</Btn>}
+                            {inv.status!=='paid' && <Btn small color='#1e3a5f' onClick={()=>recalcInvoice(inv)}>↻ Recalc</Btn>}
+                          </div>
                         </td>
                       </tr>
                     ))}
