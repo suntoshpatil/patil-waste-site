@@ -158,6 +158,9 @@ export default function Portal() {
   const [cardSaving, setCardSaving] = useState(false)
   const [payingNow, setPayingNow] = useState(false)
   const [portalMenuOpen, setPortalMenuOpen] = useState(false)
+  const [editingContact, setEditingContact] = useState(false)
+  const [contactForm, setContactForm] = useState({ email:'', phone:'' })
+  const [contactSaving, setContactSaving] = useState(false)
   const [pinAttempts, setPinAttempts] = useState(0)
   const [lockedUntil, setLockedUntil] = useState<number | null>(null)
   const [forgotPin, setForgotPin] = useState(false)
@@ -878,6 +881,63 @@ export default function Portal() {
                 ))}
               </div>
             )}
+
+            {/* Account details */}
+            <div style={card}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'0.75rem' }}>
+                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)' }}>Account Details</div>
+                {!editingContact && (
+                  <button onClick={() => { setContactForm({ email: customer.email || '', phone: customer.phone || '' }); setEditingContact(true) }}
+                    style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'5px', color:'rgba(255,255,255,0.55)', padding:'0.2rem 0.6rem', cursor:'pointer', fontSize:'0.72rem', fontFamily:'inherit' }}>
+                    ✏️ Edit
+                  </button>
+                )}
+              </div>
+              {editingContact ? (
+                <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem' }}>
+                  <div>
+                    <label style={{ display:'block', fontSize:'0.72rem', color:'rgba(255,255,255,0.45)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'0.3rem' }}>Email</label>
+                    <input value={contactForm.email} onChange={e => setContactForm(p => ({...p, email: e.target.value}))}
+                      style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'7px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.88rem', fontFamily:'inherit', boxSizing:'border-box' as const }} />
+                  </div>
+                  <div>
+                    <label style={{ display:'block', fontSize:'0.72rem', color:'rgba(255,255,255,0.45)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'0.3rem' }}>Phone</label>
+                    <input value={contactForm.phone} onChange={e => setContactForm(p => ({...p, phone: e.target.value}))}
+                      style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'7px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.88rem', fontFamily:'inherit', boxSizing:'border-box' as const }} />
+                  </div>
+                  <div style={{ fontSize:'0.75rem', color:'rgba(255,179,0,0.8)' }}>⚠️ Changing your email will update your login — use your new email next time you sign in.</div>
+                  <div style={{ display:'flex', gap:'0.5rem' }}>
+                    <button onClick={async () => {
+                      if (!contactForm.email) { showToast('Email cannot be empty', 'error'); return }
+                      setContactSaving(true)
+                      try {
+                        await sb(`customers?id=eq.${customer.id}`, { method:'PATCH', body:{ email: contactForm.email.toLowerCase().trim(), phone: contactForm.phone.trim() || null }, prefer:'return=minimal' })
+                        const updated = { ...customer, email: contactForm.email.toLowerCase().trim(), phone: contactForm.phone.trim() }
+                        setCustomer(updated as any)
+                        sessionStorage.setItem('portal_customer', JSON.stringify(updated))
+                        setEditingContact(false)
+                        showToast('Contact details updated ✅')
+                      } catch { showToast('Failed to update. Please contact us.', 'error') }
+                      setContactSaving(false)
+                    }} disabled={contactSaving} style={{ flex:2, background:'#2e7d32', border:'none', borderRadius:'7px', color:'#fff', padding:'0.6rem', cursor:'pointer', fontFamily:'inherit', fontSize:'0.85rem', fontWeight:700 }}>
+                      {contactSaving ? 'Saving…' : 'Save Changes'}
+                    </button>
+                    <button onClick={() => setEditingContact(false)} style={{ flex:1, background:'transparent', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'7px', color:'rgba(255,255,255,0.5)', padding:'0.6rem', cursor:'pointer', fontFamily:'inherit', fontSize:'0.85rem' }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
+                  {[['Email', customer.email], ['Phone', customer.phone || '—'], ['Address', customer.service_address]].map(([label, val]) => (
+                    <div key={label} style={{ display:'flex', justifyContent:'space-between', fontSize:'0.85rem', padding:'0.35rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+                      <span style={{ color:'rgba(255,255,255,0.45)', fontSize:'0.78rem' }}>{label}</span>
+                      <span style={{ color:'#fff' }}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Skip credits */}
             <div style={{ ...card, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'1rem' }}>
