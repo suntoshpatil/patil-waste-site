@@ -79,6 +79,8 @@ export default function Admin() {
   const [toastType, setToastType] = useState('success')
   const [showAddModal, setShowAddModal] = useState(false)
   const [addData, setAddData] = useState<any>({ ...BLANK_CUSTOMER })
+  const [importMode, setImportMode] = useState(false)
+  const [importDepositPaid, setImportDepositPaid] = useState(false)
   const [addServiceIds, setAddServiceIds] = useState<string[]>([])
   const [addBillingCycle, setAddBillingCycle] = useState('monthly')
   const [servicesList, setServicesList] = useState<{id:string,name:string,base_price_monthly:number}[]>([])
@@ -196,8 +198,8 @@ export default function Admin() {
       // Create bin rental rows
       if (newCustomer?.id) {
         const binInserts = []
-        if (addTrashBin) binInserts.push({ customer_id: newCustomer.id, bin_type:'trash', ownership:'rental', monthly_rental_fee:7.99, assigned_date:new Date().toISOString().split('T')[0], notes:'Deposit: unpaid $25' })
-        if (addRecyclingBin) binInserts.push({ customer_id: newCustomer.id, bin_type:'recycling', ownership:'rental', monthly_rental_fee:3.99, assigned_date:new Date().toISOString().split('T')[0], notes:'No deposit required' })
+        if (addTrashBin) binInserts.push({ customer_id: newCustomer.id, bin_type:'trash', ownership:'rental', monthly_rental_fee:7.99, assigned_date:addData.start_date || new Date().toISOString().split('T')[0], notes: importDepositPaid ? 'Deposit: paid' : 'Deposit: unpaid $25' })
+        if (addRecyclingBin) binInserts.push({ customer_id: newCustomer.id, bin_type:'recycling', ownership:'rental', monthly_rental_fee:3.99, assigned_date:addData.start_date || new Date().toISOString().split('T')[0], notes:'No deposit required' })
         for (const bin of binInserts) {
           await sb('bins', { method:'POST', body: bin })
         }
@@ -205,6 +207,8 @@ export default function Admin() {
       showToast('Customer added!')
       setShowAddModal(false)
       setAddData({ ...BLANK_CUSTOMER })
+      setImportMode(false)
+      setImportDepositPaid(false)
       setAddServiceIds([])
       setAddBillingCycle('monthly')
       setAddTrashBin(false)
@@ -1335,10 +1339,24 @@ export default function Admin() {
       {showAddModal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={e=>{if(e.target===e.currentTarget)setShowAddModal(false)}}>
           <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'10px', width:'640px', maxWidth:'95vw', maxHeight:'90vh', overflowY:'auto', padding:'2rem' }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.5rem' }}>
-              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.8rem' }}>Add Customer</div>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1rem' }}>
+              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.8rem' }}>{importMode ? 'Import Existing Customer' : 'Add Customer'}</div>
               <button onClick={()=>setShowAddModal(false)} style={{ background:'none', border:'none', color:'#6b7280', fontSize:'1.4rem', cursor:'pointer' }}>✕</button>
             </div>
+            {/* Mode toggle */}
+            <div style={{ display:'flex', gap:'0.5rem', marginBottom:'1.5rem', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'8px', padding:'0.35rem' }}>
+              {[{id:false,label:'🆕 New Customer',desc:'Goes through signup → contract flow'},{id:true,label:'📋 Import Existing',desc:'Already your customer — sets active immediately'}].map(m => (
+                <button key={String(m.id)} onClick={()=>{ setImportMode(m.id); setAddData({...BLANK_CUSTOMER, status: m.id ? 'active' : 'pending'}) }} style={{ flex:1, background: importMode===m.id ? '#2e7d32' : 'none', border:'none', borderRadius:'6px', padding:'0.55rem 0.75rem', cursor:'pointer', fontFamily:'inherit', textAlign:'left', transition:'background 0.15s' }}>
+                  <div style={{ fontSize:'0.82rem', fontWeight:700, color:'#fff' }}>{m.label}</div>
+                  <div style={{ fontSize:'0.7rem', color: importMode===m.id ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.35)' }}>{m.desc}</div>
+                </button>
+              ))}
+            </div>
+            {importMode && (
+              <div style={{ background:'rgba(46,125,50,0.06)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'8px', padding:'0.75rem 1rem', marginBottom:'1.25rem', fontSize:'0.82rem', color:'rgba(255,255,255,0.7)' }}>
+                ✅ Customer will be set to <strong style={{color:'#4caf50'}}>active</strong> immediately. No contract will be sent and <strong style={{color:'#fff'}}>no invoice will be generated</strong> — their first invoice from this system will be on the 25th of this month.
+              </div>
+            )}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
               <Inp label="First Name *" name="first_name" value={addData.first_name} onChange={onAdd} placeholder="First" />
               <Inp label="Last Name *" name="last_name" value={addData.last_name} onChange={onAdd} placeholder="Last" />
@@ -1414,9 +1432,18 @@ export default function Admin() {
                   <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.5)' }}>$7.99/mo · $25 deposit</div>
                 </label>
                 {addTrashBin && (
-                  <div style={{ marginLeft:'1.5rem', fontSize:'0.8rem', color:'#f59e0b', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.2)', borderRadius:'5px', padding:'0.4rem 0.7rem' }}>
-                    ⚠️ $25 deposit will be marked as <strong>unpaid</strong> — collect before first pickup
-                  </div>
+                  importMode ? (
+                    <div style={{ marginLeft:'1.5rem' }}>
+                      <label style={{ display:'flex', alignItems:'center', gap:'0.5rem', cursor:'pointer', fontSize:'0.82rem', color:'rgba(255,255,255,0.7)' }}>
+                        <input type='checkbox' checked={importDepositPaid} onChange={e=>setImportDepositPaid(e.target.checked)} style={{ accentColor:'#2e7d32' }} />
+                        $25 deposit already collected
+                      </label>
+                    </div>
+                  ) : (
+                    <div style={{ marginLeft:'1.5rem', fontSize:'0.8rem', color:'#f59e0b', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.2)', borderRadius:'5px', padding:'0.4rem 0.7rem' }}>
+                      ⚠️ $25 deposit will be marked as <strong>unpaid</strong> — collect before first pickup
+                    </div>
+                  )
                 )}
                 <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', padding:'0.65rem 0.85rem' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'0.6rem' }}>
@@ -1430,7 +1457,7 @@ export default function Admin() {
 
             <div style={{ display:'flex', gap:'0.75rem', marginTop:'1.5rem', paddingTop:'1.25rem', borderTop:'1px solid rgba(255,255,255,0.07)', justifyContent:'flex-end' }}>
               <Btn color='transparent' textColor='#6b7280' onClick={()=>setShowAddModal(false)}>Cancel</Btn>
-              <Btn onClick={addCustomer}>Save Customer</Btn>
+              <Btn onClick={addCustomer}>{importMode ? '📋 Import Customer' : 'Save Customer'}</Btn>
             </div>
           </div>
         </div>
