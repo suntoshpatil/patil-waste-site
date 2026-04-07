@@ -1093,21 +1093,22 @@ export default function Admin() {
                       const setGarageNone = () => setEditData((p:any) => ({...p, garage_side_pickup: false, garage_side_rate: null}))
                       const setGarageStd  = () => setEditData((p:any) => ({...p, garage_side_pickup: true, garage_side_rate: 10}))
                       const setGarageSen  = () => setEditData((p:any) => ({...p, garage_side_pickup: true, garage_side_rate: 5}))
+                      const gRate = Number(editData.garage_side_rate)
+                      const chkNone = !editData.garage_side_pickup
+                      const chkStd  = !!editData.garage_side_pickup && gRate !== 5
+                      const chkSen  = !!editData.garage_side_pickup && gRate === 5
                       return (
                         <div style={{ marginBottom:'0.75rem' }}>
                           <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.5rem' }}>Garage-Side Pickup</label>
                           <div style={{ display:'flex', gap:'1.5rem' }}>
                             <label style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.75)' }}>
-                              <input type='radio' checked={!editData.garage_side_pickup} onChange={setGarageNone} style={{ accentColor:'#2e7d32' }} />
-                              None
+                              <input type='radio' checked={chkNone} onChange={setGarageNone} style={{ accentColor:'#2e7d32' }} /> None
                             </label>
                             <label style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.75)' }}>
-                              <input type='radio' checked={!!editData.garage_side_pickup && Number(editData.garage_side_rate) !== 5} onChange={setGarageStd} style={{ accentColor:'#2e7d32' }} />
-                              Standard ($10/mo)
+                              <input type='radio' checked={chkStd} onChange={setGarageStd} style={{ accentColor:'#2e7d32' }} /> Standard ($10/mo)
                             </label>
                             <label style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.75)' }}>
-                              <input type='radio' checked={!!editData.garage_side_pickup && Number(editData.garage_side_rate) === 5} onChange={setGarageSen} style={{ accentColor:'#2e7d32' }} />
-                              Senior 65+ ($5/mo)
+                              <input type='radio' checked={chkSen} onChange={setGarageSen} style={{ accentColor:'#2e7d32' }} /> Senior 65+ ($5/mo)
                             </label>
                           </div>
                         </div>
