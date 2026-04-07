@@ -483,11 +483,11 @@ export default function Admin() {
   async function loadRevenueHistory() {
     const sixMonthsAgo = new Date()
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
-    const data = await sb(`invoices?status=in.(paid,sent)&created_at=gte.${sixMonthsAgo.toISOString()}&select=total,created_at,status&order=created_at.asc`).catch(() => [])
-    // Group by month invoice was issued (not the service period)
+    const data = await sb(`invoices?status=in.(paid,sent)&due_date=gte.${sixMonthsAgo.toISOString().split('T')[0]}&select=total,due_date,status&order=due_date.asc`).catch(() => [])
+    // Group by due_date month — invoice sent Dec 25, due Jan 1 = January revenue
     const byMonth: Record<string, number> = {}
     for (const inv of data || []) {
-      const month = inv.created_at?.slice(0, 7)
+      const month = inv.due_date?.slice(0, 7)
       if (month) byMonth[month] = (byMonth[month] || 0) + Number(inv.total || 0)
     }
     setRevenueHistory(Object.entries(byMonth).map(([month, total]) => ({ month, total })))
