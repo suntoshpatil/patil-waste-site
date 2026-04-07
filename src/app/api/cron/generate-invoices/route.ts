@@ -88,7 +88,7 @@ export async function GET(req: Request) {
 
         // Load confirmed extra bag charges not yet invoiced
         const addons = await sbServer(
-          `pickup_addons?customer_id=eq.${customer.id}&status=eq.confirmed&select=*`
+          `pickup_addons?customer_id=eq.${customer.id}&status=in.(confirmed,picked_up)&select=*`
         ).catch(() => [])
         const addonTotal = (addons || []).reduce((sum: number, a: any) => sum + Number(a.final_price || 0), 0)
         const addonLines = (addons || []).map((a: any) => ({ description: a.custom_description || 'Extra item', amount: Number(a.final_price || 0) }))

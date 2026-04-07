@@ -165,7 +165,7 @@ export default function Admin() {
       sb('service_requests?select=*,customers(first_name,last_name),services(name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
       sb('skip_requests?select=*,customers(first_name,last_name)&status=eq.pending&order=created_at.desc').catch(()=>[]),
       sb('job_requests?select=*&order=created_at.desc&limit=50').catch(()=>[]),
-      sb('pickup_addons?select=*,customers(first_name,last_name),bulky_item_catalog(name,estimate_min,estimate_max,fixed_price,is_fixed_price)&status=in.(pending_quote,confirmed)&order=created_at.desc').catch(()=>[]),
+      sb('pickup_addons?select=*,customers(first_name,last_name),bulky_item_catalog(name,estimate_min,estimate_max,fixed_price,is_fixed_price)&status=in.(pending_quote,confirmed,picked_up)&order=created_at.desc').catch(()=>[]),
     ])
     setCustomers(custs || [])
     setInvoices(invs || [])
@@ -438,7 +438,7 @@ export default function Admin() {
       setExtraBagDate('')
       setExtraBagQty(1)
       // Refresh pending addons list
-      const addons = await sb(`pickup_addons?customer_id=eq.${selected.id}&status=in.(confirmed,pending_quote)&order=created_at.desc&select=*`).catch(()=>[])
+      const addons = await sb(`pickup_addons?customer_id=eq.${selected.id}&status=in.(confirmed,picked_up,pending_quote)&order=created_at.desc&select=*`).catch(()=>[])
       setPendingAddons(addons || [])
     } catch (e: any) { showToast(e.message || 'Failed to add charge', 'error') }
     setExtraBagSaving(false)
@@ -507,7 +507,7 @@ export default function Admin() {
 
   async function loadSelectedBins(customerId: string) {
     setInvoicePreview(null)
-    const addons = await sb(`pickup_addons?customer_id=eq.${customerId}&status=in.(confirmed,pending_quote)&order=created_at.desc&select=*`).catch(()=>[])
+    const addons = await sb(`pickup_addons?customer_id=eq.${customerId}&status=in.(confirmed,picked_up,pending_quote)&order=created_at.desc&select=*`).catch(()=>[])
     setPendingAddons(addons || [])
     try {
       const bins = await sb(`bins?customer_id=eq.${customerId}&select=*`)
@@ -607,7 +607,7 @@ export default function Admin() {
         if (b.ownership==='rental') lines.push({ label: b.bin_type==='trash' ? 'Trash Bin Rental' : 'Recycling Bin Rental', amount: Number(b.monthly_rental_fee||0) })
       })
       if (c.garage_side_pickup) lines.push({ label: 'Garage-Side Pickup', amount: Number(c.garage_side_rate||10) })
-      const addons = await sb(`pickup_addons?customer_id=eq.${c.id}&status=eq.confirmed&select=final_price,custom_description`).catch(()=>[])
+      const addons = await sb(`pickup_addons?customer_id=eq.${c.id}&status=in.(confirmed,picked_up)&select=final_price,custom_description`).catch(()=>[])
       const addonTotal = (addons||[]).reduce((s:number,a:any) => s + Number(a.final_price||0), 0)
       const addonLabels = (addons||[]).map((a:any) => a.custom_description).join(', ')
       ;(addons||[]).forEach((a:any) => lines.push({ label: a.custom_description||'Extra Item', amount: Number(a.final_price||0) }))
@@ -621,7 +621,7 @@ export default function Admin() {
   async function previewNextInvoice(cust: any) {
     const activeSub = cust.subscriptions?.find((s:any) => s.status === 'active')
     const bins = await sb(`bins?customer_id=eq.${cust.id}&ownership=eq.rental&select=*`).catch(()=>[])
-    const addons = await sb(`pickup_addons?customer_id=eq.${cust.id}&status=eq.confirmed&select=*`).catch(()=>[])
+    const addons = await sb(`pickup_addons?customer_id=eq.${cust.id}&status=in.(confirmed,picked_up)&select=*`).catch(()=>[])
 
     // Check last paid invoice to determine actual next due date
     const lastPaid = await sb(`invoices?customer_id=eq.${cust.id}&status=in.(paid)&order=period_end.desc&limit=1&select=period_end`).catch(()=>[])
