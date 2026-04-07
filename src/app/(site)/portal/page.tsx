@@ -231,7 +231,7 @@ export default function Portal() {
       sb(`schedule_notices?select=*&order=notice_date.desc&limit=5`).catch(() => []),
       sb(`services?select=id,name,base_price_monthly&is_active=eq.true&type=in.(recurring,addon)&order=base_price_monthly.asc`).catch(() => []),
       sb(`bulky_item_catalog?select=*&is_active=eq.true&order=is_fixed_price.desc,name.asc`).catch(() => []),
-      sb(`pickup_addons?customer_id=eq.${cust.id}&select=*&order=created_at.desc&limit=20`).catch(() => []),
+      sb(`pickup_addons?customer_id=eq.${cust.id}&select=*,bulky_item_catalog(name)&order=created_at.desc&limit=20`).catch(() => []),
       sb(`invoices?customer_id=eq.${cust.id}&select=*&order=created_at.desc&limit=12`).catch(() => []),
     ])
     setBins(b || [])
@@ -1281,21 +1281,40 @@ export default function Portal() {
             )}
             <button onClick={submitPickupAddon} style={{ ...btnGreen, width:'auto', alignSelf:'flex-start', padding:'0.75rem 2rem' }}>Submit Pickup Request</button>
 
-            {/* Past addons */}
-            {pickupAddons.length > 0 && (
-              <div style={card}>
-                <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'0.75rem' }}>Recent Requests</div>
-                {pickupAddons.slice(0,5).map((a: any) => (
-                  <div key={a.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.55rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.84rem' }}>
-                    <span style={{ color:'rgba(255,255,255,0.7)' }}>{a.custom_description || a.catalog_item_id}</span>
-                    <span style={{ fontSize:'0.72rem', fontWeight:700, textTransform:'uppercase', padding:'0.15rem 0.5rem', borderRadius:'4px',
-                      color: a.status==='confirmed'?'#4caf50': a.status==='pending_quote'?'#f59e0b':'#9ca3af',
-                      background: a.status==='confirmed'?'rgba(76,175,80,0.1)': a.status==='pending_quote'?'rgba(245,158,11,0.1)':'rgba(156,163,175,0.1)'
-                    }}>{a.status==='pending_quote'?'Pending Quote':a.status}</span>
+                {pickupAddons.length > 0 && (
+                  <div style={card}>
+                    <div style={{ fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.6)', marginBottom:'0.75rem' }}>Recent Requests</div>
+                    {pickupAddons.slice(0,5).map((a: any) => {
+                      // Admin-added no-notice charges cannot be cancelled by customer
+                      const isAdminCharge = a.custom_description && a.custom_description.includes('no notice')
+                      const canCancel = !isAdminCharge && a.status !== 'picked_up' && a.status !== 'invoiced' && a.status !== 'cancelled'
+                      return (
+                        <div key={a.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.55rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.84rem' }}>
+                          <div>
+                            <div style={{ color:'rgba(255,255,255,0.7)' }}>{a.custom_description || (a.bulky_item_catalog?.name) || 'Item request'}</div>
+                            {a.status === 'picked_up' && <div style={{ fontSize:'0.72rem', color:'#4caf50', marginTop:'0.1rem' }}>✅ Picked up — on your next invoice</div>}
+                            {isAdminCharge && a.status !== 'picked_up' && <div style={{ fontSize:'0.72rem', color:'#f59e0b', marginTop:'0.1rem' }}>No-notice fee — contact us to dispute</div>}
+                          </div>
+                          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', flexShrink:0 }}>
+                            <span style={{ fontSize:'0.72rem', fontWeight:700, textTransform:'uppercase', padding:'0.15rem 0.5rem', borderRadius:'4px',
+                              color: a.status==='picked_up'?'#4caf50': a.status==='confirmed'?'#4caf50': a.status==='pending_quote'?'#f59e0b':'#9ca3af',
+                              background: a.status==='picked_up'?'rgba(76,175,80,0.1)': a.status==='confirmed'?'rgba(76,175,80,0.1)': a.status==='pending_quote'?'rgba(245,158,11,0.1)':'rgba(156,163,175,0.1)'
+                            }}>{a.status==='pending_quote'?'Pending Quote': a.status==='picked_up'?'Picked Up': a.status}</span>
+                            {canCancel && (
+                              <button onClick={async () => {
+                                await sb(`pickup_addons?id=eq.${a.id}`, { method:'DELETE', prefer:'return=minimal' })
+                                setPickupAddons((prev:any[]) => prev.filter((x:any) => x.id !== a.id))
+                                showToast('Request cancelled')
+                              }} style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:'5px', color:'#f87171', padding:'0.2rem 0.5rem', cursor:'pointer', fontSize:'0.72rem', fontFamily:'inherit' }}>
+                                ✕ Cancel
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                ))}
-              </div>
-            )}
+                )}
           </div>
         )}
 

@@ -1236,21 +1236,28 @@ export default function Admin() {
                     </div>
                     <span style={{ fontSize:'0.7rem', fontWeight:700, color:'#f59e0b', background:'rgba(245,158,11,0.1)', padding:'0.2rem 0.6rem', borderRadius:'4px' }}>{a.status==='pending_quote'?'NEEDS QUOTE':'CONFIRMED'}</span>
                   </div>
-                  {a.status === 'pending_quote' && (
-                    <div style={{ display:'flex', gap:'0.5rem', alignItems:'center', marginTop:'0.5rem' }}>
-                      <input type='number' placeholder='Set price $' style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'4px', padding:'0.4rem 0.65rem', color:'#fff', fontSize:'0.82rem', fontFamily:'inherit', width:'120px' }}
-                        onBlur={async e => {
-                          const price = parseFloat(e.target.value)
-                          if (!isNaN(price)) {
-                            await sb(`pickup_addons?id=eq.${a.id}`, { method:'PATCH', body:{ final_price:price, status:'confirmed' }, prefer:'return=minimal' })
-                            showToast('Price set, status confirmed')
-                            loadAll()
-                          }
-                        }}
-                      />
-                      <Btn small color='#7f1d1d' onClick={async()=>{ await sb(`pickup_addons?id=eq.${a.id}`,{method:'PATCH',body:{status:'cancelled'},prefer:'return=minimal'}); showToast('Cancelled'); loadAll() }}>Cancel</Btn>
-                    </div>
-                  )}
+                  <div style={{ display:'flex', gap:'0.5rem', alignItems:'center', marginTop:'0.5rem', flexWrap:'wrap' }}>
+                    {/* Admin can always edit price regardless of status */}
+                    <input type='number' placeholder={`Price: $${a.final_price||'?'}`} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'4px', padding:'0.4rem 0.65rem', color:'#fff', fontSize:'0.82rem', fontFamily:'inherit', width:'130px' }}
+                      onBlur={async e => {
+                        const price = parseFloat(e.target.value)
+                        if (!isNaN(price) && price > 0) {
+                          const newStatus = a.status === 'pending_quote' ? 'confirmed' : a.status
+                          await sb(`pickup_addons?id=eq.${a.id}`, { method:'PATCH', body:{ final_price:price, status:newStatus }, prefer:'return=minimal' })
+                          showToast('Price updated')
+                          loadAll()
+                        }
+                      }}
+                    />
+                    {a.status !== 'picked_up' && a.status !== 'invoiced' && (
+                      <Btn small onClick={async()=>{ await sb(`pickup_addons?id=eq.${a.id}`,{method:'PATCH',body:{status:'picked_up'},prefer:'return=minimal'}); showToast('Marked picked up — on next invoice'); loadAll() }}>✅ Mark Picked Up</Btn>
+                    )}
+                    {a.status === 'picked_up' && (
+                      <span style={{ fontSize:'0.72rem', color:'#4caf50', fontWeight:700, background:'rgba(76,175,80,0.1)', padding:'0.2rem 0.5rem', borderRadius:'4px' }}>✅ Picked up</span>
+                    )}
+                    {/* Admin can always remove — even after picked up */}
+                    <Btn small color='#7f1d1d' onClick={async()=>{ await sb(`pickup_addons?id=eq.${a.id}`,{method:'DELETE',prefer:'return=minimal'}); showToast('Job removed'); loadAll() }}>🗑️ Remove</Btn>
+                  </div>
                 </div>
               ))}
 
@@ -1265,6 +1272,8 @@ export default function Admin() {
                       <div style={{ fontWeight:700, fontSize:'1rem' }}>{j.name}</div>
                       <div style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.5)' }}>{j.phone}{j.email ? ` · ${j.email}` : ''}</div>
                       <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.4)', marginTop:'0.15rem' }}>{j.address}</div>
+                      <button onClick={async()=>{ await sb(`job_requests?id=eq.${j.id}`,{method:'DELETE',prefer:'return=minimal'}); showToast('Job request removed'); loadAll() }}
+                        style={{ marginTop:'0.5rem', background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:'4px', color:'#f87171', padding:'0.2rem 0.55rem', cursor:'pointer', fontSize:'0.72rem', fontFamily:'inherit' }}>🗑️ Remove</button>
                     </div>
                     <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'0.3rem' }}>
                       <span style={{ fontSize:'0.7rem', fontWeight:700, textTransform:'uppercase', padding:'0.2rem 0.6rem', borderRadius:'4px',
