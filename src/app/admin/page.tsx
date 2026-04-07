@@ -98,6 +98,7 @@ export default function Admin() {
   const [onboardBillingCycle, setOnboardBillingCycle] = useState('monthly')
   const [onboardGarage, setOnboardGarage] = useState(false)
   const [onboardFrequency, setOnboardFrequency] = useState<'weekly'|'biweekly'>('weekly')
+  const [onboardCustomRate, setOnboardCustomRate] = useState<string>('')
   const [onboardGarageSenior, setOnboardGarageSenior] = useState(false)
   const [onboardTrashBin, setOnboardTrashBin] = useState(false)
   const [onboardRecyclingBin, setOnboardRecyclingBin] = useState(false)
@@ -277,7 +278,7 @@ export default function Admin() {
           await sb('subscriptions', { method: 'POST', body: {
             customer_id: onboardCustomer.id,
             service_id: onboardServiceId,
-            rate: svc?.base_price_monthly || 0,
+            rate: onboardCustomRate ? parseFloat(onboardCustomRate) : (svc?.base_price_monthly || 0),
             billing_cycle: onboardBillingCycle,
             pickup_frequency: onboardFrequency,
             status: 'active',
@@ -305,6 +306,7 @@ export default function Admin() {
       setOnboardGarage(false)
       setOnboardGarageSenior(false)
       setOnboardFrequency('weekly')
+      setOnboardCustomRate('')
       setOnboardTrashBin(false)
       setOnboardRecyclingBin(false)
       loadAll()
@@ -437,15 +439,16 @@ export default function Admin() {
 
   async function saveEdit() {
     if (!selected) return
-    const { pickup_day, subscriptions, bins, created_at, id, ...patchData } = editData as any
+    const { pickup_day, subscription_rate, subscriptions, bins, created_at, id, ...patchData } = editData as any
     // Save customer fields
     await sb(`customers?id=eq.${selected.id}`, { method:'PATCH', body:patchData, prefer:'return=minimal' })
-    // Save pickup_day to active subscription
-    if (pickup_day !== undefined) {
-      const activeSub = (selected as any).subscriptions?.find((s:any) => s.status === 'active')
-      if (activeSub) {
-        await sb(`subscriptions?id=eq.${activeSub.id}`, { method:'PATCH', body:{ pickup_day }, prefer:'return=minimal' })
-      }
+    // Save pickup_day and rate to active subscription
+    const activeSub = (selected as any).subscriptions?.find((s:any) => s.status === 'active')
+    if (activeSub && (pickup_day !== undefined || subscription_rate)) {
+      const subPatch: any = {}
+      if (pickup_day !== undefined) subPatch.pickup_day = pickup_day
+      if (subscription_rate) subPatch.rate = parseFloat(subscription_rate)
+      await sb(`subscriptions?id=eq.${activeSub.id}`, { method:'PATCH', body:subPatch, prefer:'return=minimal' })
     }
     showToast('Customer updated')
     setEditMode(false)
@@ -1017,6 +1020,11 @@ export default function Admin() {
                     <Inp label="Address" name="service_address" value={editData.service_address||''} onChange={onEdit} />
                     <Sel label="Town" name="town" value={editData.town||''} onChange={onEdit} options={[['bedford','Bedford'],['merrimack','Merrimack'],['amherst','Amherst'],['milford','Milford'],['other','Other']]} />
                     <Sel label="Pickup Day" name="pickup_day" value={editData.pickup_day||''} onChange={onEdit} options={[['','TBD'],['monday','Monday'],['tuesday','Tuesday'],['wednesday','Wednesday'],['thursday','Thursday'],['friday','Friday']]} />
+                  <div style={{ marginBottom:'0.75rem' }}>
+                    <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Monthly Rate ($)</label>
+                    <input type='number' step='0.01' name='subscription_rate' value={editData.subscription_rate||''} onChange={onEdit}
+                      style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%' }} />
+                  </div>
                     <Inp label="Gate Notes" name="gate_notes" value={editData.gate_notes||''} onChange={onEdit} placeholder="Gate code, property access..." />
                     <Inp label="Notes" name="notes" value={editData.notes||''} onChange={onEdit} placeholder="Internal notes..." />
                     <div style={{ display:'flex', gap:'0.5rem', marginTop:'1rem' }}>
@@ -1033,7 +1041,7 @@ export default function Admin() {
                       </div>
                     ))}
                     <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginTop:'1.25rem' }}>
-                      <Btn small onClick={()=>{ const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); setEditData({...selected, pickup_day: activeSub?.pickup_day||''}); setEditMode(true); setConfirmDelete(false) }}>✏️ Edit</Btn>
+                      <Btn small onClick={()=>{ const activeSub=(selected as any).subscriptions?.find((s:any)=>s.status==='active'); setEditData({...selected, pickup_day: activeSub?.pickup_day||'', subscription_rate: activeSub?.rate ? String(activeSub.rate) : ''}); setEditMode(true); setConfirmDelete(false) }}>✏️ Edit</Btn>
                       <Btn small color='#7f1d1d' onClick={()=>{setConfirmDelete(true)}}>🗑️ Delete</Btn>
                     </div>
                   </div>
@@ -1260,7 +1268,11 @@ export default function Admin() {
             {/* Step 2: Service Plan */}
             <div style={{ marginBottom:'1.1rem', paddingBottom:'1.1rem', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
               <label style={{ display:'block', fontSize:'0.75rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.5)', marginBottom:'0.4rem' }}>Service Plan</label>
-              <select value={onboardServiceId} onChange={e=>setOnboardServiceId(e.target.value)}
+              <select value={onboardServiceId} onChange={e => {
+                setOnboardServiceId(e.target.value)
+                const svc = servicesList.find((s:any) => s.id === e.target.value)
+                setOnboardCustomRate(svc ? String(svc.base_price_monthly) : '')
+              }}
                 style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'6px', padding:'0.65rem 0.85rem', color:'#fff', fontSize:'0.9rem', fontFamily:'inherit' }}>
                 <option value=''>— None / add later —</option>
                 {servicesList.filter((s:any) => s.type === 'recurring').map((s:any) => (
@@ -1268,6 +1280,18 @@ export default function Admin() {
                 ))}
               </select>
               {onboardServiceId && (
+                <>
+                {/* Custom rate override */}
+                <div style={{ marginTop:'0.6rem', display:'flex', alignItems:'center', gap:'0.75rem' }}>
+                  <div style={{ flex:1 }}>
+                    <label style={{ display:'block', fontSize:'0.68rem', color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'0.25rem' }}>Monthly Rate ($)</label>
+                    <input type='number' step='0.01' value={onboardCustomRate} onChange={e=>setOnboardCustomRate(e.target.value)}
+                      style={{ width:'100%', background:'#111', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'6px', padding:'0.5rem 0.75rem', color:'#fff', fontSize:'0.9rem', fontFamily:'inherit', fontWeight:700, boxSizing:'border-box' as const }} />
+                  </div>
+                  <div style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.35)', paddingTop:'1.2rem' }}>
+                    Default: ${servicesList.find((s:any) => s.id === onboardServiceId)?.base_price_monthly?.toFixed(2) || '—'}/mo
+                  </div>
+                </div>
                 <div style={{ marginTop:'0.6rem', display:'flex', gap:'1rem', flexWrap:'wrap' }}>
                   {['monthly','quarterly'].map(cycle => (
                     <label key={cycle} style={{ display:'flex', alignItems:'center', gap:'0.4rem', cursor:'pointer', fontSize:'0.85rem', color:'rgba(255,255,255,0.7)' }}>
@@ -1276,6 +1300,7 @@ export default function Admin() {
                     </label>
                   ))}
                 </div>
+              </>
               )}
               {/* Pickup frequency — admin only, not advertised */}
               <div style={{ marginTop:'0.75rem', paddingTop:'0.75rem', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
