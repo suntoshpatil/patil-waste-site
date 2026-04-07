@@ -122,6 +122,10 @@ export default function Admin() {
   const [editingRate, setEditingRate] = useState(false)
   const [newRate, setNewRate] = useState('')
   const [invoicePreview, setInvoicePreview] = useState<any>(null)
+  const [invoiceTab, setInvoiceTab] = useState<'sent'|'upcoming'>('sent')
+  const [upcomingInvoices, setUpcomingInvoices] = useState<any[]>([])
+  const [editingUpcoming, setEditingUpcoming] = useState<string|null>(null)
+  const [upcomingEdits, setUpcomingEdits] = useState<any>({})
   // Revenue chart
   const [revenueHistory, setRevenueHistory] = useState<any[]>([])
   // Overdue reminder sending
@@ -537,6 +541,47 @@ export default function Admin() {
     loadAll()
   }
 
+  async function loadUpcomingInvoices() {
+    const custs = await sb('customers?status=eq.active&select=*,subscriptions(id,rate,billing_cycle,status,pickup_day,billing_start,services(name)),bins(id,bin_type,monthly_rental_fee,ownership)').catch(()=>[])
+    const upcoming = []
+    for (const c of custs || []) {
+      const activeSub = c.subscriptions?.find((s:any) => s.status === 'active')
+      if (!activeSub) continue
+      const isQ = activeSub.billing_cycle === 'quarterly'
+      // Get last paid invoice to determine next send date
+      const lastPaid = await sb(`invoices?customer_id=eq.${c.id}&status=in.(paid)&order=period_end.desc&limit=1&select=period_end`).catch(()=>[])
+      const paidThrough = lastPaid?.[0]?.period_end || null
+      // Calculate next period
+      const now = new Date()
+      let sendDate: string, periodStart: string, periodEnd: string
+      if (paidThrough) {
+        const afterPaid = new Date(paidThrough + 'T12:00:00')
+        afterPaid.setDate(afterPaid.getDate() + 1)
+        periodStart = afterPaid.toISOString().split('T')[0]
+        const ps = new Date(periodStart + 'T12:00:00')
+        periodEnd = isQ
+          ? new Date(ps.getFullYear(), ps.getMonth() + 3, 0).toISOString().split('T')[0]
+          : new Date(ps.getFullYear(), ps.getMonth() + 1, 0).toISOString().split('T')[0]
+      } else {
+        periodStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().split('T')[0]
+        periodEnd = isQ
+          ? new Date(now.getFullYear(), now.getMonth() + 4, 0).toISOString().split('T')[0]
+          : new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString().split('T')[0]
+      }
+      // Send date = 25th of month before period starts
+      const ps2 = new Date(periodStart + 'T12:00:00')
+      sendDate = new Date(ps2.getFullYear(), ps2.getMonth() - 1, 25).toISOString().split('T')[0]
+      // Calculate amount
+      let total = isQ ? activeSub.rate * 3 : activeSub.rate
+      ;(c.bins||[]).forEach((b:any) => { if (b.ownership==='rental') total += Number(b.monthly_rental_fee||0) })
+      if (c.garage_side_pickup) total += Number(c.garage_side_rate || 10)
+      total = parseFloat(total.toFixed(2))
+      upcoming.push({ customerId: c.id, name: `${c.first_name} ${c.last_name}`, plan: activeSub.services?.name, billing: activeSub.billing_cycle, paidThrough, periodStart, periodEnd, sendDate, total })
+    }
+    upcoming.sort((a:any,b:any) => a.sendDate.localeCompare(b.sendDate))
+    setUpcomingInvoices(upcoming)
+  }
+
   async function previewNextInvoice(cust: any) {
     const activeSub = cust.subscriptions?.find((s:any) => s.status === 'active')
     const bins = await sb(`bins?customer_id=eq.${cust.id}&ownership=eq.rental&select=*`).catch(()=>[])
@@ -880,8 +925,8 @@ export default function Admin() {
 
           {/* ── INVOICES ── */}
           {view==='invoices' && (
-            <div style={{ maxWidth:'860px' }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.5rem' }}>
+            <div style={{ maxWidth:'900px' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.25rem' }}>
                 <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'2rem', letterSpacing:'0.02em' }}>Invoices</div>
                 <div style={{ display:'flex', gap:'0.5rem' }}>
                   <Btn small color='#7f1d1d' onClick={sendOverdueReminders} disabled={sendingReminders}>
@@ -899,44 +944,122 @@ export default function Admin() {
                 </div>
               </div>
 
-              {/* Failed / overdue alerts */}
-              {invoices.filter((i:any)=>i.status==='overdue').length > 0 && (
-                <div style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.3)', borderRadius:'8px', padding:'1rem 1.25rem', marginBottom:'1.25rem' }}>
-                  <div style={{ fontWeight:700, color:'#f87171', marginBottom:'0.5rem' }}>⚠️ {invoices.filter((i:any)=>i.status==='overdue').length} overdue invoice(s)</div>
-                  {invoices.filter((i:any)=>i.status==='overdue').map((inv:any) => (
-                    <div key={inv.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'0.84rem', padding:'0.35rem 0' }}>
-                      <span>{inv.customers?.first_name} {inv.customers?.last_name} — ${Number(inv.total).toFixed(2)} due {inv.due_date}</span>
-                      <div style={{ display:'flex', gap:'0.5rem' }}>
+              {/* Tabs */}
+              <div style={{ display:'flex', gap:'0.25rem', marginBottom:'1.25rem', background:'rgba(255,255,255,0.04)', borderRadius:'8px', padding:'0.25rem' }}>
+                {([['sent','📄 Sent & Paid'],['upcoming','🔮 Upcoming']] as const).map(([id,label]) => (
+                  <button key={id} onClick={() => { setInvoiceTab(id); if (id==='upcoming') loadUpcomingInvoices() }}
+                    style={{ flex:1, background: invoiceTab===id ? 'rgba(46,125,50,0.3)' : 'transparent', border: invoiceTab===id ? '1px solid rgba(46,125,50,0.4)' : '1px solid transparent', borderRadius:'6px', color: invoiceTab===id ? '#4caf50' : 'rgba(255,255,255,0.45)', padding:'0.5rem', cursor:'pointer', fontFamily:'inherit', fontSize:'0.82rem', fontWeight:700, letterSpacing:'0.04em' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* ── SENT & PAID ── */}
+              {invoiceTab === 'sent' && (<>
+                {invoices.filter((i:any)=>i.status==='overdue').length > 0 && (
+                  <div style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.3)', borderRadius:'8px', padding:'1rem 1.25rem', marginBottom:'1.25rem' }}>
+                    <div style={{ fontWeight:700, color:'#f87171', marginBottom:'0.5rem' }}>⚠️ {invoices.filter((i:any)=>i.status==='overdue').length} overdue invoice(s)</div>
+                    {invoices.filter((i:any)=>i.status==='overdue').map((inv:any) => (
+                      <div key={inv.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'0.84rem', padding:'0.35rem 0' }}>
+                        <span>{inv.customers?.first_name} {inv.customers?.last_name} — ${Number(inv.total).toFixed(2)} due {inv.due_date}</span>
                         <Btn small onClick={()=>markPaid(inv.id)}>Mark Paid</Btn>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                )}
+                <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
+                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.84rem' }}>
+                    <thead><tr>{['Customer','Period','Total','Status','Due','Actions'].map(h=><th key={h} style={{ padding:'0.75rem 1rem', textAlign:'left', fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {invoices.map((inv:any)=>(
+                        <tr key={inv.id} style={{ borderBottom:'1px solid rgba(255,255,255,0.04)', background: inv.status==='overdue'?'rgba(220,38,38,0.04)':'' }}>
+                          <td style={{ padding:'0.85rem 1rem', fontWeight:600 }}>{inv.customers?`${inv.customers.first_name} ${inv.customers.last_name}`:'—'}</td>
+                          <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.5)', fontSize:'0.8rem' }}>{inv.period_start} – {inv.period_end}</td>
+                          <td style={{ padding:'0.85rem 1rem', fontWeight:600 }}>${Number(inv.total).toFixed(2)}</td>
+                          <td style={{ padding:'0.85rem 1rem' }}><Badge status={inv.status} /></td>
+                          <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.5)' }}>{fmt(inv.due_date)}</td>
+                          <td style={{ padding:'0.85rem 1rem' }}>
+                            <div style={{ display:'flex', gap:'0.4rem' }}>
+                              {inv.status!=='paid' && <Btn small onClick={()=>markPaid(inv.id)}>Mark Paid</Btn>}
+                              <Btn small color='#1e3a5f' onClick={()=>recalcInvoice(inv)}>↻ Recalc</Btn>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {invoices.length===0 && <tr><td colSpan={6} style={{ padding:'3rem', textAlign:'center', color:'#6b7280' }}>No invoices yet — click Generate Now to create them</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </>)}
+
+              {/* ── UPCOMING ── */}
+              {invoiceTab === 'upcoming' && (
+                <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
+                  <div style={{ padding:'0.85rem 1.25rem', borderBottom:'1px solid rgba(255,255,255,0.06)', fontSize:'0.78rem', color:'rgba(255,255,255,0.4)' }}>
+                    Showing next invoice for each active customer. Click a row to edit the send date or amount before it goes out.
+                  </div>
+                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.84rem' }}>
+                    <thead><tr>{['Customer','Plan','Period','Est. Total','Send On','Paid Through',''].map(h=><th key={h} style={{ padding:'0.75rem 1rem', textAlign:'left', fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', borderBottom:'1px solid rgba(255,255,255,0.07)', whiteSpace:'nowrap' }}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {upcomingInvoices.length === 0 && (
+                        <tr><td colSpan={7} style={{ padding:'3rem', textAlign:'center', color:'#6b7280' }}>Loading upcoming invoices…</td></tr>
+                      )}
+                      {upcomingInvoices.map((inv:any) => {
+                        const isEditing = editingUpcoming === inv.customerId
+                        const edits = upcomingEdits[inv.customerId] || {}
+                        return (
+                          <tr key={inv.customerId} style={{ borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                            <td style={{ padding:'0.85rem 1rem', fontWeight:600 }}>{inv.name}</td>
+                            <td style={{ padding:'0.85rem 1rem', fontSize:'0.78rem', color:'rgba(255,255,255,0.55)' }}>{inv.plan}<br/><span style={{ color:'rgba(255,255,255,0.3)' }}>{inv.billing}</span></td>
+                            <td style={{ padding:'0.85rem 1rem', fontSize:'0.78rem', color:'rgba(255,255,255,0.45)' }}>{inv.periodStart}<br/>– {inv.periodEnd}</td>
+                            <td style={{ padding:'0.85rem 1rem', fontWeight:700, color:'#4caf50' }}>
+                              {isEditing ? (
+                                <input type='number' step='0.01' defaultValue={inv.total}
+                                  onChange={e => setUpcomingEdits((p:any) => ({...p, [inv.customerId]: {...(p[inv.customerId]||{}), total: e.target.value}}))}
+                                  style={{ width:'80px', background:'#111', border:'1px solid rgba(46,125,50,0.4)', borderRadius:'4px', padding:'0.25rem 0.4rem', color:'#fff', fontSize:'0.85rem', fontFamily:'inherit' }} />
+                              ) : `$${inv.total.toFixed(2)}`}
+                            </td>
+                            <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.6)', whiteSpace:'nowrap' }}>
+                              {isEditing ? (
+                                <input type='date' defaultValue={inv.sendDate}
+                                  onChange={e => setUpcomingEdits((p:any) => ({...p, [inv.customerId]: {...(p[inv.customerId]||{}), sendDate: e.target.value}}))}
+                                  style={{ background:'#111', border:'1px solid rgba(46,125,50,0.4)', borderRadius:'4px', padding:'0.25rem 0.4rem', color:'#fff', fontSize:'0.8rem', fontFamily:'inherit' }} />
+                              ) : fmt(inv.sendDate)}
+                            </td>
+                            <td style={{ padding:'0.85rem 1rem', fontSize:'0.78rem', color: inv.paidThrough ? '#4caf50' : 'rgba(255,255,255,0.3)' }}>
+                              {inv.paidThrough ? `✅ ${fmt(inv.paidThrough)}` : '—'}
+                            </td>
+                            <td style={{ padding:'0.85rem 1rem' }}>
+                              {isEditing ? (
+                                <div style={{ display:'flex', gap:'0.4rem' }}>
+                                  <Btn small onClick={async () => {
+                                    const e = upcomingEdits[inv.customerId] || {}
+                                    // Save to subscription if amount changed
+                                    if (e.total) {
+                                      const subs = await sb(`subscriptions?customer_id=eq.${inv.customerId}&status=eq.active&select=id,billing_cycle`).catch(()=>[])
+                                      if (subs?.[0]) {
+                                        const isQ = subs[0].billing_cycle === 'quarterly'
+                                        const monthlyRate = isQ ? parseFloat(e.total) / 3 : parseFloat(e.total)
+                                        await sb(`subscriptions?id=eq.${subs[0].id}`, { method:'PATCH', body:{ rate: parseFloat(monthlyRate.toFixed(2)) }, prefer:'return=minimal' })
+                                      }
+                                    }
+                                    showToast('Updated')
+                                    setEditingUpcoming(null)
+                                    loadUpcomingInvoices()
+                                  }}>Save</Btn>
+                                  <Btn small color='transparent' textColor='#6b7280' onClick={() => setEditingUpcoming(null)}>Cancel</Btn>
+                                </div>
+                              ) : (
+                                <Btn small color='#1e3a2a' onClick={() => setEditingUpcoming(inv.customerId)}>✏️ Edit</Btn>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
-
-              <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
-                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.84rem' }}>
-                  <thead><tr>{['Customer','Period','Total','Status','Due','Actions'].map(h=><th key={h} style={{ padding:'0.75rem 1rem', textAlign:'left', fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>{h}</th>)}</tr></thead>
-                  <tbody>
-                    {invoices.map((inv:any)=>(
-                      <tr key={inv.id} style={{ borderBottom:'1px solid rgba(255,255,255,0.04)', background: inv.status==='overdue'?'rgba(220,38,38,0.04)':'' }}>
-                        <td style={{ padding:'0.85rem 1rem', fontWeight:600 }}>{inv.customers?`${inv.customers.first_name} ${inv.customers.last_name}`:'—'}</td>
-                        <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.5)', fontSize:'0.8rem' }}>{inv.period_start} – {inv.period_end}</td>
-                        <td style={{ padding:'0.85rem 1rem', fontWeight:600 }}>${Number(inv.total).toFixed(2)}</td>
-                        <td style={{ padding:'0.85rem 1rem' }}><Badge status={inv.status} /></td>
-                        <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.5)' }}>{fmt(inv.due_date)}</td>
-                        <td style={{ padding:'0.85rem 1rem' }}>
-                          <div style={{ display:'flex', gap:'0.4rem' }}>
-                            {inv.status!=='paid' && <Btn small onClick={()=>markPaid(inv.id)}>Mark Paid</Btn>}
-                            <Btn small color='#1e3a5f' onClick={()=>recalcInvoice(inv)}>↻ Recalc</Btn>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {invoices.length===0 && <tr><td colSpan={6} style={{ padding:'3rem', textAlign:'center', color:'#6b7280' }}>No invoices yet — click Generate Now to create them</td></tr>}
-                  </tbody>
-                </table>
-              </div>
             </div>
           )}
 
