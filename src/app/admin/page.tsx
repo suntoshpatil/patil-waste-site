@@ -1528,7 +1528,7 @@ export default function Admin() {
               <Sel label="Pickup Day" name="pickup_day" value={addData.pickup_day} onChange={onAdd} options={[['','TBD'],['monday','Monday'],['tuesday','Tuesday'],['wednesday','Wednesday'],['thursday','Thursday'],['friday','Friday']]} />
               <Sel label="Payment Method" name="payment_method" value={addData.payment_method} onChange={onAdd} options={[['cash','Cash'],['venmo','Venmo'],['zelle','Zelle'],['card','Card']]} />
               <Sel label="Bin Situation" name="bin_situation" value={addData.bin_situation} onChange={onAdd} options={[['own','Own bins'],['rental','Rental'],['unsure','Unsure']]} />
-              <Inp label="Start Date" name="start_date" value={addData.start_date} onChange={onAdd} type="date" />
+              {!importMode && <Inp label="Start Date" name="start_date" value={addData.start_date} onChange={onAdd} type="date" />}
             </div>
             <Inp label="Gate Code / Property Notes" name="gate_notes" value={addData.gate_notes} onChange={onAdd} placeholder="Gate code, dogs in yard..." />
             <Inp label="Notes" name="notes" value={addData.notes} onChange={onAdd} placeholder="Any additional notes..." />
