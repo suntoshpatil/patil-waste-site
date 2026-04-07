@@ -47,7 +47,7 @@ export default function Recycling() {
       {/* Accepted / Not Accepted */}
       <section className="section" style={{ background: 'var(--white)' }}>
         <div className="section-inner">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem', marginBottom: '3rem' }}>
+          <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem', marginBottom: '3rem' }}>
             {/* Accepted */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>

@@ -27,7 +27,7 @@ export default function Promotions() {
         <div className="section-inner" style={{ maxWidth: '820px' }}>
 
           {/* Free month cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '3.5rem' }}>
+          <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '3.5rem' }}>
             {[['You Get', '🎁', 'One free month credited to your next invoice.'], ['Your Friend Gets', '🎉', 'One free month on their very first bill.']].map(([label, emoji, desc]) => (
               <div key={label as string} style={{ background: 'var(--black)', borderRadius: '12px', padding: '2.5rem 2rem', textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>{emoji}</div>
@@ -41,7 +41,7 @@ export default function Promotions() {
           {/* How it works */}
           <div style={{ marginBottom: '3.5rem' }}>
             <h2 className="d2" style={{ textAlign: 'center', marginBottom: '2rem' }}>How It Works</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1.5rem' }}>
+            <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1.5rem' }}>
               {steps.map(({ n, title, desc }) => (
                 <div key={n} style={{ background: 'var(--cream)', borderRadius: '10px', padding: '2rem 1.5rem', border: '1px solid var(--border-light)', position: 'relative' }}>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', color: 'var(--green)', lineHeight: 1, marginBottom: '1rem', opacity: 0.25, position: 'absolute', top: '1rem', right: '1.25rem' }}>{n}</div>

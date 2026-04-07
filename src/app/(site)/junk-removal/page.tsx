@@ -99,7 +99,7 @@ export default function JunkRemoval() {
           </div>
 
           {/* Contact info */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', marginBottom:'1rem' }}>
+          <div className="mobile-stack" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', marginBottom:'1rem' }}>
             <div>
               <label style={{ display:'block', fontSize:'0.75rem', color:'rgba(255,255,255,0.45)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:'0.4rem' }}>Full Name *</label>
               <input style={inp} value={form.name} onChange={e=>set('name',e.target.value)} placeholder="Jane Smith" />

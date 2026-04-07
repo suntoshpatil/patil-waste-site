@@ -16,7 +16,7 @@
   --border-light:rgba(0,0,0,0.09);
 }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
 body { font-family: 'DM Sans', sans-serif; background: var(--white); color: var(--black); line-height: 1.65; overflow-x: hidden; }
 a { text-decoration: none; color: inherit; }
 
@@ -77,11 +77,12 @@ a { text-decoration: none; color: inherit; }
   .mobile-stack { grid-template-columns: 1fr !important; }
 
   /* Hero section */
-  .hero-section { padding-left: 1.25rem !important; padding-right: 1.25rem !important; padding-bottom: 5.5rem !important; }
+  .hero-section { flex-direction: column !important; justify-content: center !important; padding-left: 1.25rem !important; padding-right: 1.25rem !important; padding-bottom: 2.5rem !important; }
   .hero-inner { flex-direction: column !important; text-align: center !important; gap: 0 !important; }
   .hero-logo { display: none !important; }
   .hero-btns { justify-content: center !important; }
-  .hero-stats { gap: 1.5rem !important; flex-wrap: wrap; justify-content: center; bottom: 1.25rem !important; }
+  /* Pull stats out of absolute positioning so they don't overlap buttons */
+  .hero-stats { position: static !important; transform: none !important; left: auto !important; bottom: auto !important; margin-top: 2.5rem; flex-wrap: wrap !important; justify-content: center !important; gap: 1.5rem !important; width: 100%; }
 
   /* Footer */
   .footer-grid { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
