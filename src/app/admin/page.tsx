@@ -245,22 +245,30 @@ export default function Admin() {
         const total = addBillingCycle === 'quarterly' ? rate * 3 : rate
         // period_start = their billing start, period_end = paid through date
         const periodStart = addData.start_date || new Date().toISOString().split('T')[0]
-        if (!importPaidThrough) { /* no paid-through date set, skip invoice creation */ } else
-        await sb('invoices', { method:'POST', body:{
-          customer_id: newCustomer.id,
-          subscription_id: subId || null,
-          subtotal: total,
-          adjustments_total: 0,
-          tax_rate: 0,
-          tax_amount: 0,
-          total,
-          status: 'paid',
-          paid_at: new Date().toISOString(),
-          period_start: periodStart,
-          period_end: importPaidThrough,
-          due_date: periodStart,
-          notes: `Imported from Squarespace — already paid through ${importPaidThrough}`,
-        }})
+        if (!importPaidThrough) { /* no paid-through date set, skip invoice creation */ } else {
+          // Delete any sent/draft invoices that fall within the paid-through period
+          // (these may have been accidentally generated before the import)
+          const existingInvs = await sb(`invoices?customer_id=eq.${newCustomer.id}&status=in.(sent,draft)&period_start=lte.${importPaidThrough}&select=id`).catch(()=>[])
+          for (const inv of existingInvs || []) {
+            await sb(`invoices?id=eq.${inv.id}`, { method:'DELETE', prefer:'return=minimal' }).catch(()=>{})
+          }
+          // Create the paid invoice covering the already-paid period
+          await sb('invoices', { method:'POST', body:{
+            customer_id: newCustomer.id,
+            subscription_id: subId || null,
+            subtotal: total,
+            adjustments_total: 0,
+            tax_rate: 0,
+            tax_amount: 0,
+            total,
+            status: 'paid',
+            paid_at: new Date().toISOString(),
+            period_start: periodStart,
+            period_end: importPaidThrough,
+            due_date: periodStart,
+            notes: `Imported from Squarespace — already paid through ${importPaidThrough}`,
+          }})
+        }
       }
       showToast(importMode ? 'Customer imported!' : 'Customer added!')
       setShowAddModal(false)
