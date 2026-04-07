@@ -177,7 +177,7 @@ export default function Admin() {
     // Derive revenue directly from active customers' nested subscriptions
     ;(custs||[]).filter((c:any) => c.status === 'active').forEach((c:any) => {
       const activeSub = c.subscriptions?.find((s:any) => s.status === 'active')
-      if (activeSub) revenue += activeSub.billing_cycle === 'quarterly' ? activeSub.rate / 3 : activeSub.rate
+      if (activeSub) revenue += activeSub.rate  // rate is always monthly regardless of billing cycle
       if (c.garage_side_pickup) revenue += Number(c.garage_side_rate || 10)
       ;(c.bins||[]).forEach((b:any) => { if (b.ownership === 'rental') revenue += Number(b.monthly_rental_fee || 0) })
     })
