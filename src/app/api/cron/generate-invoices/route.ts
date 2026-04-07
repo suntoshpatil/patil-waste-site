@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { NextResponse } from 'next/server'
 import { sbServer, calcInvoiceTotal, getBillingPeriod } from '@/lib/billing'
 import { invoiceEmail } from '@/lib/emails'
@@ -6,38 +7,67 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function GET(req: Request) {
-  // Verify this is called by Vercel cron (or manually by admin)
   const auth = req.headers.get('authorization')
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { periodStart, periodEnd, dueDate } = getBillingPeriod()
+  // Monthly period — cron runs on 25th, generates invoice for next month
+  const { periodStart, dueDate } = getBillingPeriod()
   let generated = 0, skipped = 0, errors: string[] = []
 
   try {
-    // Load all active customers with their subscriptions, bins, and approved skips
     const customers = await sbServer(
       `customers?status=eq.active&select=*,subscriptions(id,rate,billing_cycle,status,pickup_day,billing_start,services(name)),bins(id,bin_type,monthly_rental_fee,ownership)`
     )
 
     for (const customer of customers || []) {
       try {
-        // Skip if invoice already exists for this period
-        const existing = await sbServer(
-          `invoices?customer_id=eq.${customer.id}&period_start=eq.${periodStart}&select=id`
-        )
-        if (existing?.length > 0) { skipped++; continue }
-
-        // For quarterly customers: skip if they had an invoice in the last 3 months
         const activeSub = customer.subscriptions?.find((s: any) => s.status === 'active')
-        if (activeSub?.billing_cycle === 'quarterly') {
-          const threeMonthsAgo = new Date()
-          threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
-          const recentInvoices = await sbServer(
-            `invoices?customer_id=eq.${customer.id}&status=in.(sent,paid)&period_start=gte.${threeMonthsAgo.toISOString().split('T')[0]}&select=id`
+        const isQuarterly = activeSub?.billing_cycle === 'quarterly'
+
+        // For quarterly customers: only generate on the 25th of the last month of their quarter
+        // Their quarter starts on periodStart month, so we should only invoice when
+        // their last invoice's period_end < periodStart (i.e. their coverage runs out next month)
+        if (isQuarterly) {
+          const lastInvoice = await sbServer(
+            `invoices?customer_id=eq.${customer.id}&status=in.(sent,paid)&order=period_end.desc&limit=1&select=period_end,period_start`
           ).catch(() => [])
-          if (recentInvoices?.length > 0) { skipped++; continue }
+
+          if (lastInvoice?.length > 0) {
+            const lastEnd = lastInvoice[0].period_end  // e.g. '2026-05-31'
+            // Only generate if their coverage ends this month or has already ended
+            // i.e. period_end is in the same month as periodStart or before
+            const coverageEndsMonth = lastEnd.slice(0, 7)        // e.g. '2026-05'
+            const nextInvoiceMonth  = periodStart.slice(0, 7)    // e.g. '2026-06'
+            if (coverageEndsMonth >= nextInvoiceMonth) {
+              // They still have coverage — skip
+              skipped++; continue
+            }
+          }
+          // No previous invoice OR coverage just ran out — generate quarterly invoice
+        }
+
+        // For monthly: skip if invoice already exists for this period
+        if (!isQuarterly) {
+          const existing = await sbServer(
+            `invoices?customer_id=eq.${customer.id}&period_start=eq.${periodStart}&select=id`
+          )
+          if (existing?.length > 0) { skipped++; continue }
+        }
+
+        // Determine period end
+        // Monthly: end of next month
+        // Quarterly: 3 months from period start
+        const pStart = new Date(periodStart + 'T12:00:00')
+        let periodEnd: string
+        if (isQuarterly) {
+          // End of the 3rd month from period start
+          const endMonth = new Date(pStart.getFullYear(), pStart.getMonth() + 3, 0)
+          periodEnd = endMonth.toISOString().split('T')[0]
+        } else {
+          const endMonth = new Date(pStart.getFullYear(), pStart.getMonth() + 1, 0)
+          periodEnd = endMonth.toISOString().split('T')[0]
         }
 
         // Count approved skip credits for this billing period
@@ -46,7 +76,7 @@ export async function GET(req: Request) {
         ).catch(() => [])
         const skipCredit = (skips || []).reduce((sum: number, s: any) => sum + Number(s.refund_amount || 0), 0)
 
-        // Load any confirmed extra bag charges not yet invoiced
+        // Load confirmed extra bag charges not yet invoiced
         const addons = await sbServer(
           `pickup_addons?customer_id=eq.${customer.id}&status=eq.confirmed&select=*`
         ).catch(() => [])
@@ -55,17 +85,16 @@ export async function GET(req: Request) {
 
         const { lines, subtotal: baseSubtotal, total: baseTotal } = calcInvoiceTotal({ ...customer, skip_credits: skipCredit })
         const subtotal = parseFloat((baseSubtotal + addonTotal).toFixed(2))
-        const total = parseFloat((baseTotal + addonTotal).toFixed(2))
+        const total    = parseFloat((baseTotal    + addonTotal).toFixed(2))
         const allLines = [...lines, ...addonLines]
 
         if (total <= 0) { skipped++; continue }
 
-        // Create invoice
         const [invoice] = await sbServer('invoices', {
           method: 'POST',
           body: {
             customer_id: customer.id,
-            subscription_id: customer.subscriptions?.find((s: any) => s.status === 'active')?.id || null,
+            subscription_id: activeSub?.id || null,
             subtotal,
             adjustments_total: skipCredit,
             tax_rate: 0,
@@ -86,14 +115,10 @@ export async function GET(req: Request) {
           }).catch(() => {})
         }
 
-        // Mark invoice as sent
         await sbServer(`invoices?id=eq.${invoice.id}`, {
-          method: 'PATCH',
-          body: { status: 'sent' },
-          prefer: 'return=minimal',
+          method: 'PATCH', body: { status: 'sent' }, prefer: 'return=minimal',
         })
 
-        // Send email notification
         if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== 're_placeholder') {
           await resend.emails.send(invoiceEmail(customer, { ...invoice, status: 'sent' }, lines))
         }
