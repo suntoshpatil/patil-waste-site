@@ -32,7 +32,7 @@ export default function Nav() {
   )
 
   return (
-    <nav style={{ position:'fixed', top:0, left:0, right:0, zIndex:500, background:'rgba(15,15,15,0.96)', backdropFilter:'blur(10px)', borderBottom:'1px solid rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.9rem 2.5rem' }}>
+    <nav className="main-nav" style={{ position:'fixed', top:0, left:0, right:0, zIndex:500, background:'rgba(15,15,15,0.96)', backdropFilter:'blur(10px)', borderBottom:'1px solid rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0.9rem 2.5rem' }}>
       <Link href="/" style={{ display:'flex', alignItems:'center' }}>
         <Logo height={40} />
       </Link>
@@ -67,6 +67,12 @@ export default function Nav() {
         @media (max-width: 768px) {
           .nav-desktop { display: none !important; }
           .hamburger { display: flex !important; }
+          .main-nav {
+            padding-top: 0.55rem !important;
+            padding-bottom: 0.55rem !important;
+            padding-left: 1.25rem !important;
+            padding-right: 1.25rem !important;
+          }
         }
       `}</style>
     </nav>

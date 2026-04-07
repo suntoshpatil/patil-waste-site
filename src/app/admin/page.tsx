@@ -797,6 +797,8 @@ export default function Admin() {
                   }
                   .admin-main { padding: 0.75rem !important; }
                   .admin-stats-grid { grid-template-columns: 1fr 1fr !important; }
+                  .admin-table-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+                  .admin-table-scroll table { min-width: 560px; }
                 }
               `}</style>
               <div className="admin-stats-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'1rem', marginBottom:'1.5rem' }}>
@@ -861,7 +863,7 @@ export default function Admin() {
                 </div>
               )}
 
-              <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
+              <div className="admin-table-scroll" style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
                 <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid rgba(255,255,255,0.07)', fontFamily:'Bebas Neue,sans-serif', fontSize:'1.1rem', letterSpacing:'0.04em' }}>Recent Signups</div>
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.84rem' }}>
                   <thead><tr>{['Name','Town','Status','Signed Up'].map(h=><th key={h} style={{ padding:'0.75rem 1rem', textAlign:'left', fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>{h}</th>)}</tr></thead>
@@ -1036,7 +1038,7 @@ export default function Admin() {
                     ))}
                   </div>
                 )}
-                <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
+                <div className="admin-table-scroll" style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
                   <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.84rem' }}>
                     <thead><tr>{['Customer','Period','Total','Status','Due','Actions'].map(h=><th key={h} style={{ padding:'0.75rem 1rem', textAlign:'left', fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>{h}</th>)}</tr></thead>
                     <tbody>
@@ -1063,7 +1065,7 @@ export default function Admin() {
 
               {/* ── UPCOMING ── */}
               {invoiceTab === 'upcoming' && (
-                <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
+                <div className="admin-table-scroll" style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
                   <div style={{ padding:'0.85rem 1.25rem', borderBottom:'1px solid rgba(255,255,255,0.06)', fontSize:'0.78rem', color:'rgba(255,255,255,0.4)' }}>
                     Showing next invoice for each active customer. Click a row to edit the send date or amount before it goes out.
                   </div>
@@ -1175,7 +1177,7 @@ export default function Admin() {
                 </div>
                 <Btn onClick={logPayment} style={{ width:'100%' }}>Log Payment</Btn>
               </div>
-              <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
+              <div className="admin-table-scroll" style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
                 <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid rgba(255,255,255,0.07)', fontFamily:'Bebas Neue,sans-serif', fontSize:'1.1rem' }}>Recent Payments</div>
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.84rem' }}>
                   <thead><tr>{['Customer','Amount','Method','Date','Note'].map(h=><th key={h} style={{ padding:'0.75rem 1rem', textAlign:'left', fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#6b7280', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>{h}</th>)}</tr></thead>
