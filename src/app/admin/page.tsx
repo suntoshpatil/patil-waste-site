@@ -155,10 +155,15 @@ export default function Admin() {
     const pending = (custs||[]).filter((c:Customer) => c.status==='pending').length
     const overdue = (custs||[]).filter((c:Customer) => c.status==='overdue').length
     let revenue = 0
-    ;(subs||[]).forEach((s:any) => { revenue += s.billing_cycle==='quarterly' ? s.rate/3 : s.rate })
+    // Only count subscriptions belonging to active customers
+    const activeCustomerIds = new Set((custs||[]).filter((c:any)=>c.status==='active').map((c:any)=>c.id))
+    ;(subs||[]).filter((s:any)=> {
+      // Match sub to active customer via the customers array
+      return (custs||[]).some((c:any) => c.status==='active' && c.subscriptions?.some((cs:any)=>cs.id===s.id))
+    }).forEach((s:any) => { revenue += s.billing_cycle==='quarterly' ? s.rate/3 : s.rate })
     // Add bin rentals and garage pickup from active customers
     ;(custs||[]).filter((c:any)=>c.status==='active').forEach((c:any) => {
-      if (c.garage_side_pickup) revenue += 10
+      if (c.garage_side_pickup) revenue += Number(c.garage_side_rate || 10)
       ;(c.bins||[]).forEach((b:any) => { if (b.ownership==='rental') revenue += Number(b.monthly_rental_fee||0) })
     })
     setStats({ active, pending, overdue, revenue })
