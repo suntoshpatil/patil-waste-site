@@ -722,6 +722,41 @@ export default function Admin() {
 
   return (
     <div className="admin-page" style={{ fontFamily:'DM Sans,sans-serif', background:'#0f0f0f', color:'#f9f9f6', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        @media (max-width: 768px) {
+          .admin-page { height: auto !important; overflow: visible !important; min-height: 100vh; }
+          .admin-topbar { padding: 0 1rem !important; height: auto !important; min-height: 56px; flex-wrap: wrap; }
+          .admin-topbar-badge { display: none !important; }
+          .admin-layout { flex-direction: column !important; height: auto !important; overflow: visible !important; }
+          .admin-sidebar {
+            width: 100% !important;
+            display: flex !important;
+            flex-direction: row !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            padding: 0 !important;
+            border-right: none !important;
+            border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+          }
+          .admin-sidebar > div {
+            flex-direction: column !important;
+            padding: 0.55rem 0.7rem !important;
+            font-size: 0.7rem !important;
+            border-left: none !important;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap !important;
+            gap: 0.2rem !important;
+            min-width: fit-content;
+            justify-content: center;
+            align-items: center !important;
+          }
+          .admin-main { padding: 0.75rem !important; }
+          .admin-stats-grid { grid-template-columns: 1fr 1fr !important; }
+          .admin-table-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+          .admin-table-scroll table { min-width: 560px; }
+        }
+      `}</style>
 
       {/* Topbar */}
       <div className="admin-topbar" style={{ background:'#141414', borderBottom:'1px solid rgba(255,255,255,0.07)', padding:'0 1.5rem', height:'56px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
@@ -766,41 +801,6 @@ export default function Admin() {
                   <Btn onClick={() => setShowAddModal(true)}>+ Add Customer</Btn>
                 </div>
               </div>
-              <style>{`
-                @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
-                @media (max-width: 768px) {
-                  .admin-page { height: auto !important; overflow: visible !important; min-height: 100vh; }
-                  .admin-topbar { padding: 0 1rem !important; height: auto !important; min-height: 56px; flex-wrap: wrap; }
-                  .admin-topbar-badge { display: none !important; }
-                  .admin-layout { flex-direction: column !important; height: auto !important; overflow: visible !important; }
-                  .admin-sidebar {
-                    width: 100% !important;
-                    display: flex !important;
-                    flex-direction: row !important;
-                    overflow-x: auto !important;
-                    overflow-y: hidden !important;
-                    padding: 0 !important;
-                    border-right: none !important;
-                    border-bottom: 1px solid rgba(255,255,255,0.07) !important;
-                  }
-                  .admin-sidebar > div {
-                    flex-direction: column !important;
-                    padding: 0.55rem 0.7rem !important;
-                    font-size: 0.7rem !important;
-                    border-left: none !important;
-                    border-bottom: 2px solid transparent;
-                    white-space: nowrap !important;
-                    gap: 0.2rem !important;
-                    min-width: fit-content;
-                    justify-content: center;
-                    align-items: center !important;
-                  }
-                  .admin-main { padding: 0.75rem !important; }
-                  .admin-stats-grid { grid-template-columns: 1fr 1fr !important; }
-                  .admin-table-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-                  .admin-table-scroll table { min-width: 560px; }
-                }
-              `}</style>
               <div className="admin-stats-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'1rem', marginBottom:'1.5rem' }}>
                 {([['Active',stats.active,'#fff'],['Pending',stats.pending,'#fff'],['Est. Revenue',`$${stats.revenue.toFixed(0)}/mo`,'#4caf50'],['Overdue',stats.overdue,'#e53935']] as [string,any,string][]).map(([label,val,color]) => (
                   <div key={label} style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', padding:'1.25rem' }}>
