@@ -103,6 +103,9 @@ export default function Admin() {
   const [jobRequests, setJobRequests] = useState<any[]>([])
   const [pickupAddons, setPickupAddons] = useState<any[]>([])
   const [noticeMsg, setNoticeMsg] = useState('')
+  const [allNotices, setAllNotices] = useState<any[]>([])
+  const [editingNoticeId, setEditingNoticeId] = useState<string|null>(null)
+  const [editingNoticeMsg, setEditingNoticeMsg] = useState('')
   const [noticeDate, setNoticeDate] = useState('')
   const [noticeType, setNoticeType] = useState('info')
   const [replacementDate, setReplacementDate] = useState('')
@@ -651,6 +654,11 @@ export default function Admin() {
     setInvoicePreview({ lines, total, periodStart, periodEnd, dueDate, paidThrough, customer: cust, hasAddons: (addons||[]).length > 0 })
   }
 
+  async function loadAllNotices() {
+    const n = await sb('schedule_notices?order=notice_date.desc&select=*').catch(()=>[])
+    setAllNotices(n || [])
+  }
+
   async function recalcInvoice(inv: any) {
     // Find the customer and recalculate total including bins and garage
     const custs = await sb(`customers?id=eq.${inv.customer_id}&select=*,subscriptions(id,rate,billing_cycle,status,pickup_day,billing_start,services(name)),bins(id,bin_type,monthly_rental_fee,ownership)`)
@@ -730,7 +738,7 @@ export default function Admin() {
           {navItems.map(([id,icon,label]) => {
             const pendingCount = id === 'requests' ? serviceRequests.length + skipRequests.length : id === 'jobs' ? jobRequests.filter((j:any)=>j.status==='new').length + pickupAddons.filter((a:any)=>a.status==='pending_quote').length : id === 'dashboard' ? customers.filter(c=>c.status==='pending').length : 0
             return (
-              <div key={id} onClick={() => setView(id)} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.7rem 1.25rem', fontSize:'0.82rem', fontWeight:500, color:view===id?'#fff':'#6b7280', cursor:'pointer', borderLeft:`2px solid ${view===id?'#4caf50':'transparent'}`, background:view===id?'rgba(61,158,64,0.08)':'transparent', transition:'all 0.15s' }}>
+              <div key={id} onClick={() => { setView(id); if (id === 'notices') loadAllNotices() }} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.7rem 1.25rem', fontSize:'0.82rem', fontWeight:500, color:view===id?'#fff':'#6b7280', cursor:'pointer', borderLeft:`2px solid ${view===id?'#4caf50':'transparent'}`, background:view===id?'rgba(61,158,64,0.08)':'transparent', transition:'all 0.15s' }}>
                 <span>{icon}</span><span>{label}</span>
                 {pendingCount > 0 && <span style={{ marginLeft:'auto', background:'#dc2626', color:'#fff', borderRadius:'10px', fontSize:'0.65rem', fontWeight:700, padding:'0.1rem 0.45rem', minWidth:'18px', textAlign:'center' }}>{pendingCount}</span>}
               </div>
@@ -1279,10 +1287,12 @@ export default function Admin() {
 
           {/* ── NOTICES VIEW ── */}
           {view==='notices' && (
-            <div style={{ maxWidth:'560px' }}>
+            <div style={{ maxWidth:'680px' }}>
               <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'2rem', letterSpacing:'0.02em', marginBottom:'1.5rem' }}>Schedule Notices</div>
+
+              {/* Post new notice */}
               <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', padding:'1.5rem', marginBottom:'1.5rem' }}>
-                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.2rem', marginBottom:'1rem' }}>Post a Schedule Notice</div>
+                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.2rem', marginBottom:'1rem' }}>Post a New Notice</div>
                 <div style={{ marginBottom:'0.75rem' }}>
                   <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Notice Type</label>
                   <select value={noticeType||'info'} onChange={e=>setNoticeType(e.target.value)} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%' }}>
@@ -1307,7 +1317,63 @@ export default function Admin() {
                   <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Message to Customers</label>
                   <textarea value={noticeMsg} onChange={e=>setNoticeMsg(e.target.value)} rows={2} placeholder={noticeType==='cancellation'?'e.g. No pickup Monday July 4th due to Independence Day':noticeType==='reschedule'?'e.g. Monday July 4th pickup moved to Tuesday July 5th':'e.g. Service may be delayed due to weather'} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.6rem 0.85rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%', resize:'vertical' }} />
                 </div>
-                <Btn onClick={postNotice}>📢 Post Notice</Btn>
+                <Btn onClick={async () => { await postNotice(); loadAllNotices() }}>📢 Post Notice</Btn>
+              </div>
+
+              {/* Existing notices */}
+              <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', overflow:'hidden' }}>
+                <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.1rem', letterSpacing:'0.04em' }}>Posted Notices</div>
+                  <button onClick={loadAllNotices} style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'5px', color:'rgba(255,255,255,0.5)', padding:'0.2rem 0.6rem', cursor:'pointer', fontSize:'0.72rem', fontFamily:'inherit' }}>↻ Refresh</button>
+                </div>
+                {allNotices.length === 0 ? (
+                  <div style={{ padding:'2rem', textAlign:'center', color:'#6b7280', fontSize:'0.85rem' }}>No notices posted yet — click Refresh to load</div>
+                ) : allNotices.map((n:any) => (
+                  <div key={n.id} style={{ padding:'1rem 1.25rem', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                    {editingNoticeId === n.id ? (
+                      <div>
+                        <textarea value={editingNoticeMsg} onChange={e=>setEditingNoticeMsg(e.target.value)} rows={2}
+                          style={{ width:'100%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'5px', padding:'0.5rem 0.75rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', marginBottom:'0.5rem', resize:'vertical' }} />
+                        <div style={{ display:'flex', gap:'0.5rem' }}>
+                          <Btn small onClick={async () => {
+                            await sb(`schedule_notices?id=eq.${n.id}`, { method:'PATCH', body:{ message: editingNoticeMsg }, prefer:'return=minimal' })
+                            showToast('Notice updated')
+                            setEditingNoticeId(null)
+                            loadAllNotices()
+                          }}>Save</Btn>
+                          <Btn small color='transparent' textColor='#6b7280' onClick={() => setEditingNoticeId(null)}>Cancel</Btn>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'1rem' }}>
+                        <div>
+                          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.3rem' }}>
+                            <span style={{ fontSize:'0.72rem', fontWeight:700, padding:'0.15rem 0.5rem', borderRadius:'4px',
+                              background: n.notice_type==='cancellation' ? 'rgba(220,38,38,0.15)' : n.notice_type==='reschedule' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.08)',
+                              color: n.notice_type==='cancellation' ? '#f87171' : n.notice_type==='reschedule' ? '#fbbf24' : 'rgba(255,255,255,0.6)' }}>
+                              {n.notice_type === 'cancellation' ? '❌ Cancellation' : n.notice_type === 'reschedule' ? '🔄 Reschedule' : '📢 Info'}
+                            </span>
+                            <span style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.5)' }}>
+                              {new Date(n.notice_date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' })}
+                            </span>
+                            {n.replacement_date && <span style={{ fontSize:'0.75rem', color:'#4caf50' }}>→ {new Date(n.replacement_date + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' })}</span>}
+                          </div>
+                          <div style={{ fontSize:'0.87rem', color:'rgba(255,255,255,0.85)' }}>{n.message}</div>
+                        </div>
+                        <div style={{ display:'flex', gap:'0.4rem', flexShrink:0 }}>
+                          <button onClick={() => { setEditingNoticeId(n.id); setEditingNoticeMsg(n.message) }}
+                            style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'4px', color:'rgba(255,255,255,0.5)', padding:'0.25rem 0.55rem', cursor:'pointer', fontSize:'0.75rem', fontFamily:'inherit' }}>✏️ Edit</button>
+                          <button onClick={async () => {
+                            if (!confirm('Delete this notice?')) return
+                            await sb(`schedule_notices?id=eq.${n.id}`, { method:'DELETE', prefer:'return=minimal' })
+                            showToast('Notice deleted')
+                            loadAllNotices()
+                          }} style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:'4px', color:'#f87171', padding:'0.25rem 0.55rem', cursor:'pointer', fontSize:'0.75rem', fontFamily:'inherit' }}>🗑️ Delete</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}

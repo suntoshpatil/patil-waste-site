@@ -823,7 +823,7 @@ export default function Portal() {
                 {notices.map((n: any) => (
                   <div key={n.id} style={{ paddingBottom:'0.6rem', marginBottom:'0.6rem', borderBottom:'1px solid rgba(245,158,11,0.12)', fontSize:'0.87rem' }}>
                     <span style={{ color:'#fbbf24', fontWeight:600 }}>{new Date(n.notice_date).toLocaleDateString('en-US', { month:'short', day:'numeric' })} — </span>
-                    {n.message}
+                    <span style={{ color:'rgba(255,255,255,0.9)' }}>{n.message}</span>
                   </div>
                 ))}
               </div>
