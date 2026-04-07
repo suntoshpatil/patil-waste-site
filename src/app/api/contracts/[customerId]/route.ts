@@ -152,7 +152,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ customer
     const activeSub = customer.subscriptions?.find((s: any) => s.status === 'active') || customer.subscriptions?.[0]
     const pdf = await generateContractPDF(customer, activeSub)
 
-    return new Response(pdf, {
+    return new Response(new Uint8Array(pdf), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="PatilWasteRemoval-Contract-${customer.last_name}.pdf"`,
