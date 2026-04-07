@@ -70,4 +70,22 @@ a { text-decoration: none; color: inherit; }
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
 
-@media (max-width: 768px) { .section { padding: 3.5rem 1.25rem; } }
+@media (max-width: 768px) {
+  .section { padding: 3rem 1.25rem; }
+
+  /* Reusable: collapse any 2- or 3-col grid to single column */
+  .mobile-stack { grid-template-columns: 1fr !important; }
+
+  /* Hero section */
+  .hero-section { padding-left: 1.25rem !important; padding-right: 1.25rem !important; padding-bottom: 5.5rem !important; }
+  .hero-inner { flex-direction: column !important; text-align: center !important; gap: 0 !important; }
+  .hero-logo { display: none !important; }
+  .hero-btns { justify-content: center !important; }
+  .hero-stats { gap: 1.5rem !important; flex-wrap: wrap; justify-content: center; bottom: 1.25rem !important; }
+
+  /* Footer */
+  .footer-grid { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
+
+  /* Contact page */
+  .contact-grid { grid-template-columns: 1fr !important; gap: 2rem !important; }
+}

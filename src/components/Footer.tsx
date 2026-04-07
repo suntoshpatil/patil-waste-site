@@ -5,7 +5,7 @@ export default function Footer() {
   return (
     <footer style={{ background:'#0f0f0f', borderTop:'1px solid rgba(255,255,255,0.07)', padding:'3.5rem 2.5rem 2rem', color:'rgba(255,255,255,0.45)', fontSize:'0.82rem' }}>
       <div style={{ maxWidth:'1100px', margin:'0 auto' }}>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'2rem', marginBottom:'2.5rem' }}>
+        <div className="footer-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'2rem', marginBottom:'2.5rem' }}>
           <div>
             <Logo height={52} />
             <p style={{ marginTop:'1rem', lineHeight:1.7 }}>Reliable curbside trash &amp; recycling pickup across southern New Hampshire.</p>

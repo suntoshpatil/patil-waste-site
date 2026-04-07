@@ -15,7 +15,7 @@ export default function Services() {
       </div>
       <section className="section" style={{background:'var(--cream)'}}>
         <div className="section-inner">
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2rem',maxWidth:'840px',margin:'0 auto 3rem'}}>
+          <div className="mobile-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2rem',maxWidth:'840px',margin:'0 auto 3rem'}}>
             <div className="plan-card">
               <div className="plan-type">Curbside Trash Only</div>
               <div className="d3" style={{color:"#fff"}}>Standard Pick-up</div>
@@ -49,7 +49,7 @@ export default function Services() {
             <span className="eyebrow">Extra Bag Charges</span>
             <div className="d3" style={{color:'var(--white)',marginBottom:'0.4rem'}}>Over Your Limit?</div>
             <p style={{fontSize:'0.82rem',color:'rgba(255,255,255,0.45)',marginBottom:'1.25rem'}}>Extra bags are charged per unit and added as a line item on your next invoice.</p>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2rem'}}>
+            <div className="mobile-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2rem'}}>
               <div>
                 <p style={{fontSize:'0.7rem',fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--green-light)',marginBottom:'0.6rem'}}>With advance notice</p>
                 <div style={{fontSize:'0.85rem',color:'rgba(255,255,255,0.7)',padding:'0.4rem 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>Extra 13-gal bag — $2.00 each</div>
@@ -63,7 +63,7 @@ export default function Services() {
             </div>
           </div>
           <div style={{maxWidth:'820px',margin:'0 auto'}}>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem'}}>
+            <div className="mobile-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem'}}>
               {[['Junk Removal','Furniture, appliances, electronics, construction debris, moving cleanouts.'],['Yard Waste','Leaves, logs, branches, and landscaping debris.']].map(([title, desc]) => (
                 <div key={title} style={{background:'var(--cream)',borderRadius:'10px',padding:'2rem',border:'1px solid var(--border-light)',transition:'transform 0.2s'}}>
                   <div className="d3" style={{marginBottom:'0.4rem'}}>{title}</div>

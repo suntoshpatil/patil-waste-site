@@ -46,7 +46,7 @@ export default function Contact() {
         </div>
       </div>
       <section className="section" style={{background:"var(--black)"}}>
-        <div className="section-inner" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4rem",maxWidth:"900px"}}>
+        <div className="section-inner contact-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4rem",maxWidth:"900px"}}>
           <div>
             <div style={{marginBottom:"2rem"}}>
               {[["📞","Phone","(802) 416-9484"],["✉️","Email","patilwasteremoval@gmail.com"],["📍","Address","80 Palomino Ln, Bedford NH 03110"],["🕐","Hours","Mon–Fri: 7am–6pm"]].map(([icon, label, val]) => (
@@ -66,7 +66,7 @@ export default function Contact() {
               </div>
             ) : (
               <form onSubmit={submit}>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
+                <div className="mobile-stack" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"1rem"}}>
                   <div className="f-grp"><label>First Name *</label><input name="fn" placeholder="First" /></div>
                   <div className="f-grp"><label>Last Name</label><input name="ln" placeholder="Last" /></div>
                 </div>

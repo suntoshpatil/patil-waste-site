@@ -113,7 +113,7 @@ export default function Signup() {
           ) : (
             <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "0" }}>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div className="mobile-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div className="f-grp"><label>First Name *</label><input name="fn" placeholder="First" {...inp} /></div>
                 <div className="f-grp"><label>Last Name *</label><input name="ln" placeholder="Last" {...inp} /></div>
               </div>
@@ -133,7 +133,7 @@ export default function Signup() {
                 </select>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div className="mobile-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div className="f-grp">
                   <label>Service Type *</label>
                   <select name="plan" {...sel}>
@@ -178,7 +178,7 @@ export default function Signup() {
                 </select>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              <div className="mobile-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div className="f-grp">
                   <label>Bin Situation</label>
                   <select name="bin_situation" {...sel}>
