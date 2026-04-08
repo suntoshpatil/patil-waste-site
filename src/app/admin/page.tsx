@@ -1653,17 +1653,18 @@ export default function Admin() {
                         {isDirty && (
                           <Btn small onClick={async () => {
                             setCatalogSaving(item.id)
-                            const patch: any = {}
-                            if (edits.estimate_min !== undefined) patch.estimate_min = parseFloat(edits.estimate_min)
-                            if (edits.estimate_max !== undefined) patch.estimate_max = parseFloat(edits.estimate_max)
-                            if (edits.fixed_price !== undefined) patch.fixed_price = parseFloat(edits.fixed_price)
-                            if (edits.is_active !== undefined) patch.is_active = edits.is_active
-                            await sb(`bulky_item_catalog?id=eq.${item.id}`, { method:'PATCH', body: patch, prefer:'return=minimal' })
-                            const updated = await sb('bulky_item_catalog?select=*&order=name.asc').catch(()=>[])
-                            setCatalog(updated)
-                            setCatalogEdits(p => { const n = {...p}; delete n[item.id]; return n })
+                            try {
+                              const patch: any = {}
+                              if (edits.estimate_min !== undefined) patch.estimate_min = parseFloat(edits.estimate_min)
+                              if (edits.estimate_max !== undefined) patch.estimate_max = parseFloat(edits.estimate_max)
+                              if (edits.is_active !== undefined) patch.is_active = edits.is_active
+                              await sb(`bulky_item_catalog?id=eq.${item.id}`, { method:'PATCH', body: patch, prefer:'return=minimal' })
+                              const updated = await sb('bulky_item_catalog?select=*&order=name.asc')
+                              setCatalog(updated)
+                              setCatalogEdits(p => { const n = {...p}; delete n[item.id]; return n })
+                              showToast('Price updated')
+                            } catch(e:any) { showToast(e.message || 'Save failed', 'error') }
                             setCatalogSaving(null)
-                            showToast('Price updated')
                           }} disabled={catalogSaving === item.id}>
                             {catalogSaving === item.id ? 'Saving…' : 'Save'}
                           </Btn>
@@ -1676,15 +1677,17 @@ export default function Admin() {
                       <div style={{ marginTop:'0.75rem' }}>
                         <Btn small onClick={async () => {
                           setCatalogSaving(item.id)
-                          const patch: any = {}
-                          if (edits.fixed_price !== undefined) patch.fixed_price = parseFloat(edits.fixed_price)
-                          if (edits.is_active !== undefined) patch.is_active = edits.is_active
-                          await sb(`bulky_item_catalog?id=eq.${item.id}`, { method:'PATCH', body: patch, prefer:'return=minimal' })
-                          const updated = await sb('bulky_item_catalog?select=*&order=name.asc').catch(()=>[])
-                          setCatalog(updated)
-                          setCatalogEdits(p => { const n = {...p}; delete n[item.id]; return n })
+                          try {
+                            const patch: any = {}
+                            if (edits.fixed_price !== undefined) patch.fixed_price = parseFloat(edits.fixed_price)
+                            if (edits.is_active !== undefined) patch.is_active = edits.is_active
+                            await sb(`bulky_item_catalog?id=eq.${item.id}`, { method:'PATCH', body: patch, prefer:'return=minimal' })
+                            const updated = await sb('bulky_item_catalog?select=*&order=name.asc')
+                            setCatalog(updated)
+                            setCatalogEdits(p => { const n = {...p}; delete n[item.id]; return n })
+                            showToast('Price updated')
+                          } catch(e:any) { showToast(e.message || 'Save failed', 'error') }
                           setCatalogSaving(null)
-                          showToast('Price updated')
                         }} disabled={catalogSaving === item.id}>
                           {catalogSaving === item.id ? 'Saving…' : 'Save'}
                         </Btn>
