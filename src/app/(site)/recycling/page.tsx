@@ -1,4 +1,8 @@
-export const metadata = { title: 'Recycling | Patil Waste Removal' }
+export const metadata = {
+  title: 'Recycling Pickup — What We Accept',
+  description: 'Learn what we accept for recycling pickup in Bedford, Merrimack, Amherst & Milford NH. Cardboard, plastics, metals, paper and more. Add recycling to your plan for $52/mo.',
+  alternates: { canonical: 'https://patilwasteremoval.com/recycling' },
+}
 import Link from 'next/link'
 
 export default function Recycling() {

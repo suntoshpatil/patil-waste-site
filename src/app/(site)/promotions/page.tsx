@@ -1,5 +1,9 @@
 import Link from "next/link"
-export const metadata = { title: "Promotions | Patil Waste Removal" }
+export const metadata = {
+  title: 'Current Promotions & Referral Program',
+  description: 'Save on trash pickup in Bedford NH — referral credits, seasonal deals and more from Patil Waste Removal. Refer a neighbor and earn a discount on your next bill.',
+  alternates: { canonical: 'https://patilwasteremoval.com/promotions' },
+}
 
 export default function Promotions() {
   const steps = [

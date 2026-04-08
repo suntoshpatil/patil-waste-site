@@ -1,6 +1,10 @@
 
 import Link from 'next/link'
-export const metadata = { title: 'Curbside Services | Patil Waste Removal' }
+export const metadata = {
+  title: 'Curbside Trash & Recycling Pickup Services',
+  description: 'Weekly curbside trash pickup from $42/mo and recycling from $52/mo in Bedford, Merrimack, Amherst & Milford NH. Bin rentals available. No contracts.',
+  alternates: { canonical: 'https://patilwasteremoval.com/services' },
+}
 export default function Services() {
   return (
     <>
