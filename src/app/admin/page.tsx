@@ -158,6 +158,9 @@ export default function Admin() {
   const [catalogSaving, setCatalogSaving] = useState<string|null>(null)
   const [servicePriceEdits, setServicePriceEdits] = useState<Record<string,string>>({})
   const [servicePriceSaving, setServicePriceSaving] = useState<string|null>(null)
+  const [showAddItem, setShowAddItem] = useState(false)
+  const [newItem, setNewItem] = useState({ name:'', estimate_min:'', estimate_max:'' })
+  const [addingItem, setAddingItem] = useState(false)
 
   const showToast = (msg: string, type = 'success') => { setToast(msg); setToastType(type); setTimeout(() => setToast(''), 3500) }
 
@@ -1613,8 +1616,51 @@ export default function Admin() {
                 )
               })}
 
-              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.2rem', letterSpacing:'0.05em', color:'#6b7280', marginBottom:'0.75rem', marginTop:'1.75rem' }}>🚛 Junk Removal Item Pricing</div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'1.75rem', marginBottom:'0.75rem' }}>
+                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.2rem', letterSpacing:'0.05em', color:'#6b7280' }}>🚛 Junk Removal Item Pricing</div>
+                <Btn small onClick={() => { setShowAddItem(v => !v); setNewItem({ name:'', estimate_min:'', estimate_max:'' }) }}>
+                  {showAddItem ? 'Cancel' : '+ Add Item'}
+                </Btn>
+              </div>
               <p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.4)', marginBottom:'1rem' }}>These appear on the public Junk Removal page and are used for pickup addon quotes.</p>
+
+              {/* Add item form */}
+              {showAddItem && (
+                <div style={{ background:'rgba(46,125,50,0.06)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'8px', padding:'1.25rem', marginBottom:'1rem' }}>
+                  <div style={{ fontWeight:700, fontSize:'0.88rem', color:'rgba(255,255,255,0.7)', marginBottom:'1rem' }}>New Item</div>
+                  <div style={{ marginBottom:'0.75rem' }}>
+                    <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Item Name</label>
+                    <input value={newItem.name} onChange={e => setNewItem(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Hot Tub"
+                      style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.55rem 0.75rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%' }} />
+                  </div>
+                  <div style={{ display:'flex', gap:'1rem', marginBottom:'1rem' }}>
+                    <div style={{ flex:1 }}>
+                      <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Est. Min ($)</label>
+                      <input type='number' value={newItem.estimate_min} onChange={e => setNewItem(p => ({ ...p, estimate_min: e.target.value }))} placeholder="0"
+                        style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.55rem 0.75rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%' }} />
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Est. Max ($)</label>
+                      <input type='number' value={newItem.estimate_max} onChange={e => setNewItem(p => ({ ...p, estimate_max: e.target.value }))} placeholder="0"
+                        style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.55rem 0.75rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%' }} />
+                    </div>
+                  </div>
+                  <Btn disabled={addingItem || !newItem.name || !newItem.estimate_min || !newItem.estimate_max} onClick={async () => {
+                    setAddingItem(true)
+                    try {
+                      await sb('bulky_item_catalog', { method:'POST', body:{ name: newItem.name.trim(), estimate_min: parseFloat(newItem.estimate_min), estimate_max: parseFloat(newItem.estimate_max), is_fixed_price: false, is_active: true }, prefer:'return=minimal' })
+                      const updated = await sb('bulky_item_catalog?select=*&order=name.asc')
+                      setCatalog(updated)
+                      setNewItem({ name:'', estimate_min:'', estimate_max:'' })
+                      setShowAddItem(false)
+                      showToast('Item added')
+                    } catch(e:any) { showToast(e.message || 'Failed to add item', 'error') }
+                    setAddingItem(false)
+                  }}>
+                    {addingItem ? 'Adding…' : 'Add to Catalog'}
+                  </Btn>
+                </div>
+              )}
 
               {catalog.length === 0 ? (
                 <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', padding:'2rem', textAlign:'center', color:'#6b7280', fontSize:'0.88rem' }}>No catalog items found</div>
