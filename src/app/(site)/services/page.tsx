@@ -1,5 +1,6 @@
 
 import Link from 'next/link'
+export const dynamic = 'force-dynamic'
 export const metadata = {
   title: 'Curbside Trash & Recycling Pickup Services',
   description: 'Weekly curbside trash pickup and recycling in Bedford, Merrimack, Amherst & Milford NH. Bin rentals available. No contracts.',

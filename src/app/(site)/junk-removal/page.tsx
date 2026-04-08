@@ -1,6 +1,6 @@
 /* eslint-disable */
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 async function compressImage(file: File, maxPx = 1200, quality = 0.75): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -79,6 +79,17 @@ export default function JunkRemoval() {
   const [photos, setPhotos] = useState<string[]>([])
   const [photoLoading, setPhotoLoading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [catalogItems, setCatalogItems] = useState<{name:string, range:string}[]>([])
+
+  useEffect(() => {
+    sb('bulky_item_catalog?select=name,estimate_min,estimate_max,fixed_price,is_fixed_price&is_active=eq.true&is_fixed_price=eq.false&order=name.asc')
+      .then((items: any[]) => {
+        setCatalogItems(items.map(item => ({
+          name: item.name,
+          range: `$${item.estimate_min} – $${item.estimate_max}`
+        })))
+      }).catch(() => {})
+  }, [])
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }))
 
@@ -265,15 +276,7 @@ export default function JunkRemoval() {
           </p>
         </div>
         <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', overflow:'hidden' }}>
-          {[
-            { name:'Couch / Sofa',                  range:'$40 – $75' },
-            { name:'Appliance (washer/dryer/fridge)', range:'$40 – $80' },
-            { name:'Chair / Recliner',               range:'$20 – $40' },
-            { name:'Desk / Table',                   range:'$25 – $50' },
-            { name:'Exercise Equipment',             range:'$30 – $60' },
-            { name:'Mattress / Box Spring',          range:'$30 – $50' },
-            { name:'TV / Monitor',                   range:'$20 – $40' },
-          ].map((item, i, arr) => (
+          {catalogItems.map((item, i, arr) => (
             <div key={item.name} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.9rem 1.5rem', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
               <span style={{ fontSize:'0.92rem', color:'rgba(255,255,255,0.75)' }}>{item.name}</span>
               <span style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.05rem', letterSpacing:'0.04em', color:'#4caf50' }}>{item.range}</span>
