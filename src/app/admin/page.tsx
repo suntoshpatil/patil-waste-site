@@ -24,10 +24,13 @@ async function sb(path: string, opts: { method?: string; body?: object; prefer?:
   return data
 }
 
-function Badge({ status }: { status: string }) {
-  const colors: Record<string, string> = { active:'#16a34a', pending:'#d97706', contract_pending:'#7c3aed', paused:'#2563eb', cancelled:'#dc2626', overdue:'#dc2626', paid:'#16a34a', draft:'#6b7280', sent:'#d97706', new:'#d97706' }
-  const c = colors[status] || '#6b7280'
-  return <span style={{ background:`${c}22`, color:c, padding:'0.15rem 0.5rem', borderRadius:'20px', fontSize:'0.68rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{status}</span>
+function Badge({ status, contractAccepted }: { status: string; contractAccepted?: boolean }) {
+  // An active customer who hasn't signed their contract yet gets a distinct badge
+  const effectiveStatus = (status === 'active' && contractAccepted === false) ? 'awaiting_contract' : status
+  const colors: Record<string, string> = { active:'#16a34a', awaiting_contract:'#7c3aed', pending:'#d97706', contract_pending:'#7c3aed', paused:'#2563eb', cancelled:'#dc2626', overdue:'#dc2626', paid:'#16a34a', draft:'#6b7280', sent:'#d97706', new:'#d97706' }
+  const labels: Record<string, string> = { awaiting_contract:'Awaiting Contract' }
+  const c = colors[effectiveStatus] || '#6b7280'
+  return <span style={{ background:`${c}22`, color:c, padding:'0.15rem 0.5rem', borderRadius:'20px', fontSize:'0.68rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{labels[effectiveStatus] || effectiveStatus}</span>
 }
 
 const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '—'
@@ -919,7 +922,7 @@ export default function Admin() {
                       <tr key={c.id} onClick={()=>{setSelected(c);setView('customers');loadSelectedBins(c.id)}} style={{ borderBottom:'1px solid rgba(255,255,255,0.04)', cursor:'pointer' }}>
                         <td style={{ padding:'0.85rem 1rem', fontWeight:600 }}>{c.first_name} {c.last_name}</td>
                         <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.5)', textTransform:'capitalize' }}>{c.town}</td>
-                        <td style={{ padding:'0.85rem 1rem' }}><Badge status={c.status} /></td>
+                        <td style={{ padding:'0.85rem 1rem' }}><Badge status={c.status} contractAccepted={(c as any).contract_accepted} /></td>
                         <td style={{ padding:'0.85rem 1rem', color:'rgba(255,255,255,0.5)' }}>{fmt(c.created_at)}</td>
                       </tr>
                     ))}
@@ -981,7 +984,7 @@ export default function Admin() {
                               : <span style={{ background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)', padding:'0.15rem 0.5rem', borderRadius:'10px' }}>Monthly</span>
                             }
                           </td>
-                          <td style={{ padding:'0.85rem 1rem' }}><Badge status={c.status} /></td>
+                          <td style={{ padding:'0.85rem 1rem' }}><Badge status={c.status} contractAccepted={(c as any).contract_accepted} /></td>
                           <td style={{ padding:'0.85rem 1rem' }}>
                             <div style={{ display:'flex', gap:'0.4rem' }}>
                               <Btn small onClick={()=>{setSelected(c);setEditData({...c});setEditMode(false);setConfirmDelete(false);loadSelectedBins(c.id)}}>View</Btn>

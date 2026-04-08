@@ -14,7 +14,10 @@ const SignupSchema = z.object({
   last_name: z.string().trim().max(50).optional().or(z.literal('')),
   email: z.string().trim().email('Invalid email').max(200),
   phone: z.string().trim().max(30).optional().or(z.literal('')),
-  service_address: z.string().trim().min(5, 'Address is required').max(300),
+  street_address: z.string().trim().min(3, 'Street address is required').max(200),
+  city: z.string().trim().min(1, 'City is required').max(100),
+  state: z.string().trim().max(50).optional().or(z.literal('')),
+  zip: z.string().trim().max(10).optional().or(z.literal('')),
   town: z.string().trim().min(1, 'Town is required').max(50),
   plan: z.enum(['standard', 'recycling', 'info']),
   billing_cycle: z.enum(['monthly', 'quarterly']).optional(),
@@ -76,12 +79,18 @@ export async function POST(req: Request) {
       .filter(Boolean)
       .join(' | ')
 
+    // Combine address parts into a single full address string for contracts
+    // and admin display: "123 Main St, Bedford, NH 03110"
+    const statePart = d.state?.trim() || 'NH'
+    const zipPart = d.zip?.trim() ? ` ${d.zip.trim()}` : ''
+    const fullAddress = `${d.street_address}, ${d.city}, ${statePart}${zipPart}`
+
     const row = {
       first_name: cap(d.first_name),
       last_name: cap(d.last_name || ''),
       email: d.email.toLowerCase(),
       phone: d.phone || null,
-      service_address: d.service_address,
+      service_address: fullAddress,
       town: d.town,
       status: 'pending',
       payment_method: d.payment_method || null,
@@ -101,8 +110,25 @@ export async function POST(req: Request) {
     // Send welcome email — must be awaited before returning so the
     // serverless function doesn't terminate before Resend finishes.
     if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== 're_placeholder') {
+      // Fetch actual plan name + price from the services table
+      const PLAN_SERVICE: Record<string, string> = {
+        standard: 'Curbside Trash',
+        recycling: 'Trash & Recycling',
+      }
+      let planDisplay = d.plan === 'info' ? 'Information Request' : (PLAN_SERVICE[d.plan] || 'Service Plan')
+      try {
+        const serviceName = PLAN_SERVICE[d.plan]
+        if (serviceName) {
+          const services = await sbServer(`services?name=eq.${encodeURIComponent(serviceName)}&select=name,base_price_monthly&limit=1`)
+          const svc = services?.[0]
+          if (svc?.base_price_monthly) {
+            planDisplay = `${svc.name} — $${Number(svc.base_price_monthly).toFixed(0)}/mo`
+          }
+        }
+      } catch { /* non-fatal — fall back to plan label */ }
+
       const customerForEmail = { first_name: row.first_name, last_name: row.last_name, email: row.email }
-      await resend.emails.send(signupConfirmationEmail(customerForEmail, 'Service Plan', row.start_date || '')).catch((err: unknown) => {
+      await resend.emails.send(signupConfirmationEmail(customerForEmail, planDisplay, row.start_date || '')).catch((err: unknown) => {
         console.error('[signup] email send failed:', err)
       })
     }

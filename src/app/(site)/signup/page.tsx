@@ -35,7 +35,10 @@ export default function Signup() {
       last_name: g("ln"),
       email: g("em"),
       phone: g("ph"),
-      service_address: g("addr"),
+      street_address: g("addr"),
+      city: g("city"),
+      state: g("state") || "NH",
+      zip: g("zip"),
       town: g("town"),
       plan: g("plan"),
       billing_cycle: g("billing_cycle"),
@@ -50,7 +53,7 @@ export default function Signup() {
       rent_recycling: checked("rent_recycling"),
     }
 
-    if (!payload.first_name || !payload.email || !payload.service_address || !payload.town || !payload.plan) {
+    if (!payload.first_name || !payload.email || !payload.street_address || !payload.city || !payload.town || !payload.plan) {
       setErr("Please fill in all required fields."); return
     }
 
@@ -109,7 +112,12 @@ export default function Signup() {
               <div className="f-grp"><label>Email *</label><input name="em" type="email" placeholder="you@email.com" {...inp} /></div>
               <div className="f-grp"><label>Phone</label><input name="ph" type="tel" placeholder="(603) 000-0000" {...inp} /></div>
 
-              <div className="f-grp"><label>Service Address *</label><input name="addr" placeholder="123 Main St, Bedford, NH" {...inp} /></div>
+              <div className="f-grp"><label>Street Address *</label><input name="addr" placeholder="123 Main St" {...inp} /></div>
+              <div className="mobile-stack" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "1rem" }}>
+                <div className="f-grp"><label>City *</label><input name="city" placeholder="Bedford" {...inp} /></div>
+                <div className="f-grp"><label>State</label><input name="state" placeholder="NH" defaultValue="NH" {...inp} /></div>
+                <div className="f-grp"><label>ZIP</label><input name="zip" placeholder="03110" {...inp} /></div>
+              </div>
               <div className="f-grp">
                 <label>Town *</label>
                 <select name="town" {...sel}>
