@@ -160,6 +160,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ customer
       },
     })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('[contracts/[customerId]] error:', e)
+    return NextResponse.json({ error: 'Failed to generate contract' }, { status: 500 })
   }
 }

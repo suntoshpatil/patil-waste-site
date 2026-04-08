@@ -141,6 +141,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ ok: true, generated, skipped, errors })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('[cron/generate-invoices] error:', e)
+    return NextResponse.json({ error: 'Invoice generation cron failed' }, { status: 500 })
   }
 }

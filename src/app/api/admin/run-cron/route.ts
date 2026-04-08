@@ -20,5 +20,8 @@ export async function POST(req: Request) {
     })
     const data = await res.json()
     return NextResponse.json(data)
-  } catch (e: any) { return NextResponse.json({ error: e.message }, { status: 500 }) }
+  } catch (e: any) {
+    console.error('[admin/run-cron] error:', e)
+    return NextResponse.json({ error: 'Failed to run cron' }, { status: 500 })
+  }
 }

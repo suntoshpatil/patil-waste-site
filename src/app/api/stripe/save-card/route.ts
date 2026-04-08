@@ -43,6 +43,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('[stripe/save-card] error:', e)
+    return NextResponse.json({ error: 'Failed to save card' }, { status: 500 })
   }
 }

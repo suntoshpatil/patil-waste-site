@@ -63,6 +63,7 @@ export async function POST(req: Request) {
     // Mark invoice as paid on success via webhook (or optimistically here)
     return NextResponse.json({ url: session.url })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('[stripe/checkout-session] error:', e)
+    return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 })
   }
 }

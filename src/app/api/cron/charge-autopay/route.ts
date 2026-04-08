@@ -87,6 +87,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ ok: true, charged, failed, skipped, errors })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('[cron/charge-autopay] error:', e)
+    return NextResponse.json({ error: 'Autopay cron failed' }, { status: 500 })
   }
 }

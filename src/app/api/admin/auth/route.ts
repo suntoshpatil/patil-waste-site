@@ -13,7 +13,10 @@ export async function POST(req: Request) {
     if (password !== correct()) return NextResponse.json({ ok: false }, { status: 401 })
     const token = Buffer.from(`admin:${Date.now()}:${correct()}`).toString('base64')
     return NextResponse.json({ ok: true, token })
-  } catch (e: any) { return NextResponse.json({ error: e.message }, { status: 500 }) }
+  } catch (e: any) {
+    console.error('[admin/auth] error:', e)
+    return NextResponse.json({ error: 'Authentication failed' }, { status: 500 })
+  }
 }
 
 export async function GET(req: Request) {

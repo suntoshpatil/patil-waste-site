@@ -41,6 +41,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: session.url })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('[stripe/setup-intent] error:', e)
+    return NextResponse.json({ error: 'Failed to start card setup' }, { status: 500 })
   }
 }
