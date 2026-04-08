@@ -161,6 +161,9 @@ export default function Admin() {
   const [showAddItem, setShowAddItem] = useState(false)
   const [newItem, setNewItem] = useState({ name:'', estimate_min:'', estimate_max:'' })
   const [addingItem, setAddingItem] = useState(false)
+  const [showAddAddon, setShowAddAddon] = useState(false)
+  const [newAddon, setNewAddon] = useState({ name:'', base_price_monthly:'' })
+  const [addingAddon, setAddingAddon] = useState(false)
 
   const showToast = (msg: string, type = 'success') => { setToast(msg); setToastType(type); setTimeout(() => setToast(''), 3500) }
 
@@ -1607,6 +1610,81 @@ export default function Admin() {
                           setServicePriceEdits(p => { const n = {...p}; delete n[svc.id]; return n })
                           setServicePriceSaving(null)
                           showToast(`${svc.name} price updated`)
+                        }}>
+                          {servicePriceSaving === svc.id ? 'Saving…' : 'Save'}
+                        </Btn>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Add-On Services */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'1.75rem', marginBottom:'0.75rem' }}>
+                <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.2rem', letterSpacing:'0.05em', color:'#6b7280' }}>➕ Customer Add-Ons</div>
+                <Btn small onClick={() => { setShowAddAddon(v => !v); setNewAddon({ name:'', base_price_monthly:'' }) }}>
+                  {showAddAddon ? 'Cancel' : '+ New Add-On'}
+                </Btn>
+              </div>
+              <p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.4)', marginBottom:'1rem' }}>These appear in the customer portal "Request Service" section. Edit prices or add new ones.</p>
+
+              {showAddAddon && (
+                <div style={{ background:'rgba(46,125,50,0.06)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'8px', padding:'1.25rem', marginBottom:'1rem' }}>
+                  <div style={{ fontWeight:700, fontSize:'0.88rem', color:'rgba(255,255,255,0.7)', marginBottom:'1rem' }}>New Add-On Service</div>
+                  <div style={{ display:'flex', gap:'1rem', marginBottom:'0.75rem', flexWrap:'wrap' }}>
+                    <div style={{ flex:2, minWidth:'160px' }}>
+                      <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Add-On Name</label>
+                      <input value={newAddon.name} onChange={e => setNewAddon(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Extra Recycling Bin"
+                        style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.55rem 0.75rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%' }} />
+                    </div>
+                    <div style={{ flex:1, minWidth:'100px' }}>
+                      <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Price ($/mo)</label>
+                      <input type='number' step='0.01' value={newAddon.base_price_monthly} onChange={e => setNewAddon(p => ({ ...p, base_price_monthly: e.target.value }))} placeholder="0.00"
+                        style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.55rem 0.75rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'100%' }} />
+                    </div>
+                  </div>
+                  <Btn disabled={addingAddon || !newAddon.name || !newAddon.base_price_monthly} onClick={async () => {
+                    setAddingAddon(true)
+                    try {
+                      await sb('services', { method:'POST', body:{ name: newAddon.name.trim(), base_price_monthly: parseFloat(newAddon.base_price_monthly), type:'addon', is_active: true }, prefer:'return=minimal' })
+                      const updated = await sb('services?select=id,name,base_price_monthly,type&is_active=eq.true&order=base_price_monthly.asc')
+                      setServicesList(updated)
+                      setNewAddon({ name:'', base_price_monthly:'' })
+                      setShowAddAddon(false)
+                      showToast('Add-on created')
+                    } catch(e:any) { showToast(e.message || 'Failed to create add-on', 'error') }
+                    setAddingAddon(false)
+                  }}>
+                    {addingAddon ? 'Creating…' : 'Create Add-On'}
+                  </Btn>
+                </div>
+              )}
+
+              {servicesList.filter((s:any) => s.type === 'addon').map((svc:any) => {
+                const editVal = servicePriceEdits[svc.id]
+                const isDirty = editVal !== undefined
+                return (
+                  <div key={svc.id} style={{ background:'#1a1a1a', border:`1px solid ${isDirty ? 'rgba(46,125,50,0.3)' : 'rgba(255,255,255,0.07)'}`, borderRadius:'8px', padding:'1.1rem 1.25rem', marginBottom:'0.6rem', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'1rem' }}>
+                    <div style={{ fontSize:'0.9rem', fontWeight:600, color:'rgba(255,255,255,0.8)', flex:1 }}>{svc.name}</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'0.4rem' }}>
+                        <span style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.4)' }}>$</span>
+                        <input type='number' step='0.01' value={editVal ?? svc.base_price_monthly}
+                          onChange={e => setServicePriceEdits(p => ({ ...p, [svc.id]: e.target.value }))}
+                          style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.45rem 0.65rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'90px' }} />
+                        <span style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.35)' }}>/mo</span>
+                      </div>
+                      {isDirty && (
+                        <Btn small disabled={servicePriceSaving === svc.id} onClick={async () => {
+                          setServicePriceSaving(svc.id)
+                          try {
+                            await sb(`services?id=eq.${svc.id}`, { method:'PATCH', body:{ base_price_monthly: parseFloat(editVal) }, prefer:'return=minimal' })
+                            const updated = await sb('services?select=id,name,base_price_monthly,type&is_active=eq.true&order=base_price_monthly.asc')
+                            setServicesList(updated)
+                            setServicePriceEdits(p => { const n = {...p}; delete n[svc.id]; return n })
+                            showToast(`${svc.name} price updated`)
+                          } catch(e:any) { showToast(e.message || 'Save failed', 'error') }
+                          setServicePriceSaving(null)
                         }}>
                           {servicePriceSaving === svc.id ? 'Saving…' : 'Save'}
                         </Btn>
