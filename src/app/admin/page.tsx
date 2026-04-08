@@ -104,6 +104,7 @@ export default function Admin() {
   const [serviceRequests, setServiceRequests] = useState<any[]>([])
   const [skipRequests, setSkipRequests] = useState<any[]>([])
   const [jobRequests, setJobRequests] = useState<any[]>([])
+  const [jobQuoteInputs, setJobQuoteInputs] = useState<Record<string, {price?:string;date?:string;time?:string}>>({ })
   const [pickupAddons, setPickupAddons] = useState<any[]>([])
   const [noticeMsg, setNoticeMsg] = useState('')
   const [allNotices, setAllNotices] = useState<any[]>([])
@@ -1440,25 +1441,33 @@ export default function Admin() {
               <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'1.2rem', letterSpacing:'0.05em', color:'#6b7280', marginBottom:'0.75rem', marginTop:'1.5rem' }}>🚛 Junk Removal &amp; Yard Cleanup Requests</div>
               {jobRequests.length === 0 ? (
                 <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', padding:'2rem', textAlign:'center', color:'#6b7280', fontSize:'0.88rem' }}>No job requests yet</div>
-              ) : jobRequests.map((j:any) => (
-                <div key={j.id} style={{ background:'#1a1a1a', border:`1px solid ${j.status==='new'?'rgba(255,179,0,0.2)':'rgba(255,255,255,0.07)'}`, borderRadius:'8px', padding:'1.25rem', marginBottom:'0.75rem' }}>
+              ) : jobRequests.map((j:any) => {
+                const jqKey = j.id
+                const jqPrice = (jobQuoteInputs[jqKey]?.price ?? (j.quote_price != null ? String(j.quote_price) : ''))
+                const jqDate  = (jobQuoteInputs[jqKey]?.date  ?? (j.pickup_date  || ''))
+                const jqTime  = (jobQuoteInputs[jqKey]?.time  ?? (j.pickup_time  || ''))
+                const setJQ = (field: string, val: string) =>
+                  setJobQuoteInputs((p:any) => ({ ...p, [jqKey]: { ...p[jqKey], [field]: val } }))
+                const statusColor = j.status==='new'?'#f59e0b':j.status==='quoted'?'#60a5fa':j.status==='confirmed'?'#4caf50':j.status==='completed'?'#6b7280':'#ef4444'
+                const statusBg   = j.status==='new'?'rgba(245,158,11,0.1)':j.status==='quoted'?'rgba(96,165,250,0.1)':j.status==='confirmed'?'rgba(76,175,80,0.1)':j.status==='completed'?'rgba(107,114,128,0.1)':'rgba(239,68,68,0.1)'
+                return (
+                <div key={j.id} style={{ background:'#1a1a1a', border:`1px solid ${j.status==='new'?'rgba(255,179,0,0.2)':j.status==='quoted'?'rgba(96,165,250,0.2)':j.status==='confirmed'?'rgba(76,175,80,0.2)':'rgba(255,255,255,0.07)'}`, borderRadius:'8px', padding:'1.25rem', marginBottom:'0.75rem' }}>
+                  {/* Header row */}
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'0.75rem' }}>
                     <div>
                       <div style={{ fontWeight:700, fontSize:'1rem' }}>{j.name}</div>
                       <div style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.5)' }}>{j.phone}{j.email ? ` · ${j.email}` : ''}</div>
                       <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.4)', marginTop:'0.15rem' }}>{j.address}</div>
-                      <button onClick={async()=>{ await sb(`job_requests?id=eq.${j.id}`,{method:'DELETE',prefer:'return=minimal'}); showToast('Job request removed'); loadAll() }}
-                        style={{ marginTop:'0.5rem', background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:'4px', color:'#f87171', padding:'0.2rem 0.55rem', cursor:'pointer', fontSize:'0.72rem', fontFamily:'inherit' }}>🗑️ Remove</button>
                     </div>
                     <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'0.3rem' }}>
-                      <span style={{ fontSize:'0.7rem', fontWeight:700, textTransform:'uppercase', padding:'0.2rem 0.6rem', borderRadius:'4px',
-                        color:j.status==='new'?'#f59e0b':j.status==='completed'?'#4caf50':'#9ca3af',
-                        background:j.status==='new'?'rgba(245,158,11,0.1)':j.status==='completed'?'rgba(76,175,80,0.1)':'rgba(156,163,175,0.1)'
-                      }}>{j.status}</span>
+                      <span style={{ fontSize:'0.7rem', fontWeight:700, textTransform:'uppercase', padding:'0.2rem 0.6rem', borderRadius:'4px', color:statusColor, background:statusBg }}>{j.status}</span>
                       <span style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.3)', textTransform:'capitalize' }}>{j.job_type?.replace('_',' ')}</span>
                     </div>
                   </div>
+
+                  {/* Description */}
                   <div style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.6)', marginBottom:'0.75rem', background:'rgba(255,255,255,0.03)', borderRadius:'5px', padding:'0.6rem 0.75rem' }}>{j.description}</div>
+
                   {/* Photos */}
                   {Array.isArray(j.photo_data) && j.photo_data.length > 0 && (
                     <div style={{ marginBottom:'0.75rem' }}>
@@ -1472,17 +1481,89 @@ export default function Admin() {
                       </div>
                     </div>
                   )}
-                  {j.preferred_date && <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.75rem' }}>Preferred: {new Date(j.preferred_date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>}
-                  <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
-                    {['new','quoted','scheduled','completed','cancelled'].filter(s=>s!==j.status).map(s => (
-                      <button key={s} onClick={async()=>{ await sb(`job_requests?id=eq.${j.id}`,{method:'PATCH',body:{status:s},prefer:'return=minimal'}); showToast(`Marked as ${s}`); loadAll() }}
-                        style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.6)', borderRadius:'4px', padding:'0.3rem 0.7rem', cursor:'pointer', fontSize:'0.72rem', textTransform:'capitalize', fontFamily:'inherit' }}>
-                        → {s}
-                      </button>
-                    ))}
-                  </div>
+
+                  {/* Customer's preferred date */}
+                  {j.preferred_date && <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.75rem' }}>Customer preferred: {new Date(j.preferred_date + 'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>}
+
+                  {/* ── Quote inputs ── */}
+                  {j.status !== 'completed' && j.status !== 'cancelled' && (
+                    <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'6px', padding:'0.9rem', marginBottom:'0.75rem' }}>
+                      <div style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.35)', marginBottom:'0.6rem' }}>Quote &amp; Schedule</div>
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0.5rem', marginBottom:'0.6rem' }}>
+                        <div>
+                          <label style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.35)', display:'block', marginBottom:'0.25rem' }}>Quote Price ($)</label>
+                          <input type='number' min='0' step='5' value={jqPrice}
+                            onChange={e => setJQ('price', e.target.value)}
+                            placeholder='e.g. 150'
+                            style={{ width:'100%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'4px', padding:'0.4rem 0.6rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', boxSizing:'border-box' as const }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.35)', display:'block', marginBottom:'0.25rem' }}>Pickup Date</label>
+                          <input type='date' value={jqDate}
+                            onChange={e => setJQ('date', e.target.value)}
+                            style={{ width:'100%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'4px', padding:'0.4rem 0.6rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', boxSizing:'border-box' as const }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.35)', display:'block', marginBottom:'0.25rem' }}>Pickup Time</label>
+                          <input type='text' value={jqTime}
+                            onChange={e => setJQ('time', e.target.value)}
+                            placeholder='e.g. 10:00 AM'
+                            style={{ width:'100%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'4px', padding:'0.4rem 0.6rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', boxSizing:'border-box' as const }} />
+                        </div>
+                      </div>
+                      <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+                        {/* Send Quote button — saves data + emails customer */}
+                        <button
+                          disabled={!jqPrice || !jqDate || !jqTime || !j.email}
+                          onClick={async () => {
+                            if (!jqPrice || !jqDate || !jqTime) { showToast('Fill in price, date, and time first', 'error'); return }
+                            if (!j.email) { showToast('This request has no email — cannot send quote', 'error'); return }
+                            await sb(`job_requests?id=eq.${j.id}`, { method:'PATCH', body:{ quote_price: parseFloat(jqPrice), pickup_date: jqDate, pickup_time: jqTime, status:'quoted' }, prefer:'return=minimal' })
+                            await fetch('/api/emails/job-quote', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ jobId: j.id, type: 'quote' }) })
+                            showToast(`Quote sent to ${j.email} ✉️`)
+                            loadAll()
+                          }}
+                          style={{ background: (!jqPrice||!jqDate||!jqTime||!j.email) ? 'rgba(46,125,50,0.3)' : '#2e7d32', color:'#fff', border:'none', borderRadius:'4px', padding:'0.4rem 0.9rem', cursor: (!jqPrice||!jqDate||!jqTime||!j.email) ? 'not-allowed':'pointer', fontSize:'0.78rem', fontWeight:700, fontFamily:'inherit' }}>
+                          📧 Send Quote
+                        </button>
+                        {/* Confirm button — saves latest data + emails confirmed */}
+                        {(j.status === 'quoted' || j.status === 'scheduled') && (
+                          <button
+                            disabled={!jqPrice || !jqDate || !jqTime || !j.email}
+                            onClick={async () => {
+                              if (!jqPrice || !jqDate || !jqTime) { showToast('Fill in price, date, and time first', 'error'); return }
+                              await sb(`job_requests?id=eq.${j.id}`, { method:'PATCH', body:{ quote_price: parseFloat(jqPrice), pickup_date: jqDate, pickup_time: jqTime, status:'confirmed' }, prefer:'return=minimal' })
+                              await fetch('/api/emails/job-quote', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ jobId: j.id, type: 'confirmed' }) })
+                              showToast(`Appointment confirmed — email sent to ${j.email} ✅`)
+                              loadAll()
+                            }}
+                            style={{ background: (!jqPrice||!jqDate||!jqTime||!j.email) ? 'rgba(76,175,80,0.3)':'#388e3c', color:'#fff', border:'none', borderRadius:'4px', padding:'0.4rem 0.9rem', cursor: (!jqPrice||!jqDate||!jqTime||!j.email)?'not-allowed':'pointer', fontSize:'0.78rem', fontWeight:700, fontFamily:'inherit' }}>
+                            ✅ Confirm Appointment
+                          </button>
+                        )}
+                        {/* Mark completed */}
+                        {j.status === 'confirmed' && (
+                          <button onClick={async()=>{ await sb(`job_requests?id=eq.${j.id}`,{method:'PATCH',body:{status:'completed'},prefer:'return=minimal'}); showToast('Marked as completed'); loadAll() }}
+                            style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.6)', borderRadius:'4px', padding:'0.4rem 0.7rem', cursor:'pointer', fontSize:'0.72rem', fontFamily:'inherit' }}>
+                            🏁 Mark Completed
+                          </button>
+                        )}
+                        {/* Remove */}
+                        <button onClick={async()=>{ await sb(`job_requests?id=eq.${j.id}`,{method:'DELETE',prefer:'return=minimal'}); showToast('Job request removed'); loadAll() }}
+                          style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:'4px', color:'#f87171', padding:'0.4rem 0.65rem', cursor:'pointer', fontSize:'0.72rem', fontFamily:'inherit' }}>🗑️ Remove</button>
+                      </div>
+                      {!j.email && <p style={{ fontSize:'0.72rem', color:'#f87171', margin:'0.5rem 0 0' }}>⚠️ No email on this request — quote cannot be sent.</p>}
+                    </div>
+                  )}
+
+                  {/* Completed/cancelled — just show remove */}
+                  {(j.status === 'completed' || j.status === 'cancelled') && (
+                    <button onClick={async()=>{ await sb(`job_requests?id=eq.${j.id}`,{method:'DELETE',prefer:'return=minimal'}); showToast('Job request removed'); loadAll() }}
+                      style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:'4px', color:'#f87171', padding:'0.3rem 0.55rem', cursor:'pointer', fontSize:'0.72rem', fontFamily:'inherit' }}>🗑️ Remove</button>
+                  )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
 

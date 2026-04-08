@@ -250,6 +250,110 @@ export function contractAcceptedEmail(customer: any, planName: string, firstPick
   }
 }
 
+export function jobQuoteEmail(job: { name: string; email: string; description: string; job_type?: string }, quotePrice: number, pickupDate: string, pickupTime: string) {
+  const jobTypeLabel = job.job_type === 'yard_cleanup' ? 'Yard Cleanup' : job.job_type === 'both' ? 'Junk Removal & Yard Cleanup' : 'Junk Removal'
+  return {
+    from: 'Patil Waste Removal <hello@patilwasteremoval.com>',
+    reply_to: REPLY_TO,
+    to: job.email,
+    subject: `Your ${subj(jobTypeLabel)} Quote — $${quotePrice.toFixed(0)} · ${subj(pickupDate)}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff">
+        <div style="background:#1a1a1a;padding:28px 32px">
+          <h1 style="color:#fff;margin:0;font-size:22px;letter-spacing:1px">PATIL WASTE REMOVAL</h1>
+          <p style="color:#4caf50;margin:4px 0 0;font-size:13px">Bedford, NH · (802) 416-9484</p>
+        </div>
+        <div style="padding:32px">
+          <p style="color:#333;font-size:16px">Hi ${esc(job.name.split(' ')[0])},</p>
+          <p style="color:#555;font-size:15px">Thanks for reaching out! We've reviewed your ${esc(jobTypeLabel.toLowerCase())} request and here's your quote:</p>
+
+          <div style="background:#f0faf0;border:1px solid #c8e6c9;border-radius:8px;padding:20px 24px;margin:24px 0">
+            <table style="width:100%;border-collapse:collapse">
+              <tr><td style="padding:6px 0;color:#555;font-size:14px">Service</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#111;font-size:14px">${esc(jobTypeLabel)}</td></tr>
+              <tr><td style="padding:6px 0;color:#555;font-size:14px">Quote</td><td style="padding:6px 0;text-align:right;font-weight:700;color:#2e7d32;font-size:18px">$${quotePrice.toFixed(0)}</td></tr>
+              <tr><td style="padding:6px 0;color:#555;font-size:14px">Available date</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#111;font-size:14px">${esc(pickupDate)}</td></tr>
+              <tr><td style="padding:6px 0;color:#555;font-size:14px">Available time</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#111;font-size:14px">${esc(pickupTime)}</td></tr>
+            </table>
+          </div>
+
+          <p style="color:#555;font-size:14px">If this date and time work for you, no action is needed — we'll confirm the appointment shortly. <strong>If the time doesn't work, just reply to this email or call/text us and we'll find a better slot.</strong></p>
+
+          <p style="color:#999;font-size:13px;margin-top:32px">Questions? Reply to this email or call/text <a href="tel:8024169484" style="color:#2e7d32">(802) 416-9484</a>.</p>
+        </div>
+        <div style="background:#f5f5f5;padding:20px 32px;border-top:1px solid #e5e5e5">
+          <p style="color:#999;font-size:12px;margin:0">Patil Waste Removal · 80 Palomino Ln, Bedford NH 03110 · <a href="tel:8024169484" style="color:#999">(802) 416-9484</a></p>
+        </div>
+      </div>
+    `,
+  }
+}
+
+export function jobConfirmedEmail(job: { name: string; email: string; job_type?: string }, quotePrice: number, pickupDate: string, pickupTime: string) {
+  const jobTypeLabel = job.job_type === 'yard_cleanup' ? 'Yard Cleanup' : job.job_type === 'both' ? 'Junk Removal & Yard Cleanup' : 'Junk Removal'
+  return {
+    from: 'Patil Waste Removal <hello@patilwasteremoval.com>',
+    reply_to: REPLY_TO,
+    to: job.email,
+    subject: `Confirmed: ${subj(jobTypeLabel)} on ${subj(pickupDate)}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff">
+        <div style="background:#1a1a1a;padding:28px 32px">
+          <h1 style="color:#fff;margin:0;font-size:22px;letter-spacing:1px">PATIL WASTE REMOVAL</h1>
+          <p style="color:#4caf50;margin:4px 0 0;font-size:13px">Bedford, NH · (802) 416-9484</p>
+        </div>
+        <div style="padding:32px;text-align:center">
+          <div style="font-size:48px;margin-bottom:16px">✅</div>
+          <h2 style="color:#111;margin:0 0 8px">Appointment Confirmed</h2>
+          <p style="color:#555;font-size:15px">Hi ${esc(job.name.split(' ')[0])}, your ${esc(jobTypeLabel.toLowerCase())} is confirmed!</p>
+          <div style="background:#f0faf0;border:1px solid #c8e6c9;border-radius:8px;padding:20px 24px;margin:24px 0;text-align:left">
+            <table style="width:100%;border-collapse:collapse">
+              <tr><td style="padding:6px 0;color:#555;font-size:14px">Date</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#111;font-size:14px">${esc(pickupDate)}</td></tr>
+              <tr><td style="padding:6px 0;color:#555;font-size:14px">Time</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#111;font-size:14px">${esc(pickupTime)}</td></tr>
+              <tr><td style="padding:6px 0;color:#555;font-size:14px">Total</td><td style="padding:6px 0;text-align:right;font-weight:700;color:#2e7d32;font-size:16px">$${quotePrice.toFixed(0)}</td></tr>
+            </table>
+          </div>
+          <p style="color:#555;font-size:14px;text-align:left">Please ensure the items are accessible and any gates are unlocked before our arrival. Payment is due on the day of service.</p>
+          <p style="color:#999;font-size:13px;text-align:left;margin-top:24px">Questions? Reply to this email or call/text <a href="tel:8024169484" style="color:#2e7d32">(802) 416-9484</a>.</p>
+        </div>
+        <div style="background:#f5f5f5;padding:20px 32px;border-top:1px solid #e5e5e5">
+          <p style="color:#999;font-size:12px;margin:0">Patil Waste Removal · 80 Palomino Ln, Bedford NH 03110 · <a href="tel:8024169484" style="color:#999">(802) 416-9484</a></p>
+        </div>
+      </div>
+    `,
+  }
+}
+
+export function jobReminderEmail(job: { name: string; email: string; job_type?: string; address?: string }, pickupDate: string, pickupTime: string) {
+  const jobTypeLabel = job.job_type === 'yard_cleanup' ? 'Yard Cleanup' : job.job_type === 'both' ? 'Junk Removal & Yard Cleanup' : 'Junk Removal'
+  return {
+    from: 'Patil Waste Removal <hello@patilwasteremoval.com>',
+    reply_to: REPLY_TO,
+    to: job.email,
+    subject: `Reminder: ${subj(jobTypeLabel)} tomorrow — ${subj(pickupDate)}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff">
+        <div style="background:#1a1a1a;padding:28px 32px">
+          <h1 style="color:#fff;margin:0;font-size:22px;letter-spacing:1px">PATIL WASTE REMOVAL</h1>
+          <p style="color:#4caf50;margin:4px 0 0;font-size:13px">Bedford, NH · (802) 416-9484</p>
+        </div>
+        <div style="padding:32px">
+          <p style="color:#333;font-size:16px">Hi ${esc(job.name.split(' ')[0])},</p>
+          <p style="color:#555;font-size:15px">Just a reminder — your <strong>${esc(jobTypeLabel.toLowerCase())}</strong> is scheduled for <strong>tomorrow</strong>:</p>
+          <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:16px 20px;margin:20px 0">
+            <p style="margin:0;font-size:15px;font-weight:700;color:#333">${esc(pickupDate)} at ${esc(pickupTime)}</p>
+            ${job.address ? `<p style="margin:6px 0 0;font-size:13px;color:#555">${esc(job.address)}</p>` : ''}
+          </div>
+          <p style="color:#555;font-size:14px">Please make sure items are accessible and any gates are unlocked before we arrive. Payment is due on the day of service.</p>
+          <p style="color:#555;font-size:14px">Need to reschedule? Call or text us as soon as possible at <a href="tel:8024169484" style="color:#2e7d32">(802) 416-9484</a>.</p>
+        </div>
+        <div style="background:#f5f5f5;padding:20px 32px;border-top:1px solid #e5e5e5">
+          <p style="color:#999;font-size:12px;margin:0">Patil Waste Removal · 80 Palomino Ln, Bedford NH 03110 · <a href="tel:8024169484" style="color:#999">(802) 416-9484</a></p>
+        </div>
+      </div>
+    `,
+  }
+}
+
 export function paymentConfirmationEmail(customer: any, amount: number, period: string) {
   return {
     from: 'Patil Waste Removal <billing@patilwasteremoval.com>',
