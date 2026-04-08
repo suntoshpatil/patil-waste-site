@@ -51,8 +51,6 @@ const WHAT_WE_REMOVE = [
 ]
 
 const CANT_TAKE = [
-  'Hazardous chemicals or paint',
-  'Motor oil or automotive fluids',
   'Propane tanks (full)',
   'Asbestos-containing materials',
   'Medical / biohazard waste',
