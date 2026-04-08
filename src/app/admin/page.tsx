@@ -152,6 +152,7 @@ export default function Admin() {
   const [discountInvoice, setDiscountInvoice] = useState<any>(null)
   const [discountAmount, setDiscountAmount] = useState('')
   const [discountNote, setDiscountNote] = useState('')
+  const [lightboxSrc, setLightboxSrc] = useState<string|null>(null)
 
   const showToast = (msg: string, type = 'success') => { setToast(msg); setToastType(type); setTimeout(() => setToast(''), 3500) }
 
@@ -1030,6 +1031,15 @@ export default function Admin() {
             </div>
           )}
 
+          {/* ── PHOTO LIGHTBOX ── */}
+          {lightboxSrc && (
+            <div onClick={() => setLightboxSrc(null)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.92)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', cursor:'zoom-out', padding:'1.5rem' }}>
+              <img src={lightboxSrc} alt="Photo" style={{ maxWidth:'100%', maxHeight:'90vh', borderRadius:'8px', boxShadow:'0 8px 40px rgba(0,0,0,0.8)', objectFit:'contain' }} onClick={e => e.stopPropagation()} />
+              <button onClick={() => setLightboxSrc(null)} style={{ position:'fixed', top:'1rem', right:'1.25rem', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'50%', color:'#fff', width:'36px', height:'36px', fontSize:'1rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+              <a href={lightboxSrc} download="photo.jpg" onClick={e=>e.stopPropagation()} style={{ position:'fixed', bottom:'1.5rem', left:'50%', transform:'translateX(-50%)', background:'#2e7d32', color:'#fff', textDecoration:'none', borderRadius:'6px', padding:'0.5rem 1.25rem', fontSize:'0.82rem', fontWeight:700, letterSpacing:'0.06em' }}>⬇ Download</a>
+            </div>
+          )}
+
           {/* ── INVOICES ── */}
           {discountInvoice && (
             <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }}>
@@ -1436,6 +1446,19 @@ export default function Admin() {
                     </div>
                   </div>
                   <div style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.6)', marginBottom:'0.75rem', background:'rgba(255,255,255,0.03)', borderRadius:'5px', padding:'0.6rem 0.75rem' }}>{j.description}</div>
+                  {/* Photos */}
+                  {Array.isArray(j.photo_data) && j.photo_data.length > 0 && (
+                    <div style={{ marginBottom:'0.75rem' }}>
+                      <div style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.3)', marginBottom:'0.4rem' }}>Photos ({j.photo_data.length})</div>
+                      <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+                        {j.photo_data.map((src: string, i: number) => (
+                          <img key={i} src={src} alt={`Photo ${i+1}`} onClick={() => setLightboxSrc(src)}
+                            style={{ width:'72px', height:'72px', objectFit:'cover', borderRadius:'5px', cursor:'pointer', border:'1px solid rgba(255,255,255,0.1)', transition:'opacity 0.15s' }}
+                            onMouseEnter={e=>(e.currentTarget.style.opacity='0.75')} onMouseLeave={e=>(e.currentTarget.style.opacity='1')} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {j.preferred_date && <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)', marginBottom:'0.75rem' }}>Preferred: {new Date(j.preferred_date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>}
                   <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
                     {['new','quoted','scheduled','completed','cancelled'].filter(s=>s!==j.status).map(s => (
