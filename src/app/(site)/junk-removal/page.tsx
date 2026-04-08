@@ -256,25 +256,35 @@ export default function JunkRemoval() {
         </div>
       </section>
 
-      {/* ── Pricing Context ── */}
-      <section style={{ padding:'4rem 2rem', maxWidth:'720px', margin:'0 auto', textAlign:'center' }}>
-        <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'clamp(1.6rem, 3.5vw, 2.2rem)', letterSpacing:'0.04em', color:'#fff', marginBottom:'0.75rem' }}>Pricing Is Based on Volume & Job Size</div>
-        <p style={{ color:'rgba(255,255,255,0.55)', fontSize:'0.95rem', lineHeight:1.75, maxWidth:'560px', margin:'0 auto 2rem' }}>
-          Every junk removal job is different. Pricing depends on the amount of material, weight, type of items, and how much access we have. There's no mystery — we give you a quote before any work begins, and you decide if it works for you.
-        </p>
-        <div style={{ display:'flex', gap:'1rem', justifyContent:'center', flexWrap:'wrap' }}>
-          <div style={{ background:'rgba(46,125,50,0.08)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'10px', padding:'1.25rem 2rem', textAlign:'left' }}>
-            <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.4)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:'0.4rem' }}>Single Item</div>
-            <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.6rem', color:'#fff' }}>Starting at $75</div>
-            <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.45)', marginTop:'0.25rem' }}>One-off furniture or appliance</div>
-          </div>
-          <div style={{ background:'rgba(46,125,50,0.08)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'10px', padding:'1.25rem 2rem', textAlign:'left' }}>
-            <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.4)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:'0.4rem' }}>Full Load</div>
-            <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.6rem', color:'#fff' }}>Custom Quote</div>
-            <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.45)', marginTop:'0.25rem' }}>Estate cleanouts, multi-room hauls</div>
+      {/* ── Pricing ── */}
+      <section style={{ padding:'4rem 2rem', maxWidth:'820px', margin:'0 auto' }}>
+        <div style={{ textAlign:'center', marginBottom:'2rem' }}>
+          <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'clamp(1.8rem, 4vw, 2.6rem)', letterSpacing:'0.04em', color:'#fff', marginBottom:'0.5rem' }}>Item Pricing</div>
+          <p style={{ color:'rgba(255,255,255,0.5)', fontSize:'0.95rem', maxWidth:'520px', margin:'0 auto' }}>
+            Estimates for common items — final price confirmed before we start. Larger jobs and full cleanouts are quoted on-site.
+          </p>
+        </div>
+        <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', overflow:'hidden' }}>
+          {[
+            { name:'Couch / Sofa',                  range:'$40 – $75' },
+            { name:'Appliance (washer/dryer/fridge)', range:'$40 – $80' },
+            { name:'Chair / Recliner',               range:'$20 – $40' },
+            { name:'Desk / Table',                   range:'$25 – $50' },
+            { name:'Exercise Equipment',             range:'$30 – $60' },
+            { name:'Mattress / Box Spring',          range:'$30 – $50' },
+            { name:'TV / Monitor',                   range:'$20 – $40' },
+          ].map((item, i, arr) => (
+            <div key={item.name} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.9rem 1.5rem', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+              <span style={{ fontSize:'0.92rem', color:'rgba(255,255,255,0.75)' }}>{item.name}</span>
+              <span style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.05rem', letterSpacing:'0.04em', color:'#4caf50' }}>{item.range}</span>
+            </div>
+          ))}
+          <div style={{ padding:'1rem 1.5rem', background:'rgba(46,125,50,0.06)', borderTop:'1px solid rgba(46,125,50,0.15)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span style={{ fontSize:'0.92rem', color:'rgba(255,255,255,0.75)' }}>Full cleanout / large haul</span>
+            <span style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.05rem', letterSpacing:'0.04em', color:'#4caf50' }}>Custom Quote</span>
           </div>
         </div>
-        <p style={{ color:'rgba(255,255,255,0.3)', fontSize:'0.8rem', marginTop:'1.5rem' }}>Prices are estimates only. Final quote provided on-site before work begins.</p>
+        <p style={{ color:'rgba(255,255,255,0.3)', fontSize:'0.78rem', textAlign:'center', marginTop:'1rem' }}>All prices are estimates. Final quote given before any work begins — no commitment to request.</p>
       </section>
 
       {/* ── Quote Form ── */}
