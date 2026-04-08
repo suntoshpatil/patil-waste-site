@@ -2,7 +2,28 @@ import Link from 'next/link'
 import Image from 'next/image'
 import ReviewsCarousel from '@/components/ReviewsCarousel'
 
-export default function Home() {
+export const dynamic = 'force-dynamic'
+
+const SUPABASE_URL = 'https://kmvwwxlwzacxvtlqugws.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imttdnd3eGx3emFjeHZ0bHF1Z3dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNDMxOTMsImV4cCI6MjA5MDkxOTE5M30.TELT8SLAI2CJOQ2BJQq_3FyKzCkOKoT1lxmJIhrqMhQ'
+
+async function getServicePrices() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/services?select=name,base_price_monthly&type=eq.recurring&is_active=eq.true`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+      cache: 'no-store',
+    })
+    const data: any[] = await res.json()
+    const standard  = data.find(s => s.name === 'Curbside Trash')?.base_price_monthly ?? 42
+    const recycling = data.find(s => s.name === 'Trash & Recycling')?.base_price_monthly ?? 52
+    return { standard, recycling }
+  } catch {
+    return { standard: 42, recycling: 52 }
+  }
+}
+
+export default async function Home() {
+  const { standard, recycling } = await getServicePrices()
   return (
     <>
       {/* Hero */}
@@ -51,7 +72,7 @@ export default function Home() {
             <div className="plan-card">
               <div className="plan-type">Recurring — Monthly or Quarterly</div>
               <div className="d3">Standard Pick-up</div>
-              <div className="plan-price">$42<sub> /mo</sub></div>
+              <div className="plan-price">${standard}<sub> /mo</sub></div>
               <ul className="plan-includes" style={{ textAlign:'left' }}>
                 <li>Max 10 standard 13-gal bags per week</li>
                 <li>Or max 5 large 32-gal bags per week</li>
@@ -66,7 +87,7 @@ export default function Home() {
               <span className="pop-tag">Most Popular</span>
               <div className="plan-type">Recurring — Monthly or Quarterly</div>
               <div className="d3" style={{ color:'#fff' }}>Trash &amp; Recycling</div>
-              <div className="plan-price">$52<sub> /mo</sub></div>
+              <div className="plan-price">${recycling}<sub> /mo</sub></div>
               <ul className="plan-includes" style={{ textAlign:'left' }}>
                 <li>Everything in Standard</li>
                 <li>2 × 32-gal bins of recycling per week</li>
