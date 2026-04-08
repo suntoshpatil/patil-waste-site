@@ -2,10 +2,30 @@
 import Link from 'next/link'
 export const metadata = {
   title: 'Curbside Trash & Recycling Pickup Services',
-  description: 'Weekly curbside trash pickup from $42/mo and recycling from $52/mo in Bedford, Merrimack, Amherst & Milford NH. Bin rentals available. No contracts.',
+  description: 'Weekly curbside trash pickup and recycling in Bedford, Merrimack, Amherst & Milford NH. Bin rentals available. No contracts.',
   alternates: { canonical: 'https://patilwasteremoval.com/services' },
 }
-export default function Services() {
+
+const SUPABASE_URL = 'https://kmvwwxlwzacxvtlqugws.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imttdnd3eGx3emFjeHZ0bHF1Z3dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNDMxOTMsImV4cCI6MjA5MDkxOTE5M30.TELT8SLAI2CJOQ2BJQq_3FyKzCkOKoT1lxmJIhrqMhQ'
+
+async function getServicePrices() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/services?select=name,base_price_monthly&type=eq.recurring&is_active=eq.true`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+      cache: 'no-store',
+    })
+    const data: any[] = await res.json()
+    const standard  = data.find(s => s.name === 'Curbside Trash')?.base_price_monthly ?? 42
+    const recycling = data.find(s => s.name === 'Trash & Recycling')?.base_price_monthly ?? 52
+    return { standard, recycling }
+  } catch {
+    return { standard: 42, recycling: 52 }
+  }
+}
+
+export default async function Services() {
+  const { standard, recycling } = await getServicePrices()
   return (
     <>
       <div style={{background:'var(--black)',paddingTop:'57px',position:'relative',overflow:'hidden'}}><div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 60% 70% at 50% 100%, rgba(46,125,50,0.1) 0%, transparent 70%)',pointerEvents:'none'}} />
@@ -23,7 +43,7 @@ export default function Services() {
             <div className="plan-card">
               <div className="plan-type">Curbside Trash Only</div>
               <div className="d3" style={{color:"#fff"}}>Standard Pick-up</div>
-              <div className="plan-price">$42<sub> /mo</sub></div>
+              <div className="plan-price">${standard}<sub> /mo</sub></div>
               <ul className="plan-includes">
                 <li>Max 10 standard (13-gal) bags per pickup</li>
                 <li>Or max 5 large (32-gal) bags per pickup</li>
@@ -38,7 +58,7 @@ export default function Services() {
               <span className="pop-tag">Most Popular</span>
               <div className="plan-type">Trash + Recycling</div>
               <div className="d3" style={{color:'#fff'}}>Trash & Recycling</div>
-              <div className="plan-price">$52<sub> /mo</sub></div>
+              <div className="plan-price">${recycling}<sub> /mo</sub></div>
               <ul className="plan-includes">
                 <li>All Standard plan features included</li>
                 <li>2 × 32-gal bins of recycling per week</li>

@@ -1,6 +1,6 @@
 /* eslint-disable */
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 const SUPABASE_URL = 'https://kmvwwxlwzacxvtlqugws.supabase.co'
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imttdnd3eGx3emFjeHZ0bHF1Z3dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNDMxOTMsImV4cCI6MjA5MDkxOTE5M30.TELT8SLAI2CJOQ2BJQq_3FyKzCkOKoT1lxmJIhrqMhQ'
@@ -11,6 +11,17 @@ export default function Signup() {
   const [loading, setLoading] = useState(false)
   const [rentTrash, setRentTrash]         = useState(false)
   const [rentRecycling, setRentRecycling] = useState(false)
+  const [prices, setPrices] = useState({ standard: 42, recycling: 52 })
+
+  useEffect(() => {
+    fetch(`${SUPABASE_URL}/rest/v1/services?select=name,base_price_monthly&type=eq.recurring&is_active=eq.true`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    }).then(r => r.json()).then((data: any[]) => {
+      const standard  = data.find(s => s.name === 'Curbside Trash')?.base_price_monthly ?? 42
+      const recycling = data.find(s => s.name === 'Trash & Recycling')?.base_price_monthly ?? 52
+      setPrices({ standard, recycling })
+    }).catch(() => {})
+  }, [])
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -138,8 +149,8 @@ export default function Signup() {
                   <label>Service Type *</label>
                   <select name="plan" {...sel}>
                     <option value="">Select...</option>
-                    <option value="standard">Trash Only — $42/mo</option>
-                    <option value="recycling">Trash &amp; Recycling — $52/mo</option>
+                    <option value="standard">Trash Only — ${prices.standard}/mo</option>
+                    <option value="recycling">Trash &amp; Recycling — ${prices.recycling}/mo</option>
                     <option value="info">Just requesting info</option>
                   </select>
                 </div>
