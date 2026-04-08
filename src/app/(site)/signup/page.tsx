@@ -30,65 +30,41 @@ export default function Signup() {
     const g = (n: string) => (f.elements.namedItem(n) as HTMLInputElement)?.value?.trim() || ""
     const checked = (n: string) => (f.elements.namedItem(n) as HTMLInputElement)?.checked || false
 
-    const cap = (s: string) => s.trim() ? s.trim().charAt(0).toUpperCase() + s.trim().slice(1).toLowerCase() : ''
-    const first_name        = cap(g("fn"))
-    const last_name         = cap(g("ln"))
-    const email             = g("em").toLowerCase()
-    const phone             = g("ph")
-    const service_address   = g("addr")
-    const town              = g("town")
-    const plan              = g("plan")
-    const billing_cycle     = g("billing_cycle")
-    const bin_situation     = g("bin_situation")
-    const payment_method    = g("payment_method")
-    const start_date        = g("startDate") || null
-    const gate_notes        = g("gate_notes") || null
-    const garage_side_pickup = checked("addon_garageside")
-    const referral          = g("referral")
-    const extra_notes       = g("notes")
-    const rentTrashVal      = (f.elements.namedItem("rent_trash") as HTMLInputElement)?.checked || false
-    const rentRecyclingVal  = (f.elements.namedItem("rent_recycling") as HTMLInputElement)?.checked || false
-    const binRentalNote     = rentTrashVal && rentRecyclingVal ? "Bin rentals: Trash + Recycling"
-                            : rentTrashVal ? "Bin rental: Trash bin"
-                            : rentRecyclingVal ? "Bin rental: Recycling bin"
-                            : ""
-    const startWeekLabel    = start_date ? `Requested start week: ${new Date(start_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${new Date(new Date(start_date+'T12:00:00').getTime()+6*86400000).toLocaleDateString('en-US',{month:'short',day:'numeric'})}` : ""
-    const notes             = [extra_notes, referral ? `Referred by: ${referral}` : "", `Plan: ${plan} · Billing: ${billing_cycle}`, binRentalNote, startWeekLabel].filter(Boolean).join(" | ")
+    const payload = {
+      first_name: g("fn"),
+      last_name: g("ln"),
+      email: g("em"),
+      phone: g("ph"),
+      service_address: g("addr"),
+      town: g("town"),
+      plan: g("plan"),
+      billing_cycle: g("billing_cycle"),
+      bin_situation: g("bin_situation"),
+      payment_method: g("payment_method"),
+      start_date: g("startDate"),
+      gate_notes: g("gate_notes"),
+      garage_side_pickup: checked("addon_garageside"),
+      referral: g("referral"),
+      extra_notes: g("notes"),
+      rent_trash: checked("rent_trash"),
+      rent_recycling: checked("rent_recycling"),
+    }
 
-    if (!first_name || !email || !service_address || !town || !plan) {
+    if (!payload.first_name || !payload.email || !payload.service_address || !payload.town || !payload.plan) {
       setErr("Please fill in all required fields."); return
     }
 
     setErr(""); setLoading(true)
 
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/customers`, {
-        method: "POST",
-        headers: {
-          "apikey": SUPABASE_KEY,
-          "Authorization": `Bearer ${SUPABASE_KEY}`,
-          "Content-Type": "application/json",
-          "Prefer": "return=minimal",
-        },
-        body: JSON.stringify({
-          first_name, last_name, email, phone,
-          service_address, town,
-          status: "pending",
-          payment_method, bin_situation,
-          garage_side_pickup, gate_notes, notes, start_date,
-        }),
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data?.message || `Error ${res.status}`)
-      }
-      // Send signup confirmation email (fire and forget) — server derives
-      // plan/start date from the database.
-    fetch('/api/emails/signup', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ email })
-    }).catch(()=>{})
-    setDone(true)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || `Error ${res.status}`)
+      setDone(true)
     } catch (e: any) {
       setErr(e.message || "Something went wrong. Please try again or call us directly.")
     }

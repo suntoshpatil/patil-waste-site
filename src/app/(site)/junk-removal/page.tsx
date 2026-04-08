@@ -115,7 +115,13 @@ export default function JunkRemoval() {
     }
     setLoading(true); setError('')
     try {
-      await sb('job_requests', { method:'POST', body:{ ...form, status:'new', ...(photos.length > 0 ? { photo_data: photos } : {}) } })
+      const res = await fetch('/api/job-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, ...(photos.length > 0 ? { photo_data: photos } : {}) }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to submit. Please call us directly.')
       setSubmitted(true)
     } catch (e: any) { setError(e.message || 'Failed to submit. Please call us directly.') }
     setLoading(false)

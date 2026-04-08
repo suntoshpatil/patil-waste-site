@@ -1,0 +1,110 @@
+import { NextResponse } from 'next/server'
+import { z } from 'zod'
+import { sbServer } from '@/lib/billing'
+
+// Schema for the public signup form. Mirrors the fields on /signup and
+// matches the customers table shape. All strings are trimmed and capped
+// to block payload-abuse and broken rendering from oversized input.
+const SignupSchema = z.object({
+  first_name: z.string().trim().min(1, 'First name is required').max(50),
+  last_name: z.string().trim().max(50).optional().or(z.literal('')),
+  email: z.string().trim().email('Invalid email').max(200),
+  phone: z.string().trim().max(30).optional().or(z.literal('')),
+  service_address: z.string().trim().min(5, 'Address is required').max(300),
+  town: z.string().trim().min(1, 'Town is required').max(50),
+  plan: z.enum(['standard', 'recycling', 'info']),
+  billing_cycle: z.enum(['monthly', 'quarterly']).optional(),
+  bin_situation: z.enum(['own', 'rental', 'unsure']).optional(),
+  payment_method: z.enum(['card', 'venmo', 'zelle', 'cash']).optional(),
+  start_date: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date')
+    .optional()
+    .or(z.literal('')),
+  gate_notes: z.string().trim().max(500).optional().or(z.literal('')),
+  garage_side_pickup: z.boolean().optional(),
+  referral: z.string().trim().max(100).optional().or(z.literal('')),
+  extra_notes: z.string().trim().max(1000).optional().or(z.literal('')),
+  rent_trash: z.boolean().optional(),
+  rent_recycling: z.boolean().optional(),
+})
+
+const cap = (s: string) =>
+  s.trim() ? s.trim().charAt(0).toUpperCase() + s.trim().slice(1).toLowerCase() : ''
+
+export async function POST(req: Request) {
+  try {
+    const raw = await req.json().catch(() => null)
+    if (!raw || typeof raw !== 'object') {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+
+    const parsed = SignupSchema.safeParse(raw)
+    if (!parsed.success) {
+      const firstIssue = parsed.error.issues[0]
+      const msg = firstIssue?.message || 'Invalid input'
+      return NextResponse.json({ error: msg }, { status: 400 })
+    }
+
+    const d = parsed.data
+
+    // Build the free-text notes the admin panel displays, matching the
+    // format the old client-side signup used so admin UX stays identical.
+    const binRentalNote =
+      d.rent_trash && d.rent_recycling
+        ? 'Bin rentals: Trash + Recycling'
+        : d.rent_trash
+        ? 'Bin rental: Trash bin'
+        : d.rent_recycling
+        ? 'Bin rental: Recycling bin'
+        : ''
+    const startWeekLabel = d.start_date
+      ? `Requested start week: ${new Date(d.start_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(new Date(d.start_date + 'T12:00:00').getTime() + 6 * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+      : ''
+    const notes = [
+      d.extra_notes || '',
+      d.referral ? `Referred by: ${d.referral}` : '',
+      `Plan: ${d.plan} · Billing: ${d.billing_cycle || 'monthly'}`,
+      binRentalNote,
+      startWeekLabel,
+    ]
+      .filter(Boolean)
+      .join(' | ')
+
+    const row = {
+      first_name: cap(d.first_name),
+      last_name: cap(d.last_name || ''),
+      email: d.email.toLowerCase(),
+      phone: d.phone || null,
+      service_address: d.service_address,
+      town: d.town,
+      status: 'pending',
+      payment_method: d.payment_method || null,
+      bin_situation: d.bin_situation || null,
+      garage_side_pickup: d.garage_side_pickup ?? false,
+      gate_notes: d.gate_notes || null,
+      notes,
+      start_date: d.start_date || null,
+    }
+
+    await sbServer('customers', {
+      method: 'POST',
+      body: row,
+      prefer: 'return=minimal',
+    })
+
+    // Fire the welcome email (fire-and-forget).
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://patilwasteremoval.com'
+    fetch(`${siteUrl}/api/emails/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: row.email }),
+    }).catch(() => {})
+
+    return NextResponse.json({ ok: true })
+  } catch (e: any) {
+    console.error('[signup] error:', e)
+    return NextResponse.json({ error: 'Failed to submit signup' }, { status: 500 })
+  }
+}
