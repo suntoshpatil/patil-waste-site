@@ -57,7 +57,7 @@ const CANT_TAKE = [
 ]
 
 const WHY_US = [
-  { icon: '📍', title: 'Locally Owned & Operated', body: 'We live and work in the same communities we serve — Bedford, Merrimack, Amherst, and Milford NH.' },
+  { icon: '📍', title: 'Locally Owned & Operated', body: 'We live and work in the communities we serve across Southern NH and Northern MA.' },
   { icon: '💬', title: 'Quote Before We Start', body: 'No surprises. You get a price upfront before a single item gets loaded. No commitment to request.' },
   { icon: '⚡', title: 'Fast Turnaround', body: 'We respond within 1 business day and can often schedule within the same week.' },
   { icon: '♻️', title: 'Responsible Disposal', body: 'We donate usable items when possible and recycle what we can rather than dumping everything.' },
@@ -147,7 +147,7 @@ export default function JunkRemoval() {
         <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse 60% 70% at 50% 100%, rgba(46,125,50,0.12) 0%, transparent 70%)', pointerEvents:'none' }} />
         <div style={{ position:'relative', maxWidth:'820px', margin:'0 auto' }}>
           <div style={{ display:'inline-block', fontSize:'0.72rem', color:'#4caf50', background:'rgba(46,125,50,0.12)', border:'1px solid rgba(46,125,50,0.3)', borderRadius:'20px', padding:'0.3rem 0.9rem', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:'1.25rem' }}>
-            Serving Bedford · Merrimack · Amherst · Milford NH
+            Serving Southern NH &amp; Northern MA
           </div>
           <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'clamp(2.8rem, 7vw, 5.5rem)', letterSpacing:'0.04em', lineHeight:1, marginBottom:'1.25rem', color:'#fff' }}>
             Junk Removal &amp; <span style={{ color:'#4caf50' }}>Yard Cleanup</span>
@@ -248,17 +248,17 @@ export default function JunkRemoval() {
           <div>
             <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'1.5rem', letterSpacing:'0.04em', color:'#fff', marginBottom:'1rem' }}>Service Area</div>
             <p style={{ color:'rgba(255,255,255,0.5)', fontSize:'0.88rem', lineHeight:1.7, marginBottom:'1.25rem' }}>
-              We primarily serve southern New Hampshire, including:
+              We serve all of <strong style={{ color:'rgba(255,255,255,0.75)' }}>Southern New Hampshire</strong> and <strong style={{ color:'rgba(255,255,255,0.75)' }}>Northern Massachusetts</strong>, including:
             </p>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem' }}>
-              {['Bedford, NH','Merrimack, NH','Amherst, NH','Milford, NH','Manchester, NH','Nashua, NH'].map(town => (
+              {['Bedford, NH','Merrimack, NH','Amherst, NH','Milford, NH','Manchester, NH','Nashua, NH','Londonderry, NH','Windham, NH','Hudson, NH','Pelham, NH','Litchfield, NH','Derry, NH','Lowell, MA','Chelmsford, MA','Tyngsborough, MA','Dracut, MA'].map(town => (
                 <div key={town} style={{ display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'0.88rem', color:'rgba(255,255,255,0.7)' }}>
                   <span style={{ color:'#4caf50' }}>📍</span> {town}
                 </div>
               ))}
             </div>
             <p style={{ color:'rgba(255,255,255,0.35)', fontSize:'0.8rem', marginTop:'1.25rem' }}>
-              Don't see your town? Reach out — we may still be able to help.
+              Don't see your town? Reach out — we likely cover it.
             </p>
           </div>
 
