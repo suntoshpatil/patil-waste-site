@@ -153,6 +153,9 @@ export default function Admin() {
   const [discountAmount, setDiscountAmount] = useState('')
   const [discountNote, setDiscountNote] = useState('')
   const [lightboxSrc, setLightboxSrc] = useState<string|null>(null)
+  const [catalog, setCatalog] = useState<any[]>([])
+  const [catalogEdits, setCatalogEdits] = useState<Record<string,any>>({})
+  const [catalogSaving, setCatalogSaving] = useState<string|null>(null)
 
   const showToast = (msg: string, type = 'success') => { setToast(msg); setToastType(type); setTimeout(() => setToast(''), 3500) }
 
@@ -755,7 +758,7 @@ export default function Admin() {
   )
 
   // Also add contract_pending badge color
-  const navItems: [string,string,string][] = [['dashboard','📊','Dashboard'],['customers','👥','Customers'],['routes','🗓️','Routes'],['invoices','🧾','Invoices'],['payments','💵','Payments'],['requests','🔔','Requests'],['jobs','🚛','Jobs'],['notices','📢','Notices']]
+  const navItems: [string,string,string][] = [['dashboard','📊','Dashboard'],['customers','👥','Customers'],['routes','🗓️','Routes'],['invoices','🧾','Invoices'],['payments','💵','Payments'],['requests','🔔','Requests'],['jobs','🚛','Jobs'],['notices','📢','Notices'],['catalog','🏷️','Catalog']]
 
   return (
     <div className="admin-page" style={{ fontFamily:'DM Sans,sans-serif', background:'#0f0f0f', color:'#f9f9f6', height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
@@ -810,7 +813,7 @@ export default function Admin() {
           {navItems.map(([id,icon,label]) => {
             const pendingCount = id === 'requests' ? serviceRequests.length + skipRequests.length : id === 'jobs' ? jobRequests.filter((j:any)=>j.status==='new').length + pickupAddons.filter((a:any)=>a.status==='pending_quote').length : id === 'dashboard' ? customers.filter(c=>c.status==='pending').length : 0
             return (
-              <div key={id} onClick={() => { setView(id); if (id === 'notices') loadAllNotices() }} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.7rem 1.25rem', fontSize:'0.82rem', fontWeight:500, color:view===id?'#fff':'#6b7280', cursor:'pointer', borderLeft:`2px solid ${view===id?'#4caf50':'transparent'}`, background:view===id?'rgba(61,158,64,0.08)':'transparent', transition:'all 0.15s' }}>
+              <div key={id} onClick={async () => { setView(id); if (id === 'notices') loadAllNotices(); if (id === 'catalog') { const items = await sb('bulky_item_catalog?select=*&order=name.asc').catch(()=>[]); setCatalog(items); setCatalogEdits({}) } }} style={{ display:'flex', alignItems:'center', gap:'0.65rem', padding:'0.7rem 1.25rem', fontSize:'0.82rem', fontWeight:500, color:view===id?'#fff':'#6b7280', cursor:'pointer', borderLeft:`2px solid ${view===id?'#4caf50':'transparent'}`, background:view===id?'rgba(61,158,64,0.08)':'transparent', transition:'all 0.15s' }}>
                 <span>{icon}</span><span>{label}</span>
                 {pendingCount > 0 && <span style={{ marginLeft:'auto', background:'#dc2626', color:'#fff', borderRadius:'10px', fontSize:'0.65rem', fontWeight:700, padding:'0.1rem 0.45rem', minWidth:'18px', textAlign:'center' }}>{pendingCount}</span>}
               </div>
@@ -1563,6 +1566,92 @@ export default function Admin() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* ── CATALOG VIEW ── */}
+          {view==='catalog' && (
+            <div style={{ maxWidth:'680px' }}>
+              <div style={{ fontFamily:'Bebas Neue,sans-serif', fontSize:'2rem', letterSpacing:'0.02em', marginBottom:'0.5rem' }}>Item Price Catalog</div>
+              <p style={{ fontSize:'0.84rem', color:'rgba(255,255,255,0.4)', marginBottom:'1.5rem' }}>These prices appear on the public Junk Removal page and are used for customer pickup addon quotes.</p>
+
+              {catalog.length === 0 ? (
+                <div style={{ background:'#1a1a1a', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px', padding:'2rem', textAlign:'center', color:'#6b7280', fontSize:'0.88rem' }}>No catalog items found</div>
+              ) : catalog.map((item: any) => {
+                const edits = catalogEdits[item.id] || {}
+                const val = (field: string) => edits[field] !== undefined ? edits[field] : item[field]
+                const isDirty = Object.keys(edits).length > 0
+                return (
+                  <div key={item.id} style={{ background:'#1a1a1a', border:`1px solid ${isDirty ? 'rgba(46,125,50,0.3)' : 'rgba(255,255,255,0.07)'}`, borderRadius:'8px', padding:'1.25rem', marginBottom:'0.75rem' }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem' }}>
+                      <div style={{ fontWeight:700, fontSize:'0.95rem' }}>{item.name}</div>
+                      <label style={{ display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'0.75rem', color:'rgba(255,255,255,0.45)', cursor:'pointer' }}>
+                        <input type='checkbox' checked={val('is_active')} onChange={e => setCatalogEdits(p => ({ ...p, [item.id]: { ...(p[item.id]||{}), is_active: e.target.checked } }))} style={{ accentColor:'#4caf50' }} />
+                        Active
+                      </label>
+                    </div>
+
+                    {item.is_fixed_price ? (
+                      <div>
+                        <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Fixed Price ($)</label>
+                        <input type='number' value={val('fixed_price') ?? ''} onChange={e => setCatalogEdits(p => ({ ...p, [item.id]: { ...(p[item.id]||{}), fixed_price: e.target.value } }))}
+                          style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.5rem 0.75rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'140px' }} />
+                      </div>
+                    ) : (
+                      <div style={{ display:'flex', gap:'1rem', alignItems:'flex-end' }}>
+                        <div>
+                          <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Est. Min ($)</label>
+                          <input type='number' value={val('estimate_min') ?? ''} onChange={e => setCatalogEdits(p => ({ ...p, [item.id]: { ...(p[item.id]||{}), estimate_min: e.target.value } }))}
+                            style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.5rem 0.75rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'120px' }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.4)', display:'block', marginBottom:'0.3rem' }}>Est. Max ($)</label>
+                          <input type='number' value={val('estimate_max') ?? ''} onChange={e => setCatalogEdits(p => ({ ...p, [item.id]: { ...(p[item.id]||{}), estimate_max: e.target.value } }))}
+                            style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'3px', padding:'0.5rem 0.75rem', color:'#fff', fontSize:'0.84rem', fontFamily:'inherit', outline:'none', width:'120px' }} />
+                        </div>
+                        {isDirty && (
+                          <Btn small onClick={async () => {
+                            setCatalogSaving(item.id)
+                            const patch: any = {}
+                            if (edits.estimate_min !== undefined) patch.estimate_min = parseFloat(edits.estimate_min)
+                            if (edits.estimate_max !== undefined) patch.estimate_max = parseFloat(edits.estimate_max)
+                            if (edits.fixed_price !== undefined) patch.fixed_price = parseFloat(edits.fixed_price)
+                            if (edits.is_active !== undefined) patch.is_active = edits.is_active
+                            await sb(`bulky_item_catalog?id=eq.${item.id}`, { method:'PATCH', body: patch, prefer:'return=minimal' })
+                            const updated = await sb('bulky_item_catalog?select=*&order=name.asc').catch(()=>[])
+                            setCatalog(updated)
+                            setCatalogEdits(p => { const n = {...p}; delete n[item.id]; return n })
+                            setCatalogSaving(null)
+                            showToast('Price updated')
+                          }} disabled={catalogSaving === item.id}>
+                            {catalogSaving === item.id ? 'Saving…' : 'Save'}
+                          </Btn>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Save button for fixed-price items */}
+                    {item.is_fixed_price && isDirty && (
+                      <div style={{ marginTop:'0.75rem' }}>
+                        <Btn small onClick={async () => {
+                          setCatalogSaving(item.id)
+                          const patch: any = {}
+                          if (edits.fixed_price !== undefined) patch.fixed_price = parseFloat(edits.fixed_price)
+                          if (edits.is_active !== undefined) patch.is_active = edits.is_active
+                          await sb(`bulky_item_catalog?id=eq.${item.id}`, { method:'PATCH', body: patch, prefer:'return=minimal' })
+                          const updated = await sb('bulky_item_catalog?select=*&order=name.asc').catch(()=>[])
+                          setCatalog(updated)
+                          setCatalogEdits(p => { const n = {...p}; delete n[item.id]; return n })
+                          setCatalogSaving(null)
+                          showToast('Price updated')
+                        }} disabled={catalogSaving === item.id}>
+                          {catalogSaving === item.id ? 'Saving…' : 'Save'}
+                        </Btn>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
 
