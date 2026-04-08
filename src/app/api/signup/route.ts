@@ -98,11 +98,11 @@ export async function POST(req: Request) {
       prefer: 'return=minimal',
     })
 
-    // Send welcome email directly — don't call /api/emails/signup via HTTP
-    // since server-to-server self-calls are unreliable on Vercel serverless.
+    // Send welcome email — must be awaited before returning so the
+    // serverless function doesn't terminate before Resend finishes.
     if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== 're_placeholder') {
       const customerForEmail = { first_name: row.first_name, last_name: row.last_name, email: row.email }
-      resend.emails.send(signupConfirmationEmail(customerForEmail, 'Service Plan', row.start_date || '')).catch((err: unknown) => {
+      await resend.emails.send(signupConfirmationEmail(customerForEmail, 'Service Plan', row.start_date || '')).catch((err: unknown) => {
         console.error('[signup] email send failed:', err)
       })
     }
