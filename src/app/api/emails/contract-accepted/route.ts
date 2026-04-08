@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { sbServer } from '@/lib/billing'
+import { sbServer, calcInvoiceTotal } from '@/lib/billing'
 import { contractAcceptedEmail } from '@/lib/emails'
 import PDFDocument from 'pdfkit'
 
@@ -98,19 +98,38 @@ async function generateContractPDF(customer: any, sub: any): Promise<Buffer> {
 
 export async function POST(req: Request) {
   try {
-    const { customerId, planName, firstPickup, invoiceTotal } = await req.json()
-    if (!customerId) return NextResponse.json({ error: 'Missing customerId' }, { status: 400 })
+    const body = await req.json().catch(() => ({}))
+    const customerId = body?.customerId
+    if (!customerId || typeof customerId !== 'string') {
+      return NextResponse.json({ error: 'Missing customerId' }, { status: 400 })
+    }
     if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_placeholder') return NextResponse.json({ ok: true, skipped: true })
 
-    const [customer] = await sbServer(`customers?id=eq.${customerId}&select=*,subscriptions(id,rate,billing_cycle,pickup_day,billing_start,status,services(name))`)
+    const [customer] = await sbServer(`customers?id=eq.${customerId}&select=*,subscriptions(id,rate,billing_cycle,pickup_day,billing_start,status,services(name)),bins(*)`)
     if (!customer) return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
 
+    // Only send this email once the customer has actually accepted the contract.
+    // Prevents an attacker who enumerates customerIds from spamming fake acceptance
+    // emails to real customers.
+    if (!customer.contract_accepted) {
+      return NextResponse.json({ error: 'Contract not accepted' }, { status: 403 })
+    }
+
     const activeSub = customer.subscriptions?.find((s: any) => s.status === 'active') || customer.subscriptions?.[0]
+
+    // Derive email content from the database — never trust anything from the
+    // request body. Previously planName/firstPickup/invoiceTotal came from the
+    // client and were interpolated into both the HTML body and subject line.
+    const planName = activeSub?.services?.name || 'Service Plan'
+    const firstPickup = activeSub?.billing_start
+      ? new Date(activeSub.billing_start + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+      : 'your first scheduled day'
+    const { total: invoiceTotal } = calcInvoiceTotal(customer)
 
     // Generate PDF
     const pdfBuffer = await generateContractPDF(customer, activeSub)
 
-    const emailData = contractAcceptedEmail(customer, planName || activeSub?.services?.name || 'Service Plan', firstPickup || 'your first scheduled day', invoiceTotal || 0)
+    const emailData = contractAcceptedEmail(customer, planName, firstPickup, invoiceTotal)
 
     await resend.emails.send({
       ...emailData,
@@ -121,5 +140,8 @@ export async function POST(req: Request) {
     } as any)
 
     return NextResponse.json({ ok: true })
-  } catch (e: any) { return NextResponse.json({ error: e.message }, { status: 500 }) }
+  } catch (e: any) {
+    console.error('[contract-accepted] error:', e)
+    return NextResponse.json({ error: 'Failed to send contract email' }, { status: 500 })
+  }
 }

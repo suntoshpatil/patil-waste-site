@@ -400,12 +400,11 @@ export default function Admin() {
       if (onboardRecyclingBin && !hasRecycling) {
         await sb('bins', { method:'POST', body:{ customer_id:onboardCustomer.id, bin_type:'recycling', ownership:'rental', monthly_rental_fee:3.99, assigned_date:new Date().toISOString().split('T')[0], notes:'No deposit required' }})
       }
-      // Send contract ready email
-      const planName = servicesList.find(s => s.id === onboardServiceId)?.name || 'Service Plan'
+      // Send contract ready email — server derives plan/pickup/start date from DB
       fetch('/api/emails/contract-ready', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId: onboardCustomer.id, planName, pickupDay: onboardData.pickup_day, startDate: onboardData.start_date })
+        body: JSON.stringify({ customerId: onboardCustomer.id })
       }).catch(() => {})
       showToast(`Contract sent to ${onboardCustomer.first_name}! Awaiting their acceptance. ✅`)
       setOnboardCustomer(null)

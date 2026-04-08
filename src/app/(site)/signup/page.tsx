@@ -82,10 +82,11 @@ export default function Signup() {
         const data = await res.json().catch(() => ({}))
         throw new Error(data?.message || `Error ${res.status}`)
       }
-      // Send signup confirmation email (fire and forget)
+      // Send signup confirmation email (fire and forget) — server derives
+      // plan/start date from the database.
     fetch('/api/emails/signup', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ email, planName: plan || 'Service Plan', startDate: start_date || '' })
+      body: JSON.stringify({ email })
     }).catch(()=>{})
     setDone(true)
     } catch (e: any) {

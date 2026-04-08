@@ -442,16 +442,12 @@ export default function Portal() {
         }})
       }
 
-      // Send contract accepted email
-      const emailSub = (customer as any).subscriptions?.[0]
-      const planName = emailSub?.services?.name || 'Service Plan'
-      const firstPickupLabel = emailSub?.billing_start
-        ? new Date(emailSub.billing_start + 'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })
-        : 'your first scheduled day'
+      // Send contract accepted email — server derives plan/pickup/invoice
+      // details from the database, so we only pass the customer id.
       fetch('/api/emails/contract-accepted', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId: (customer as any).id, planName, firstPickup: firstPickupLabel, invoiceTotal: 0 })
+        body: JSON.stringify({ customerId: (customer as any).id })
       }).catch(() => {})
 
       const updated = { ...customer, contract_accepted: true, status: 'active' } as any

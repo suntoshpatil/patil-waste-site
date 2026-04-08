@@ -6,15 +6,27 @@ import { signupConfirmationEmail } from '@/lib/emails'
 const resend = new Resend(process.env.RESEND_API_KEY)
 export async function POST(req: Request) {
   try {
-    const { email, planName, startDate } = await req.json()
-    if (!email) return NextResponse.json({ error: 'Missing email' }, { status: 400 })
+    const body = await req.json().catch(() => ({}))
+    const email = body?.email
+    if (!email || typeof email !== 'string') {
+      return NextResponse.json({ error: 'Missing email' }, { status: 400 })
+    }
     if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_placeholder') return NextResponse.json({ ok: true, skipped: true })
 
-    // Fetch customer from DB — ensures we only send to verified signups and use DB data
-    const [customer] = await sbServer(`customers?email=eq.${encodeURIComponent(email)}&select=first_name,last_name,email&limit=1`)
+    // Fetch customer + subscription from DB. Plan name and start date are
+    // derived server-side — never trust values from the request body, which
+    // get interpolated into email HTML.
+    const [customer] = await sbServer(`customers?email=eq.${encodeURIComponent(email)}&select=first_name,last_name,email,subscriptions(billing_start,status,services(name))&limit=1`)
     if (!customer) return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
 
-    await resend.emails.send(signupConfirmationEmail(customer, planName || 'Service Plan', startDate || ''))
+    const sub = customer.subscriptions?.find((s: any) => s.status === 'active') || customer.subscriptions?.[0]
+    const planName = sub?.services?.name || 'Service Plan'
+    const startDate = sub?.billing_start || ''
+
+    await resend.emails.send(signupConfirmationEmail(customer, planName, startDate))
     return NextResponse.json({ ok: true })
-  } catch (e: any) { return NextResponse.json({ error: e.message }, { status: 500 }) }
+  } catch (e: any) {
+    console.error('[emails/signup] error:', e)
+    return NextResponse.json({ error: 'Failed to send signup email' }, { status: 500 })
+  }
 }
