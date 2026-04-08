@@ -14,7 +14,7 @@ export default function Footer() {
           </div>
           <div>
             <p style={{ fontWeight:700, color:'#fff', marginBottom:'1rem', fontSize:'0.7rem', letterSpacing:'0.14em', textTransform:'uppercase' }}>Quick Links</p>
-            {[['/', 'Home'],['/services','Services'],['/recycling','Recycling'],['/faqs','FAQs'],['/promotions','Promotions'],['/contact','Contact'],['/signup','Sign Up']].map(([href, label]) => (
+            {[['/', 'Home'],['/services','Services'],['/junk-removal','Junk Removal'],['/recycling','Recycling'],['/faqs','FAQs'],['/promotions','Promotions'],['/contact','Contact'],['/signup','Sign Up']].map(([href, label]) => (
               <div key={href} style={{ marginBottom:'0.5rem' }}>
                 <Link href={href} style={{ color:'rgba(255,255,255,0.45)', transition:'color 0.2s' }}>{label}</Link>
               </div>

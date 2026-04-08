@@ -5,13 +5,14 @@ import { usePathname } from 'next/navigation'
 import Logo from './Logo'
 
 const links = [
-  { href: '/',            label: 'Home' },
-  { href: '/services',    label: 'Curbside Services' },
-  { href: '/recycling',   label: 'Recycling' },
-  { href: '/faqs',        label: 'FAQs' },
-  { href: '/promotions',  label: 'Promotions' },
-  { href: '/contact',     label: 'Contact' },
-  { href: '/portal',      label: 'My Account' },
+  { href: '/',              label: 'Home' },
+  { href: '/services',      label: 'Curbside Services' },
+  { href: '/junk-removal',  label: 'Junk Removal' },
+  { href: '/recycling',     label: 'Recycling' },
+  { href: '/faqs',          label: 'FAQs' },
+  { href: '/promotions',    label: 'Promotions' },
+  { href: '/contact',       label: 'Contact' },
+  { href: '/portal',        label: 'My Account' },
 ]
 
 export default function Nav() {
