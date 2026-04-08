@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { Resend } from 'resend'
 import { sbServer } from '@/lib/billing'
+import { signupConfirmationEmail } from '@/lib/emails'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 // Schema for the public signup form. Mirrors the fields on /signup and
 // matches the customers table shape. All strings are trimmed and capped
@@ -94,13 +98,14 @@ export async function POST(req: Request) {
       prefer: 'return=minimal',
     })
 
-    // Fire the welcome email (fire-and-forget).
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://patilwasteremoval.com'
-    fetch(`${siteUrl}/api/emails/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: row.email }),
-    }).catch(() => {})
+    // Send welcome email directly — don't call /api/emails/signup via HTTP
+    // since server-to-server self-calls are unreliable on Vercel serverless.
+    if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== 're_placeholder') {
+      const customerForEmail = { first_name: row.first_name, last_name: row.last_name, email: row.email }
+      resend.emails.send(signupConfirmationEmail(customerForEmail, 'Service Plan', row.start_date || '')).catch((err: unknown) => {
+        console.error('[signup] email send failed:', err)
+      })
+    }
 
     return NextResponse.json({ ok: true })
   } catch (e: any) {
