@@ -5,7 +5,20 @@ import { jobQuoteEmail, jobConfirmedEmail } from '@/lib/emails'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+function verifyAdmin(req: Request): boolean {
+  const auth = req.headers.get('Authorization')?.replace('Bearer ', '') || ''
+  const adminPw = process.env.ADMIN_PASSWORD
+  if (!adminPw || !auth) return false
+  try {
+    const decoded = Buffer.from(auth, 'base64').toString()
+    return decoded.startsWith('admin:') && decoded.endsWith(`:${adminPw}`)
+  } catch { return false }
+}
+
 export async function POST(req: Request) {
+  if (!verifyAdmin(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   try {
     const body = await req.json().catch(() => ({}))
     const { jobId, type } = body // type: 'quote' | 'confirmed'

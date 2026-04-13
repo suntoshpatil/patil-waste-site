@@ -121,6 +121,14 @@ export async function POST(req: Request) {
       start_date: d.start_date || null,
     }
 
+    // Check for duplicate email before inserting
+    const existing = await sbServer(
+      `customers?email=eq.${encodeURIComponent(row.email)}&select=id&limit=1`
+    ).catch(() => [])
+    if (existing?.length > 0) {
+      return NextResponse.json({ error: 'An account with this email already exists. Please contact us if you need help.' }, { status: 409 })
+    }
+
     await sbServer('customers', {
       method: 'POST',
       body: row,

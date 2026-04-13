@@ -1536,7 +1536,7 @@ export default function Admin() {
                             if (!jqPrice || !jqDate || !jqTime) { showToast('Fill in price, date, and time first', 'error'); return }
                             if (!j.email) { showToast('This request has no email — cannot send quote', 'error'); return }
                             await sb(`job_requests?id=eq.${j.id}`, { method:'PATCH', body:{ quote_price: parseFloat(jqPrice), pickup_date: jqDate, pickup_time: jqTime, status:'quoted' }, prefer:'return=minimal' })
-                            await fetch('/api/emails/job-quote', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ jobId: j.id, type: 'quote' }) })
+                            await fetch('/api/emails/job-quote', { method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${adminToken}`}, body: JSON.stringify({ jobId: j.id, type: 'quote' }) })
                             showToast(`Quote sent to ${j.email} ✉️`)
                             loadAll()
                           }}
@@ -1550,7 +1550,7 @@ export default function Admin() {
                             onClick={async () => {
                               if (!jqPrice || !jqDate || !jqTime) { showToast('Fill in price, date, and time first', 'error'); return }
                               await sb(`job_requests?id=eq.${j.id}`, { method:'PATCH', body:{ quote_price: parseFloat(jqPrice), pickup_date: jqDate, pickup_time: jqTime, status:'confirmed' }, prefer:'return=minimal' })
-                              await fetch('/api/emails/job-quote', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ jobId: j.id, type: 'confirmed' }) })
+                              await fetch('/api/emails/job-quote', { method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${adminToken}`}, body: JSON.stringify({ jobId: j.id, type: 'confirmed' }) })
                               showToast(`Appointment confirmed — email sent to ${j.email} ✅`)
                               loadAll()
                             }}

@@ -161,6 +161,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ customer
     if (!customer.contract_accepted && !isAdmin) return NextResponse.json({ error: 'Contract not yet accepted' }, { status: 403 })
 
     const activeSub = customer.subscriptions?.find((s: any) => s.status === 'active') || customer.subscriptions?.[0]
+    if (!activeSub && !isAdmin) return NextResponse.json({ error: 'No active subscription found' }, { status: 403 })
 
     let pdf: Buffer
     try {

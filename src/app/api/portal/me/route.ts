@@ -11,18 +11,16 @@ export async function GET() {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
+    // Explicit field list — never return stripe keys, portal_pin, or internal notes to the browser
     const results = await sbServer(
-      `customers?id=eq.${customerId}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,pickup_frequency,services(id,name))`
+      `customers?id=eq.${customerId}&select=id,first_name,last_name,email,phone,service_address,status,contract_accepted,garage_side_pickup,garage_side_rate,pickup_day,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,pickup_frequency,services(id,name))`
     )
 
     if (!results || results.length === 0) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const customer = results[0]
-    // Strip the PIN from what we send to the browser
-    const { portal_pin: _pin, ...safe } = customer
-    return NextResponse.json({ customer: safe })
+    return NextResponse.json({ customer: results[0] })
   } catch {
     return NextResponse.json({ error: 'Session check failed' }, { status: 500 })
   }
