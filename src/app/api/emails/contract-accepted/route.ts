@@ -1,4 +1,6 @@
 /* eslint-disable */
+export const runtime = 'nodejs'
+
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { sbServer, calcInvoiceTotal } from '@/lib/billing'
@@ -126,26 +128,39 @@ export async function POST(req: Request) {
       : 'your first scheduled day'
     const { total: invoiceTotal } = calcInvoiceTotal(customer)
 
-    // Generate PDF
-    const pdfBuffer = await generateContractPDF(customer, activeSub)
+    // Generate PDF — fall back gracefully if it fails so invoice emails still send
+    let pdfAttachment: { filename: string; content: string } | null = null
+    try {
+      const pdfBuffer = await generateContractPDF(customer, activeSub)
+      pdfAttachment = {
+        filename: `PatilWasteRemoval-Contract-${customer.last_name}.pdf`,
+        content: pdfBuffer.toString('base64'),
+      }
+    } catch (pdfErr: any) {
+      console.error('[contract-accepted] PDF generation failed:', pdfErr?.message || pdfErr)
+    }
 
     const emailData = contractAcceptedEmail(customer, planName, firstPickup, invoiceTotal)
 
-    await resend.emails.send({
-      ...emailData,
-      attachments: [{
-        filename: `PatilWasteRemoval-Contract-${customer.last_name}.pdf`,
-        content: pdfBuffer.toString('base64'),
-      }]
-    } as any)
+    const sendPayload: any = { ...emailData }
+    if (pdfAttachment) sendPayload.attachments = [pdfAttachment]
+
+    await resend.emails.send(sendPayload).catch((err: any) => {
+      console.error('[contract-accepted] contract email send failed:', err?.message || err)
+    })
 
     // Send invoice email for any outstanding first invoice created at contract acceptance
     const invoices = await sbServer(
       `invoices?customer_id=eq.${customerId}&status=eq.sent&order=created_at.asc&limit=5`
     ).catch(() => [])
 
+    console.log(`[contract-accepted] found ${(invoices || []).length} sent invoices for ${customerId}`)
+
     for (const invoice of invoices || []) {
-      if (!invoice.total || invoice.total <= 0) continue
+      if (!invoice.total || invoice.total <= 0) {
+        console.log(`[contract-accepted] skipping invoice ${invoice.id} with total ${invoice.total}`)
+        continue
+      }
       // Parse notes into line items (format: "desc: $X.XX | desc2: $Y.YY")
       const lines = (invoice.notes || '')
         .replace('First invoice — due on receipt. ', '')
@@ -158,7 +173,10 @@ export async function POST(req: Request) {
 
       const invoiceLines = lines.length > 0 ? lines : [{ description: 'First invoice (prorated)', amount: invoice.total }]
 
-      await resend.emails.send(invoiceEmail(customer, invoice, invoiceLines) as any).catch(() => {})
+      console.log(`[contract-accepted] sending invoice email for invoice ${invoice.id}, total $${invoice.total}`)
+      await resend.emails.send(invoiceEmail(customer, invoice, invoiceLines) as any).catch((err: any) => {
+        console.error(`[contract-accepted] invoice email failed for ${invoice.id}:`, err?.message || err)
+      })
     }
 
     return NextResponse.json({ ok: true })

@@ -161,17 +161,25 @@ export async function GET(req: Request, { params }: { params: Promise<{ customer
     if (!customer.contract_accepted && !isAdmin) return NextResponse.json({ error: 'Contract not yet accepted' }, { status: 403 })
 
     const activeSub = customer.subscriptions?.find((s: any) => s.status === 'active') || customer.subscriptions?.[0]
-    const pdf = await generateContractPDF(customer, activeSub)
 
-    return new Response(new Uint8Array(pdf), {
+    let pdf: Buffer
+    try {
+      pdf = await generateContractPDF(customer, activeSub)
+    } catch (pdfErr: any) {
+      console.error('[contracts/[customerId]] PDF generation failed:', pdfErr?.message || pdfErr, pdfErr?.stack)
+      return NextResponse.json({ error: 'Failed to generate contract PDF' }, { status: 500 })
+    }
+
+    const safeName = (customer.last_name || 'Contract').replace(/[^a-zA-Z0-9_-]/g, '_')
+    return new Response(pdf, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="PatilWasteRemoval-Contract-${customer.last_name}.pdf"`,
+        'Content-Disposition': `attachment; filename="PatilWasteRemoval-Contract-${safeName}.pdf"`,
         'Cache-Control': 'no-store',
       },
     })
   } catch (e: any) {
-    console.error('[contracts/[customerId]] error:', e)
+    console.error('[contracts/[customerId]] error:', e?.message || e, e?.stack)
     return NextResponse.json({ error: 'Failed to generate contract' }, { status: 500 })
   }
 }
