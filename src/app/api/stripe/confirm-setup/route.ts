@@ -1,7 +1,9 @@
 /* eslint-disable */
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import Stripe from 'stripe'
 import { sbServer } from '@/lib/billing'
+import { getSessionCustId } from '@/lib/portalSession'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
@@ -13,6 +15,13 @@ export async function GET(req: Request) {
 
     if (!sessionId || !customerId) {
       return NextResponse.json({ error: 'Missing params' }, { status: 400 })
+    }
+
+    // Verify the caller owns this customer account
+    const cookieStore = await cookies()
+    const sessionCustId = getSessionCustId(cookieStore)
+    if (!sessionCustId || sessionCustId !== customerId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const session = await stripe.checkout.sessions.retrieve(sessionId, {

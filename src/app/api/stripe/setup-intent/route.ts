@@ -1,7 +1,9 @@
 /* eslint-disable */
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import Stripe from 'stripe'
 import { sbServer } from '@/lib/billing'
+import { getSessionCustId } from '@/lib/portalSession'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://patil-waste-site.vercel.app'
@@ -10,6 +12,13 @@ export async function POST(req: Request) {
   try {
     const { customerId } = await req.json()
     if (!customerId) return NextResponse.json({ error: 'Missing customerId' }, { status: 400 })
+
+    // Verify the caller owns this customer account
+    const cookieStore = await cookies()
+    const sessionCustId = getSessionCustId(cookieStore)
+    if (!sessionCustId || sessionCustId !== customerId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const [customer] = await sbServer(`customers?id=eq.${customerId}&select=id,first_name,last_name,email,stripe_customer_id`)
     if (!customer) return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
