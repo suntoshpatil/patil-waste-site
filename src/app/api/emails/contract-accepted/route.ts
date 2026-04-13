@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { sbServer, calcInvoiceTotal } from '@/lib/billing'
-import { contractAcceptedEmail } from '@/lib/emails'
+import { contractAcceptedEmail, invoiceEmail } from '@/lib/emails'
 import PDFDocument from 'pdfkit'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -138,6 +138,28 @@ export async function POST(req: Request) {
         content: pdfBuffer.toString('base64'),
       }]
     } as any)
+
+    // Send invoice email for any outstanding first invoice created at contract acceptance
+    const invoices = await sbServer(
+      `invoices?customer_id=eq.${customerId}&status=eq.sent&order=created_at.asc&limit=5`
+    ).catch(() => [])
+
+    for (const invoice of invoices || []) {
+      if (!invoice.total || invoice.total <= 0) continue
+      // Parse notes into line items (format: "desc: $X.XX | desc2: $Y.YY")
+      const lines = (invoice.notes || '')
+        .replace('First invoice — due on receipt. ', '')
+        .split(' | ')
+        .map((part: string) => {
+          const match = part.match(/^(.+):\s*\$?([\d.]+)$/)
+          return match ? { description: match[1].trim(), amount: parseFloat(match[2]) } : null
+        })
+        .filter(Boolean)
+
+      const invoiceLines = lines.length > 0 ? lines : [{ description: 'First invoice (prorated)', amount: invoice.total }]
+
+      await resend.emails.send(invoiceEmail(customer, invoice, invoiceLines) as any).catch(() => {})
+    }
 
     return NextResponse.json({ ok: true })
   } catch (e: any) {
