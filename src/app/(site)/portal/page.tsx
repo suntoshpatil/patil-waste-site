@@ -497,11 +497,13 @@ export default function Portal() {
       for (const sel of selectedItems) {
         const item = catalog.find(c => c.id === sel.id)
         if (!item) continue
+        const fixedTotal = item.is_fixed_price ? parseFloat((item.fixed_price * sel.qty).toFixed(2)) : null
         await sb('pickup_addons', { method:'POST', body:{
           customer_id: customer.id,
           catalog_item_id: item.id,
           quantity: sel.qty,
-          estimated_price: item.is_fixed_price ? parseFloat((item.fixed_price * sel.qty).toFixed(2)) : null,
+          estimated_price: fixedTotal,
+          final_price: fixedTotal,
           status: item.is_fixed_price ? 'confirmed' : 'pending_quote',
           requested_pickup_date: addonPickupDate || null,
         }})
