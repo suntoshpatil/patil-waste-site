@@ -1,7 +1,9 @@
 /* eslint-disable */
-// Server-side Supabase helper (uses env vars, never exposed to client)
+// Server-side Supabase helper — uses the service_role key so it bypasses
+// RLS entirely. This is safe because this file only runs on the server
+// (API routes, cron jobs). Never import this from client components.
 const SUPABASE_URL = process.env.SUPABASE_URL!
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY!
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!
 
 export async function sbServer(path: string, opts: { method?: string; body?: object; prefer?: string } = {}) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
