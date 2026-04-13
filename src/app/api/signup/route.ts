@@ -6,6 +6,24 @@ import { signupConfirmationEmail } from '@/lib/emails'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+// Simple IP-based rate limiter: max 5 signups per hour per IP
+const signupAttempts = new Map<string, { count: number; windowStart: number }>()
+const SIGNUP_MAX = 5
+const SIGNUP_WINDOW_MS = 60 * 60 * 1000 // 1 hour
+
+function checkSignupRate(req: Request): boolean {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const now = Date.now()
+  const rec = signupAttempts.get(ip)
+  if (!rec || now - rec.windowStart > SIGNUP_WINDOW_MS) {
+    signupAttempts.set(ip, { count: 1, windowStart: now })
+    return true
+  }
+  if (rec.count >= SIGNUP_MAX) return false
+  rec.count++
+  return true
+}
+
 // Schema for the public signup form. Mirrors the fields on /signup and
 // matches the customers table shape. All strings are trimmed and capped
 // to block payload-abuse and broken rendering from oversized input.
@@ -40,6 +58,9 @@ const cap = (s: string) =>
   s.trim() ? s.trim().charAt(0).toUpperCase() + s.trim().slice(1).toLowerCase() : ''
 
 export async function POST(req: Request) {
+  if (!checkSignupRate(req)) {
+    return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 })
+  }
   try {
     const raw = await req.json().catch(() => null)
     if (!raw || typeof raw !== 'object') {

@@ -2,9 +2,11 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { Resend } from 'resend'
 import { sbServer, calcInvoiceTotal } from '@/lib/billing'
 import { contractAcceptedEmail, invoiceEmail } from '@/lib/emails'
+import { getSessionCustId } from '@/lib/portalSession'
 import PDFDocument from 'pdfkit'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -105,6 +107,14 @@ export async function POST(req: Request) {
     if (!customerId || typeof customerId !== 'string') {
       return NextResponse.json({ error: 'Missing customerId' }, { status: 400 })
     }
+
+    // Only the customer themselves may trigger their own contract-accepted email
+    const cookieStore = await cookies()
+    const sessionCustId = getSessionCustId(cookieStore)
+    if (sessionCustId !== customerId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 're_placeholder') return NextResponse.json({ ok: true, skipped: true })
 
     const [customer] = await sbServer(`customers?id=eq.${customerId}&select=*,subscriptions(id,rate,billing_cycle,pickup_day,billing_start,status,services(name)),bins(*)`)

@@ -424,7 +424,7 @@ export default function Admin() {
       // Send contract ready email — server derives plan/pickup/start date from DB
       fetch('/api/emails/contract-ready', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
         body: JSON.stringify({ customerId: onboardCustomer.id })
       }).catch(() => {})
       showToast(`Contract sent to ${onboardCustomer.first_name}! Awaiting their acceptance. ✅`)
