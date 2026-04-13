@@ -19,7 +19,7 @@ async function sb(path: string, opts: { method?: string; body?: object; prefer?:
     // Parse table name and query string from path (e.g. "customers?id=eq.123")
     const [tablePart, ...queryParts] = path.split('?')
     const query = queryParts.join('?')
-    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') || '' : ''
+    const token = typeof window !== 'undefined' ? localStorage.getItem('pwradmin') || '' : ''
     const res = await fetch('/api/admin/db', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
