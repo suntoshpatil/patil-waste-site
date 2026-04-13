@@ -171,7 +171,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ customer
     }
 
     const safeName = (customer.last_name || 'Contract').replace(/[^a-zA-Z0-9_-]/g, '_')
-    return new Response(pdf, {
+    return new Response(new Uint8Array(pdf), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="PatilWasteRemoval-Contract-${safeName}.pdf"`,
