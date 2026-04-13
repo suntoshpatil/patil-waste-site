@@ -70,7 +70,7 @@ const STEPS = [
 ]
 
 export default function JunkRemoval() {
-  const [form, setForm] = useState({ name:'', email:'', phone:'', address:'', job_type:'', description:'', preferred_date:'' })
+  const [form, setForm] = useState({ name:'', email:'', phone:'', street_address:'', city:'', state:'NH', zip:'', job_type:'', description:'', preferred_date:'' })
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -110,7 +110,7 @@ export default function JunkRemoval() {
   const removePhoto = (i: number) => setPhotos(p => p.filter((_, idx) => idx !== i))
 
   async function handleSubmit() {
-    if (!form.name || !form.phone || !form.address || !form.job_type || !form.description) {
+    if (!form.name || !form.phone || !form.street_address || !form.city || !form.job_type || !form.description) {
       setError('Please fill in all required fields.'); return
     }
     setLoading(true); setError('')
@@ -334,8 +334,22 @@ export default function JunkRemoval() {
             <input style={inp} type="email" value={form.email} onChange={e=>set('email',e.target.value)} placeholder="jane@example.com" />
           </div>
           <div style={{ marginBottom:'1rem' }}>
-            <label style={{ display:'block', fontSize:'0.75rem', color:'rgba(255,255,255,0.45)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:'0.4rem' }}>Service Address *</label>
-            <input style={inp} value={form.address} onChange={e=>set('address',e.target.value)} placeholder="123 Main St, Bedford, NH" />
+            <label style={{ display:'block', fontSize:'0.75rem', color:'rgba(255,255,255,0.45)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:'0.4rem' }}>Street Address *</label>
+            <input style={inp} value={form.street_address} onChange={e=>set('street_address',e.target.value)} placeholder="123 Main St" />
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr', gap:'0.75rem', marginBottom:'1rem' }}>
+            <div>
+              <label style={{ display:'block', fontSize:'0.75rem', color:'rgba(255,255,255,0.45)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:'0.4rem' }}>City *</label>
+              <input style={inp} value={form.city} onChange={e=>set('city',e.target.value)} placeholder="Bedford" />
+            </div>
+            <div>
+              <label style={{ display:'block', fontSize:'0.75rem', color:'rgba(255,255,255,0.45)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:'0.4rem' }}>State</label>
+              <input style={inp} value={form.state} onChange={e=>set('state',e.target.value)} placeholder="NH" />
+            </div>
+            <div>
+              <label style={{ display:'block', fontSize:'0.75rem', color:'rgba(255,255,255,0.45)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:'0.4rem' }}>ZIP</label>
+              <input style={inp} value={form.zip} onChange={e=>set('zip',e.target.value)} placeholder="03110" />
+            </div>
           </div>
           <div style={{ marginBottom:'1rem' }}>
             <label style={{ display:'block', fontSize:'0.75rem', color:'rgba(255,255,255,0.45)', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:'0.4rem' }}>Describe What Needs to Go *</label>
