@@ -265,23 +265,19 @@ export default function Portal() {
       .catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function loadPortalData(cust: Customer) {
-    const [b, sk, n, sv, cat, addons, inv] = await Promise.all([
-      sb(`bins?customer_id=eq.${cust.id}&select=*`).catch(() => []),
-      sb(`skip_requests?customer_id=eq.${cust.id}&select=*&order=created_at.desc`).catch(() => []),
-      sb(`schedule_notices?select=*&order=notice_date.desc&limit=5`).catch(() => []),
-      sb(`services?select=id,name,base_price_monthly&is_active=eq.true&type=in.(recurring,addon)&order=base_price_monthly.asc`).catch(() => []),
-      sb(`bulky_item_catalog?select=*&is_active=eq.true&order=is_fixed_price.desc,name.asc`).catch(() => []),
-      sb(`pickup_addons?customer_id=eq.${cust.id}&select=*,bulky_item_catalog(name)&order=created_at.desc&limit=20`).catch(() => []),
-      sb(`invoices?customer_id=eq.${cust.id}&select=*&order=created_at.desc&limit=12`).catch(() => []),
-    ])
-    setBins(b || [])
-    setSkips(sk || [])
-    setNotices(n || [])
-    setServices(sv || [])
-    setCatalog(cat || [])
-    setPickupAddons(addons || [])
-    setInvoices(inv || [])
+  async function loadPortalData(_cust: Customer) {
+    try {
+      const res = await fetch('/api/portal/data')
+      if (!res.ok) return
+      const d = await res.json()
+      setBins(d.bins || [])
+      setSkips(d.skips || [])
+      setNotices(d.notices || [])
+      setServices(d.services || [])
+      setCatalog(d.catalog || [])
+      setPickupAddons(d.addons || [])
+      setInvoices(d.invoices || [])
+    } catch {}
   }
 
   const [loginStep, setLoginStep] = useState<'email'|'pin'>('email')

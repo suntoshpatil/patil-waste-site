@@ -23,6 +23,42 @@ function verifyAdmin(req: Request): boolean {
   }
 }
 
+export async function GET(req: Request) {
+  if (!verifyAdmin(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const { searchParams } = new URL(req.url)
+    const table = searchParams.get('table') || ''
+    const query = searchParams.get('query') || ''
+
+    if (!table || !/^[a-z_]+$/.test(table)) {
+      return NextResponse.json({ error: 'Invalid table' }, { status: 400 })
+    }
+
+    const url = `${SUPABASE_URL}/rest/v1/${table}${query ? `?${query}` : ''}`
+    const res = await fetch(url, {
+      headers: {
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+    })
+
+    const txt = await res.text()
+    const data = txt ? JSON.parse(txt) : null
+    if (!res.ok) {
+      return NextResponse.json({ error: data?.message || `Supabase error ${res.status}` }, { status: res.status })
+    }
+    return NextResponse.json(data ?? [])
+  } catch (e: any) {
+    console.error('[admin/db GET] error:', e)
+    return NextResponse.json({ error: 'Database operation failed' }, { status: 500 })
+  }
+}
+
 export async function POST(req: Request) {
   if (!verifyAdmin(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

@@ -9,17 +9,14 @@ const BLANK_CUSTOMER = { first_name:'', last_name:'', email:'', phone:'', servic
 
 type Customer = typeof BLANK_CUSTOMER & { id: string; created_at: string; subscriptions?: { rate: number; billing_cycle: string; services: { name: string } }[] }
 
-// GET requests go directly to Supabase (anon key, SELECT policies cover them).
-// POST/PATCH/DELETE go through the authenticated server proxy so the
-// service_role key is used for writes — never the anon key.
+// All requests go through the authenticated server proxy using the service_role key.
 async function sb(path: string, opts: { method?: string; body?: object; prefer?: string } = {}) {
   const method = opts.method || 'GET'
+  const token = typeof window !== 'undefined' ? localStorage.getItem('pwradmin') || '' : ''
 
   if (method !== 'GET') {
-    // Parse table name and query string from path (e.g. "customers?id=eq.123")
     const [tablePart, ...queryParts] = path.split('?')
     const query = queryParts.join('?')
-    const token = typeof window !== 'undefined' ? localStorage.getItem('pwradmin') || '' : ''
     const res = await fetch('/api/admin/db', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -31,16 +28,15 @@ async function sb(path: string, opts: { method?: string; body?: object; prefer?:
     return data
   }
 
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': opts.prefer || 'return=representation' },
-    method: 'GET',
+  // GET: route through proxy with service_role key
+  const [tablePart, ...queryParts] = path.split('?')
+  const query = queryParts.join('?')
+  const res = await fetch(`/api/admin/db?table=${encodeURIComponent(tablePart)}&query=${encodeURIComponent(query)}`, {
+    headers: { 'Authorization': `Bearer ${token}` },
   })
   const txt = await res.text()
   const data = txt ? JSON.parse(txt) : null
-  if (!res.ok) {
-    const msg = data?.message || data?.error || `HTTP ${res.status}`
-    throw new Error(msg)
-  }
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`)
   return data
 }
 
