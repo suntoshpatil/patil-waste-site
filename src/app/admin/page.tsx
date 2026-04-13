@@ -9,11 +9,31 @@ const BLANK_CUSTOMER = { first_name:'', last_name:'', email:'', phone:'', servic
 
 type Customer = typeof BLANK_CUSTOMER & { id: string; created_at: string; subscriptions?: { rate: number; billing_cycle: string; services: { name: string } }[] }
 
+// GET requests go directly to Supabase (anon key, SELECT policies cover them).
+// POST/PATCH/DELETE go through the authenticated server proxy so the
+// service_role key is used for writes — never the anon key.
 async function sb(path: string, opts: { method?: string; body?: object; prefer?: string } = {}) {
+  const method = opts.method || 'GET'
+
+  if (method !== 'GET') {
+    // Parse table name and query string from path (e.g. "customers?id=eq.123")
+    const [tablePart, ...queryParts] = path.split('?')
+    const query = queryParts.join('?')
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') || '' : ''
+    const res = await fetch('/api/admin/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ table: tablePart, method, query, body: opts.body, prefer: opts.prefer || 'return=representation' }),
+    })
+    const txt = await res.text()
+    const data = txt ? JSON.parse(txt) : null
+    if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`)
+    return data
+  }
+
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': opts.prefer || 'return=representation' },
-    method: opts.method || 'GET',
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    method: 'GET',
   })
   const txt = await res.text()
   const data = txt ? JSON.parse(txt) : null
