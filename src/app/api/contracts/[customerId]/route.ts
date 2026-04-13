@@ -1,6 +1,8 @@
 /* eslint-disable */
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { sbServer } from '@/lib/billing'
+import { getSessionCustId } from '@/lib/portalSession'
 import PDFDocument from 'pdfkit'
 
 export const runtime = 'nodejs'
@@ -137,10 +139,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ customer
   try {
     const { customerId } = await params
 
-    // Auth: admin token or open (customer portal calls with their own ID)
+    // Check admin token
     const auth = req.headers.get('Authorization')?.replace('Bearer ', '') || ''
     const adminPw = process.env.ADMIN_PASSWORD
-    const isAdmin = adminPw && Buffer.from(auth, 'base64').toString().startsWith('admin:') && Buffer.from(auth, 'base64').toString().endsWith(`:${adminPw}`)
+    const isAdmin = !!(adminPw && (() => { try { const d = Buffer.from(auth, 'base64').toString(); return d.startsWith('admin:') && d.endsWith(`:${adminPw}`) } catch { return false } })())
+
+    // Check portal session cookie — customer may only fetch their own contract
+    const cookieStore = await cookies()
+    const sessionCustId = getSessionCustId(cookieStore)
+    const isOwner = sessionCustId === customerId
+
+    if (!isAdmin && !isOwner) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const [customer] = await sbServer(
       `customers?id=eq.${customerId}&select=*,subscriptions(id,rate,billing_cycle,pickup_day,billing_start,status,services(name))`
