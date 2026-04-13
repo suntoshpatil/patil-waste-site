@@ -6,6 +6,25 @@ const SUPABASE_URL = 'https://kmvwwxlwzacxvtlqugws.supabase.co'
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imttdnd3eGx3emFjeHZ0bHF1Z3dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNDMxOTMsImV4cCI6MjA5MDkxOTE5M30.TELT8SLAI2CJOQ2BJQq_3FyKzCkOKoT1lxmJIhrqMhQ'
 
 async function sb(path: string, opts: { method?: string; body?: object; prefer?: string } = {}) {
+  const method = opts.method || 'GET'
+
+  if (method !== 'GET') {
+    // Route all writes through the portal proxy (session-cookie auth + service_role key)
+    const qIdx = path.indexOf('?')
+    const table = qIdx >= 0 ? path.slice(0, qIdx) : path
+    const query = qIdx >= 0 ? path.slice(qIdx + 1) : ''
+    const res = await fetch('/api/portal/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table, method, query, body: opts.body, prefer: opts.prefer }),
+    })
+    const txt = await res.text()
+    const data = txt ? JSON.parse(txt) : null
+    if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`)
+    return data
+  }
+
+  // GET: read directly from Supabase with anon key (SELECT RLS applies)
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: {
       'apikey': SUPABASE_KEY,
@@ -13,8 +32,7 @@ async function sb(path: string, opts: { method?: string; body?: object; prefer?:
       'Content-Type': 'application/json',
       'Prefer': opts.prefer || 'return=representation',
     },
-    method: opts.method || 'GET',
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    method: 'GET',
   })
   const txt = await res.text()
   const data = txt ? JSON.parse(txt) : null
@@ -183,8 +201,6 @@ export default function Portal() {
   const [editingContact, setEditingContact] = useState(false)
   const [contactForm, setContactForm] = useState({ email:'', phone:'' })
   const [contactSaving, setContactSaving] = useState(false)
-  const [pinAttempts, setPinAttempts] = useState(0)
-  const [lockedUntil, setLockedUntil] = useState<number | null>(null)
   const [forgotPin, setForgotPin] = useState(false)
   const [resetPhone, setResetPhone] = useState('')
   const [resetNewPin, setResetNewPin] = useState('')
@@ -207,43 +223,46 @@ export default function Portal() {
   }
 
   useEffect(() => {
-    const saved = sessionStorage.getItem('portal_customer')
-    if (!saved) return
-    const parsed = JSON.parse(saved)
-    setCustomer(parsed)
-    setScreen('dashboard')
-    loadPortalData(parsed)
-    // Handle Stripe payment success redirect
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('payment') === 'success') {
-      const invoiceId = params.get('invoice')
-      if (invoiceId) {
-        sb(`invoices?id=eq.${invoiceId}`, { method:'PATCH', body:{ status:'paid', paid_at: new Date().toISOString() }, prefer:'return=minimal' }).catch(()=>{})
-        sb('payment_logs', { method:'POST', body:{ customer_id: parsed.id, payment_method:'card', amount: 0, reference_number:'stripe-checkout', logged_by:'customer' }}).catch(()=>{})
-      }
-      showToast('Payment successful! Thank you 🎉')
-      window.history.replaceState({}, '', '/portal')
-    }
-    // Handle Stripe card setup success
-    if (params.get('card_saved') === 'true') {
-      const sessionId = params.get('session_id')
-      const custId = params.get('customer_id')
-      if (sessionId && custId) {
-        fetch(`/api/stripe/confirm-setup?session_id=${sessionId}&customer_id=${custId}`)
-          .then(async () => {
-            // Re-fetch customer so the UI shows card saved / auto-pay enabled
-            const res = await sb(`customers?id=eq.${custId}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,pickup_frequency,services(id,name))`)
-            if (res?.[0]) {
-              const updated = res[0]
-              sessionStorage.setItem('portal_customer', JSON.stringify(updated))
-              setCustomer(updated)
-            }
-            showToast('Card saved! Auto-pay is now enabled. ✅')
-          })
-          .catch(() => showToast('Card saved but auto-pay setup had an issue. Contact us.', 'error'))
-      }
-      window.history.replaceState({}, '', '/portal')
-    }
+    // Restore session from HttpOnly cookie (verified server-side)
+    fetch('/api/portal/me')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!data?.customer) return
+        const parsed = data.customer
+        setCustomer(parsed)
+        setScreen('dashboard')
+        loadPortalData(parsed)
+        // Handle Stripe payment success redirect
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('payment') === 'success') {
+          const invoiceId = params.get('invoice')
+          if (invoiceId) {
+            sb(`invoices?id=eq.${invoiceId}`, { method:'PATCH', body:{ status:'paid', paid_at: new Date().toISOString() }, prefer:'return=minimal' }).catch(()=>{})
+            sb('payment_logs', { method:'POST', body:{ customer_id: parsed.id, payment_method:'card', amount: 0, reference_number:'stripe-checkout', logged_by:'customer' }}).catch(()=>{})
+          }
+          showToast('Payment successful! Thank you 🎉')
+          window.history.replaceState({}, '', '/portal')
+        }
+        // Handle Stripe card setup success
+        if (params.get('card_saved') === 'true') {
+          const sessionId = params.get('session_id')
+          const custId = params.get('customer_id')
+          if (sessionId && custId) {
+            fetch(`/api/stripe/confirm-setup?session_id=${sessionId}&customer_id=${custId}`)
+              .then(async () => {
+                // Re-fetch customer so the UI shows card saved / auto-pay enabled
+                const res = await sb(`customers?id=eq.${custId}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,pickup_frequency,services(id,name))`)
+                if (res?.[0]) {
+                  setCustomer(res[0])
+                }
+                showToast('Card saved! Auto-pay is now enabled. ✅')
+              })
+              .catch(() => showToast('Card saved but auto-pay setup had an issue. Contact us.', 'error'))
+          }
+          window.history.replaceState({}, '', '/portal')
+        }
+      })
+      .catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadPortalData(cust: Customer) {
@@ -267,91 +286,99 @@ export default function Portal() {
 
   const [loginStep, setLoginStep] = useState<'email'|'pin'>('email')
   const [contractAccepting, setContractAccepting] = useState(false)
-  const [foundCustomer, setFoundCustomer] = useState<Customer|null>(null)
+  const [firstNameForPin, setFirstNameForPin] = useState('')
 
   async function handleEmailLookup() {
     if (!email) { setError('Please enter your email address.'); return }
     setLoading(true); setError('')
     try {
-      const results = await sb(`customers?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&select=*,subscriptions(id,service_id,rate,billing_cycle,status,pickup_day,billing_start,pickup_frequency,services(id,name))`)
-      if (!results || results.length === 0) { setError('No account found with that email. Make sure you used the same email you signed up with.'); setLoading(false); return }
-      const cust = results[0]
-      if (!cust.portal_pin) {
-        // First time — go straight to set PIN
-        setCustomer(cust)
+      const res = await fetch('/api/portal/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.toLowerCase().trim() }),
+      })
+      const data = await res.json()
+      if (!data.exists) {
+        setError('No account found with that email. Make sure you used the same email you signed up with.')
+        setLoading(false); return
+      }
+      if (!data.hasPIN) {
+        setFirstNameForPin(data.firstName || '')
         setScreen('set-pin')
         setLoading(false); return
       }
-      // Has a PIN — show PIN entry step
-      setFoundCustomer(cust)
       setLoginStep('pin')
-    } catch (e: any) { setError(e.message || 'Something went wrong.') }
+    } catch { setError('Something went wrong.') }
     setLoading(false)
   }
 
   async function handleResetPin() {
-    if (!resetPhone || !foundCustomer) { setError('Please enter your phone number.'); return }
-    // Verify last 4 digits of phone match
-    const stored = (foundCustomer.phone || '').replace(/\D/g, '').slice(-4)
-    const entered = resetPhone.replace(/\D/g, '').slice(-4)
-    if (stored !== entered || stored.length < 4) {
-      setError('Phone number does not match our records. Contact Patil Waste Removal at (802) 416-9484.'); return
-    }
+    if (!resetPhone) { setError('Please enter your phone number.'); return }
     if (!resetNewPin || resetNewPin.length !== 4) { setError('Please enter a valid 4-digit PIN.'); return }
     if (resetNewPin !== resetConfirmPin) { setError('PINs do not match.'); return }
     setLoading(true); setError('')
     try {
-      await sb(`customers?id=eq.${foundCustomer.id}`, { method:'PATCH', body:{ portal_pin: resetNewPin }, prefer:'return=minimal' })
+      const res = await fetch('/api/portal/reset-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.toLowerCase().trim(), phoneLast4: resetPhone.replace(/\D/g,'').slice(-4), newPin: resetNewPin }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Reset failed.'); setLoading(false); return }
       setForgotPin(false)
       setResetPhone(''); setResetNewPin(''); setResetConfirmPin('')
-      setPin(resetNewPin)
-      setError('')
-      // Auto login
-      const updated = { ...foundCustomer, portal_pin: resetNewPin }
-      sessionStorage.setItem('portal_customer', JSON.stringify(updated))
-      setCustomer(updated as any)
+      // Session cookie set by server — fetch customer data
+      const meRes = await fetch('/api/portal/me')
+      const meData = await meRes.json()
+      if (!meRes.ok) { setError('PIN reset! Please sign in.'); setLoginStep('email'); setLoading(false); return }
+      setCustomer(meData.customer)
       setScreen('dashboard')
-      loadPortalData(updated as any)
+      loadPortalData(meData.customer)
     } catch (e: any) { setError(e.message || 'Reset failed.') }
     setLoading(false)
   }
 
   async function handleLogin() {
-    if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) { setError('Please enter your 4-digit PIN.'); return }
-    if (!foundCustomer) return
-    if (foundCustomer.portal_pin !== pin) {
-      const newAttempts = pinAttempts + 1
-      setPinAttempts(newAttempts)
-      if (newAttempts >= 5) {
-        const lockTime = Date.now() + 15 * 60 * 1000
-        setLockedUntil(lockTime)
-        setPinAttempts(0)
-        setError('Too many failed attempts. Your account is locked for 15 minutes.')
-      } else {
-        setError(`Incorrect PIN. ${5 - newAttempts} attempt${5 - newAttempts !== 1 ? 's' : ''} remaining.`)
-      }
-      return
-    }
-    setPinAttempts(0)
-    setLockedUntil(null)
-    sessionStorage.setItem('portal_customer', JSON.stringify(foundCustomer))
-    setCustomer(foundCustomer)
-    setScreen('dashboard')
-    loadPortalData(foundCustomer)
+    if (!pin || !/^\d{4}$/.test(pin)) { setError('Please enter your 4-digit PIN.'); return }
+    setLoading(true); setError('')
+    try {
+      const res = await fetch('/api/portal/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.toLowerCase().trim(), pin }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Login failed.'); setLoading(false); return }
+      // Session cookie is now set — fetch customer data
+      const meRes = await fetch('/api/portal/me')
+      const meData = await meRes.json()
+      if (!meRes.ok) { setError('Login succeeded but session failed. Please try again.'); setLoading(false); return }
+      setCustomer(meData.customer)
+      setScreen('dashboard')
+      loadPortalData(meData.customer)
+    } catch { setError('Something went wrong.') }
+    setLoading(false)
   }
 
   async function handleSetPin() {
     if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) { setError('PIN must be exactly 4 digits.'); return }
     if (newPin !== confirmPin) { setError('PINs do not match.'); return }
-    if (!customer) return
     setLoading(true); setError('')
     try {
-      await sb(`customers?id=eq.${customer.id}`, { method:'PATCH', body:{ portal_pin: newPin }, prefer:'return=minimal' })
-      const updated = { ...customer, portal_pin: newPin }
-      sessionStorage.setItem('portal_customer', JSON.stringify(updated))
-      setCustomer(updated as any)
+      const res = await fetch('/api/portal/set-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.toLowerCase().trim(), pin: newPin }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Failed to set PIN.'); setLoading(false); return }
+      // Session cookie is now set — fetch customer data
+      const meRes = await fetch('/api/portal/me')
+      const meData = await meRes.json()
+      if (!meRes.ok) { setError('PIN set! Please sign in.'); setScreen('login'); setLoginStep('pin'); setLoading(false); return }
+      setCustomer(meData.customer)
       setScreen('dashboard')
-      loadPortalData(updated as any)
+      loadPortalData(meData.customer)
     } catch (e: any) { setError(e.message || 'Failed to set PIN.') }
     setLoading(false)
   }
@@ -452,7 +479,6 @@ export default function Portal() {
 
       const updated = { ...customer, contract_accepted: true, status: 'active' } as any
       setCustomer(updated)
-      sessionStorage.setItem('portal_customer', JSON.stringify(updated))
       loadPortalData(updated)
       showToast('Contract accepted! Your first invoice has been generated. Welcome aboard 🎉')
     } catch (e: any) { showToast('Failed to accept. Please contact us directly.', 'error') }
@@ -546,9 +572,9 @@ export default function Portal() {
   }
 
   function logout() {
-    sessionStorage.removeItem('portal_customer')
+    fetch('/api/portal/logout', { method: 'POST' }).catch(() => {})
     setCustomer(null); setScreen('login')
-    setEmail(''); setPin(''); setTab('home')
+    setEmail(''); setPin(''); setTab('home'); setLoginStep('email')
   }
 
   // ── STYLES ──
@@ -630,7 +656,7 @@ export default function Portal() {
         <div style={{ textAlign:'center', marginBottom:'2rem' }}>
           <div style={{ fontSize:'2.5rem', marginBottom:'0.5rem' }}>🔐</div>
           <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:'2rem', letterSpacing:'0.05em', marginBottom:'0.5rem', color:'#fff' }}>Set Your PIN</div>
-          <p style={{ color:'rgba(255,255,255,0.45)', fontSize:'0.88rem' }}>Welcome, {customer?.first_name}! Create a 4-digit PIN for future logins.</p>
+          <p style={{ color:'rgba(255,255,255,0.45)', fontSize:'0.88rem' }}>{firstNameForPin ? `Welcome, ${firstNameForPin}! ` : ''}Create a 4-digit PIN for future logins.</p>
         </div>
         <div style={{ ...card, padding:'2rem' }}>
           <div style={{ marginBottom:'1.25rem' }}>
@@ -970,7 +996,6 @@ export default function Portal() {
                         await sb(`customers?id=eq.${customer.id}`, { method:'PATCH', body:{ email: contactForm.email.toLowerCase().trim(), phone: contactForm.phone.trim() || null }, prefer:'return=minimal' })
                         const updated = { ...customer, email: contactForm.email.toLowerCase().trim(), phone: contactForm.phone.trim() }
                         setCustomer(updated as any)
-                        sessionStorage.setItem('portal_customer', JSON.stringify(updated))
                         setEditingContact(false)
                         showToast('Contact details updated ✅')
                       } catch { showToast('Failed to update. Please contact us.', 'error') }
