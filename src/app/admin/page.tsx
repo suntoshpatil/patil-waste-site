@@ -49,7 +49,8 @@ function Badge({ status, contractAccepted }: { status: string; contractAccepted?
   return <span style={{ background:`${c}22`, color:c, padding:'0.15rem 0.5rem', borderRadius:'20px', fontSize:'0.68rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{labels[effectiveStatus] || effectiveStatus}</span>
 }
 
-const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '—'
+// Parse date-only strings (YYYY-MM-DD) as local noon to avoid UTC-offset shifting the date by 1 day
+const fmt = (d: string) => d ? new Date(d.length === 10 ? d + 'T12:00:00' : d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '—'
 
 function isBiweeklyPickupWeek(billingStart: string | null | undefined): boolean {
   if (!billingStart) return true // default to yes if unknown
@@ -1421,7 +1422,7 @@ export default function Admin() {
                       <div style={{ fontWeight:700 }}>{a.customers?.first_name} {a.customers?.last_name}</div>
                       <div style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.5)', marginTop:'0.2rem' }}>
                         {a.custom_description || (a.bulky_item_catalog
-                          ? `${a.bulky_item_catalog.name} — ${a.bulky_item_catalog.is_fixed_price ? `$${a.bulky_item_catalog.fixed_price}` : `est. $${a.bulky_item_catalog.estimate_min}–$${a.bulky_item_catalog.estimate_max}`}`
+                          ? `${a.quantity > 1 ? `${a.quantity}× ` : ''}${a.bulky_item_catalog.name} — ${a.bulky_item_catalog.is_fixed_price ? `$${a.bulky_item_catalog.fixed_price} ea` : `est. $${a.bulky_item_catalog.estimate_min}–$${a.bulky_item_catalog.estimate_max}`}`
                           : '—')}
                       </div>
                       {a.requested_pickup_date && <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)' }}>Requested: {new Date(a.requested_pickup_date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>}
@@ -1430,7 +1431,7 @@ export default function Admin() {
                   </div>
                   <div style={{ display:'flex', gap:'0.5rem', alignItems:'center', marginTop:'0.5rem', flexWrap:'wrap' }}>
                     {/* Admin can always edit price regardless of status */}
-                    <input type='number' placeholder={`Price: $${a.final_price||'?'}`} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'4px', padding:'0.4rem 0.65rem', color:'#fff', fontSize:'0.82rem', fontFamily:'inherit', width:'130px' }}
+                    <input type='number' placeholder={`Price: $${a.final_price ?? a.estimated_price ?? '?'}`} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'4px', padding:'0.4rem 0.65rem', color:'#fff', fontSize:'0.82rem', fontFamily:'inherit', width:'130px' }}
                       onBlur={async e => {
                         const price = parseFloat(e.target.value)
                         if (!isNaN(price) && price > 0) {

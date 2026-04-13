@@ -40,6 +40,9 @@ async function sb(path: string, opts: { method?: string; body?: object; prefer?:
   return data
 }
 
+// Parse date-only strings as local noon to avoid UTC-offset shifting the date by 1 day in US timezones
+const fmtDate = (d: string) => d ? new Date(d.length === 10 ? d + 'T12:00:00' : d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '—'
+
 const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
 
 function nextPickupDate(pickupDay: string, billingStart?: string): string {
@@ -449,20 +452,23 @@ export default function Portal() {
           ...(garageProrated > 0 ? [`Garage pickup (${remainingPickups}/${totalPickups} pickups): $${garageProrated.toFixed(2)}`] : []),
         ].join(' | ')
 
-        await sb('invoices', { method:'POST', body:{
-          customer_id: customer.id,
-          subscription_id: sub.id,
-          subtotal,
-          adjustments_total: 0,
-          tax_rate: 0,
-          tax_amount: 0,
-          total: subtotal,
-          status: 'sent',
-          period_start: periodStart,
-          period_end: periodEnd,
-          due_date: dueDate,
-          notes: `First invoice — due on receipt. ${noteLines}`,
-        }})
+        // Only create invoice if there's actually something to charge
+        if (subtotal > 0) {
+          await sb('invoices', { method:'POST', body:{
+            customer_id: customer.id,
+            subscription_id: sub.id,
+            subtotal,
+            adjustments_total: 0,
+            tax_rate: 0,
+            tax_amount: 0,
+            total: subtotal,
+            status: 'sent',
+            period_start: periodStart,
+            period_end: periodEnd,
+            due_date: dueDate,
+            notes: `First invoice — due on receipt. ${noteLines}`,
+          }})
+        }
       }
 
       // Send contract accepted email — server derives plan/pickup/invoice
@@ -487,20 +493,18 @@ export default function Portal() {
       showToast('Please select at least one item or describe what you need picked up.', 'error'); return
     }
     try {
-      // Insert each catalog item
+      // Insert one row per catalog item with correct quantity
       for (const sel of selectedItems) {
         const item = catalog.find(c => c.id === sel.id)
         if (!item) continue
-        for (let i = 0; i < sel.qty; i++) {
-          await sb('pickup_addons', { method:'POST', body:{
-            customer_id: customer.id,
-            catalog_item_id: item.id,
-            quantity: 1,
-            estimated_price: item.is_fixed_price ? item.fixed_price : null,
-            status: item.is_fixed_price ? 'confirmed' : 'pending_quote',
-            requested_pickup_date: addonPickupDate || null,
-          }})
-        }
+        await sb('pickup_addons', { method:'POST', body:{
+          customer_id: customer.id,
+          catalog_item_id: item.id,
+          quantity: sel.qty,
+          estimated_price: item.is_fixed_price ? parseFloat((item.fixed_price * sel.qty).toFixed(2)) : null,
+          status: item.is_fixed_price ? 'confirmed' : 'pending_quote',
+          requested_pickup_date: addonPickupDate || null,
+        }})
       }
       // Insert custom item if filled in
       if (customItem.trim()) {
@@ -935,10 +939,24 @@ export default function Portal() {
               </div>
               {(customer as any).contract_accepted && (
                 <div style={{ marginTop:'0.75rem', paddingTop:'0.75rem', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-                  <a href={`/api/contracts/${(customer as any).id}`} target="_blank" rel="noopener noreferrer"
-                    style={{ display:'inline-flex', alignItems:'center', gap:'0.4rem', fontSize:'0.78rem', color:'#4caf50', textDecoration:'none', background:'rgba(46,125,50,0.08)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'6px', padding:'0.4rem 0.85rem' }}>
+                  <button onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/contracts/${(customer as any).id}`)
+                      if (!res.ok) {
+                        const err = await res.json().catch(() => ({}))
+                        showToast(err.error || 'Failed to download contract', 'error'); return
+                      }
+                      const blob = await res.blob()
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = `PatilWasteRemoval-Contract-${customer.last_name}.pdf`
+                      a.click()
+                      URL.revokeObjectURL(url)
+                    } catch { showToast('Failed to download contract', 'error') }
+                  }} style={{ display:'inline-flex', alignItems:'center', gap:'0.4rem', fontSize:'0.78rem', color:'#4caf50', background:'rgba(46,125,50,0.08)', border:'1px solid rgba(46,125,50,0.2)', borderRadius:'6px', padding:'0.4rem 0.85rem', cursor:'pointer', fontFamily:'inherit' }}>
                     📄 Download Signed Contract
-                  </a>
+                  </button>
                 </div>
               )}
             </div>
@@ -1540,7 +1558,7 @@ export default function Portal() {
                         {current.status === 'overdue' ? '⚠️ Payment Overdue' : '📄 Invoice Due'}
                       </div>
                       <div style={{ fontSize:'1.8rem', fontWeight:700, color:'#fff' }}>${Number(current.total).toFixed(2)}</div>
-                      <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.6)', marginTop:'0.2rem' }}>Due {current.due_date} · Period {current.period_start} – {current.period_end}</div>
+                      <div style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.6)', marginTop:'0.2rem' }}>Due {fmtDate(current.due_date)} · Period {fmtDate(current.period_start)} – {fmtDate(current.period_end)}</div>
                     </div>
                     {(customer as any).auto_pay && (customer as any).stripe_payment_method_id ? (
                       <div style={{ background:'rgba(46,125,50,0.1)', border:'1px solid rgba(46,125,50,0.3)', borderRadius:'6px', padding:'0.4rem 0.8rem', fontSize:'0.75rem', color:'#4caf50', fontWeight:700 }}>✅ Auto-pay on</div>
@@ -1630,8 +1648,8 @@ export default function Portal() {
                 {invoices.map((inv: any) => (
                   <div key={inv.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.6rem 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:'0.85rem' }}>
                     <div>
-                      <div style={{ fontWeight:500, color:'#fff' }}>{inv.period_start} – {inv.period_end}</div>
-                      <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.65)' }}>Due {inv.due_date}</div>
+                      <div style={{ fontWeight:500, color:'#fff' }}>{fmtDate(inv.period_start)} – {fmtDate(inv.period_end)}</div>
+                      <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.65)' }}>Due {fmtDate(inv.due_date)}</div>
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
                       <span style={{ fontWeight:600, color:'#fff' }}>${Number(inv.total).toFixed(2)}</span>
