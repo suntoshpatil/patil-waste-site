@@ -39,7 +39,6 @@ export default function Signup() {
       city: g("city"),
       state: g("state") || "NH",
       zip: g("zip"),
-      town: g("town"),
       plan: g("plan"),
       billing_cycle: g("billing_cycle"),
       bin_situation: g("bin_situation"),
@@ -53,7 +52,7 @@ export default function Signup() {
       rent_recycling: checked("rent_recycling"),
     }
 
-    if (!payload.first_name || !payload.email || !payload.street_address || !payload.city || !payload.town || !payload.plan) {
+    if (!payload.first_name || !payload.email || !payload.street_address || !payload.city || !payload.plan) {
       setErr("Please fill in all required fields."); return
     }
 
@@ -118,18 +117,7 @@ export default function Signup() {
                 <div className="f-grp"><label>State</label><input name="state" placeholder="NH" defaultValue="NH" {...inp} /></div>
                 <div className="f-grp"><label>ZIP</label><input name="zip" placeholder="03110" {...inp} /></div>
               </div>
-              <div className="f-grp">
-                <label>Town *</label>
-                <select name="town" {...sel}>
-                  <option value="">Select your town...</option>
-                  {["bedford", "merrimack", "amherst", "milford"].map(t => (
-                    <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}, NH</option>
-                  ))}
-                  <option value="other">Other — contact us first</option>
-                </select>
-              </div>
-
-              <div className="mobile-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+<div className="mobile-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div className="f-grp">
                   <label>Service Type *</label>
                   <select name="plan" {...sel}>
